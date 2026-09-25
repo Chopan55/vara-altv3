@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* VARA Alt — sistema indigo sobre claro.
+     Probamos esta identidad en vara-alt para compararla con el amarillo del principal. */
+  --color-brand-50: #f2f3fd;
+  --color-brand-100: #e6e8fb;
+  --color-brand-200: #d1d4f7;
+  --color-brand-300: #b0b5f0;
+  --color-brand-400: #8b8fe6;
+  --color-brand-500: #6366d8;
+  --color-brand-600: #5350c9;
+  --color-brand-700: #4740ae;
+  --color-brand-800: #3b378c;
+  --color-brand-900: #333170;
+  --color-brand-950: #1f1d44;
+
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --shadow-soft: 0 1px 2px 0 rgba(15,23,42,0.04), 0 1px 3px 0 rgba(15,23,42,0.06);
+  --shadow-card: 0 1px 2px 0 rgba(15,23,42,0.05);
+  --shadow-elevated: 0 8px 24px -4px rgba(15,23,42,0.10);
+}
+
+@layer base {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :root {
+    --background: #f7f8fc;
+    --foreground: #1e2233;
+    --card: #ffffff;
+    --border: #e6e8f0;
+    --muted: #f2f3f7;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
