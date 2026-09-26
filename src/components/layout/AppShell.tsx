@@ -433,7 +433,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex-1 min-w-0 flex flex-col">
         <TopBar onOpenDrawer={() => setDrawerOpen(true)} journey={journey} />
 
-        <main className="flex-1 min-w-0">
+        <main id="main-content" className="flex-1 min-w-0">
           {children}
         </main>
 
