@@ -35,21 +35,23 @@ interface NavItem {
  * hace perder más tiempo que el que ahorra.
  */
 function getBuyNav(operationId: string): NavItem[] {
+  const opHref = operationId ? `/operacion/${operationId}` : '/dashboard'
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
     { href: '/propiedades', icon: Building2, label: 'Mis propiedades' },
     { href: '/visitas', icon: ClipboardCheck, label: 'Checklist de visita' },
     { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', tag: 'Nuevo' },
     { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas' },
-    { href: `/operacion/${operationId}`, icon: FileText, label: 'Mi operación' },
-    { href: `/operacion/${operationId}?tab=documentos`, icon: FileText, label: 'Documentos' },
-    { href: `/operacion/${operationId}?tab=riesgos`, icon: ShieldAlert, label: 'Riesgos' },
+    { href: opHref, icon: FileText, label: 'Mi operación' },
+    { href: operationId ? `${opHref}?tab=documentos` : '/dashboard', icon: FileText, label: 'Documentos' },
+    { href: operationId ? `${opHref}?tab=riesgos` : '/dashboard', icon: ShieldAlert, label: 'Riesgos' },
     { href: '/dinero', icon: DollarSign, label: 'Dinero' },
     { href: '/profesionales', icon: Users, label: 'Profesionales' },
   ]
 }
 
 function getSellNav(operationId: string): NavItem[] {
+  const opHref = operationId ? `/operacion/${operationId}` : '/dashboard'
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
     { href: '/publicar', icon: Share2, label: 'Mi propiedad' },
@@ -57,9 +59,9 @@ function getSellNav(operationId: string): NavItem[] {
     { href: '/visitas-vendedor', icon: Eye, label: 'Quién quiere visitar' },
     { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', tag: 'Nuevo' },
     { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas' },
-    { href: `/operacion/${operationId}`, icon: FileText, label: 'Mi operación' },
-    { href: `/operacion/${operationId}?tab=documentos`, icon: FileText, label: 'Documentos' },
-    { href: `/operacion/${operationId}?tab=riesgos`, icon: ShieldAlert, label: 'Riesgos' },
+    { href: opHref, icon: FileText, label: 'Mi operación' },
+    { href: operationId ? `${opHref}?tab=documentos` : '/dashboard', icon: FileText, label: 'Documentos' },
+    { href: operationId ? `${opHref}?tab=riesgos` : '/dashboard', icon: ShieldAlert, label: 'Riesgos' },
     { href: '/dinero', icon: DollarSign, label: 'Dinero' },
     { href: '/profesionales', icon: Users, label: 'Profesionales' },
   ]
