@@ -449,12 +449,10 @@ function OperationCard({ op, isActive, onSelect, getTransactionData, onDelete, i
   const typeLabel = op.type === 'BUY' ? 'Compra' : 'Venta'
   const TypeIcon = op.type === 'BUY' ? ShoppingCart : Tag
 
-  // Etapa y próxima acción salen del motor regulatorio, no de un texto fijo:
-  // son lo único que le dice al usuario qué hacer sin abrir la operación.
   const stageLabel = txn?.stages.find(s => s.id === txn.currentStageId)?.label ?? 'Sin etapa'
-  const nextTask = txn?.stages
-    .find(s => s.id === txn.currentStageId)
-    ?.tasks.find(t => t.status === 'IN_PROGRESS' || t.status === 'TODO')
+  // La próxima acción sale del motor NBA, no de una lectura directa del stage.
+  // Así es coherente con el RightRail y con la vista de operación.
+  const primaryNba = txn ? computeNextActions({ transaction: txn }).find(a => a.id !== 'all_clear') : undefined
   const cover = txn?.property?.images?.[0]
 
   const urgency = blockedCount > 0
@@ -531,21 +529,24 @@ function OperationCard({ op, isActive, onSelect, getTransactionData, onDelete, i
             <Progress value={op.progress} showLabel={false} />
           </div>
 
-          <div className="mt-3.5 flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
+          <div className={cn(
+            'mt-3.5 flex items-center gap-3 rounded-xl px-3 py-2.5',
+            primaryNba?.blocking ? 'bg-red-50' : 'bg-slate-50'
+          )}>
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <Zap size={14} className="text-brand-600 flex-shrink-0" aria-hidden="true" />
+              <Zap size={14} className={cn('flex-shrink-0', primaryNba?.blocking ? 'text-red-500' : 'text-brand-600')} aria-hidden="true" />
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Próxima acción</p>
-                <p className="text-xs text-slate-700 truncate">
-                  {nextTask?.title ?? 'Revisá el detalle de la operación'}
+                <p className={cn('text-xs truncate', primaryNba?.blocking ? 'text-red-700 font-medium' : 'text-slate-700')}>
+                  {primaryNba?.title ?? 'Revisá el detalle de la operación'}
                 </p>
               </div>
             </div>
             <Link
-              href={`/operacion/${op.id}`}
+              href={primaryNba?.cta.href ?? `/operacion/${op.id}`}
               className="flex-shrink-0 rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-300 hover:text-slate-900 transition-colors"
             >
-              Ver operación
+              {primaryNba?.cta.label ?? 'Ver operación'}
             </Link>
           </div>
         </div>
