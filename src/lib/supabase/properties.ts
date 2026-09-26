@@ -1,6 +1,6 @@
 import { tryCreateClient } from './client'
 import { log } from '@/lib/observability/logger'
-import type { PropertyRow, PropertyTypeDb } from './types'
+import type { PropertyRow, PropertyTypeDb, CurrencyDb } from './types'
 import type { UserProperty } from '@/lib/userProperties'
 import type { Property } from '@/types'
 
@@ -89,7 +89,7 @@ export interface NewPropertyInput {
   title?: string
   type?: PropertyTypeDb
   price?: number
-  currency?: 'USD' | 'ARS'
+  currency?: CurrencyDb
   address?: string
   neighborhood?: string
   city?: string

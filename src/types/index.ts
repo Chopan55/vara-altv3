@@ -1,11 +1,35 @@
 export type OperationType = 'BUY_PROPERTY' | 'SELL_PROPERTY' | 'RENT_PROPERTY' | 'LAND_PURCHASE' | 'COMMERCIAL_PROPERTY'
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'BLOCKED' | 'DONE' | 'NOT_APPLICABLE'
 export type DocumentStatus = 'PENDING' | 'RECEIVED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'EXPIRED'
-export type PropertyType = 'HOUSE' | 'APARTMENT' | 'PH' | 'LAND' | 'GARAGE' | 'LOCAL' | 'OFFICE' | 'FIELD'
-export type Currency = 'USD' | 'ARS'
+export type PropertyType = 'HOUSE' | 'APARTMENT' | 'PH' | 'LAND' | 'GARAGE' | 'LOCAL' | 'OFFICE' | 'FIELD' | 'DEVELOPMENT_UNIT' | 'INDUSTRIAL' | 'OTHER'
 export type SourceType = 'SOURCE_OFFICIAL' | 'SOURCE_PROFESSIONAL' | 'SOURCE_SECONDARY' | 'SOURCE_UNVERIFIED'
 export type DocumentCategory = 'ESCRITURA' | 'PLANOS' | 'INFORMES' | 'IMPUESTOS' | 'EXPENSAS' | 'SERVICIOS' | 'CERTIFICADOS' | 'CONTRATOS' | 'RESERVA' | 'TASACIONES' | 'OTROS'
 export type ProfessionalSpecialty = 'ESCRIBANO' | 'ABOGADO' | 'AGRIMENSOR' | 'TASADOR' | 'GESTOR' | 'ARQUITECTO' | 'CONTADOR' | 'ADMINISTRADOR'
+
+// ── LATAM Core Types ──────────────────────────────────────────────────────────
+// ISO 3166-1 alpha-2. Agregar país = agregar código aquí + crear Jurisdiction Pack.
+export type CountryCode = 'AR' | 'MX' | 'CL' | 'CO' | 'PE' | 'BR' | 'UY' | 'PY'
+
+// ARS y USD se mantienen por compatibilidad con datos existentes.
+export type Currency = 'USD' | 'ARS' | 'MXN' | 'CLP' | 'COP' | 'BRL' | 'PEN' | 'UYU' | 'PYG'
+
+// Valor monetario con moneda explícita.
+export interface Money {
+  amount: number
+  currency: Currency
+}
+
+// Roles de profesionales por función, no por terminología local.
+// Cada Jurisdiction Pack mapea estos roles a su nombre local (escribano, notario, etc).
+export type ProfessionalRole =
+  | 'CLOSING_PROFESSIONAL'
+  | 'LEGAL_ADVISOR'
+  | 'SURVEYOR'
+  | 'APPRAISER'
+  | 'INSPECTOR'
+  | 'BROKER'
+  | 'FIELD_AGENT'
+  | 'OTHER'
 
 export interface TransactionStage {
   id: string
@@ -46,6 +70,7 @@ export interface Property {
   neighborhood: string
   city: string
   province: string
+  country?: CountryCode
   surface: number
   coveredSurface?: number
   rooms: number
@@ -117,6 +142,8 @@ export interface Transaction {
   progress: number
   province: string
   provinceCode: string
+  country?: CountryCode
+  locale?: string
   city: string
   participants: Participant[]
   documents: Document[]
@@ -194,6 +221,7 @@ export interface UserOperationSummary {
   status: 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'DRAFT'
   progress: number
   province: string
+  country?: CountryCode
   city: string
   propertyId?: string
   candidates?: PropertyCandidate[]

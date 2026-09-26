@@ -15,8 +15,10 @@ export type DocumentStatusDb = 'PENDING' | 'RECEIVED' | 'IN_REVIEW' | 'APPROVED'
 export type DocumentCategoryDb =
   | 'ESCRITURA' | 'PLANOS' | 'INFORMES' | 'IMPUESTOS' | 'EXPENSAS' | 'SERVICIOS'
   | 'CERTIFICADOS' | 'CONTRATOS' | 'RESERVA' | 'TASACIONES' | 'OTROS'
-export type PropertyTypeDb = 'HOUSE' | 'APARTMENT' | 'PH' | 'LAND' | 'GARAGE' | 'LOCAL' | 'OFFICE' | 'FIELD'
-export type CurrencyDb = 'USD' | 'ARS'
+export type PropertyTypeDb = 'HOUSE' | 'APARTMENT' | 'PH' | 'LAND' | 'GARAGE' | 'LOCAL' | 'OFFICE' | 'FIELD' | 'DEVELOPMENT_UNIT' | 'INDUSTRIAL' | 'OTHER'
+export type CurrencyDb = 'USD' | 'ARS' | 'MXN' | 'CLP' | 'COP' | 'BRL' | 'PEN' | 'UYU' | 'PYG'
+// ISO 3166-1 alpha-2
+export type CountryCodeDb = 'AR' | 'MX' | 'CL' | 'CO' | 'PE' | 'BR' | 'UY' | 'PY'
 export type RiskSeverityDb = 'HIGH' | 'MEDIUM' | 'LOW'
 export type RiskCategoryDb = 'DOCUMENTAL' | 'DOMINIAL' | 'FISCAL' | 'LEGAL' | 'FINANCIERO' | 'OPERATIVO'
 export type PropertySourceDb = 'IMPORTED' | 'MANUAL'
@@ -32,6 +34,7 @@ export type ProfileRow = {
   /** Agregada por 20260921000000_vara_visit.sql. Default 'CLIENT'. */
   role: V.UserRoleDb
   province: string | null
+  country: CountryCodeDb | null
   phone: string | null
   onboarded: boolean
   created_at: string
@@ -55,6 +58,7 @@ export type PropertyRow = {
   neighborhood: string | null
   city: string | null
   province: string | null
+  country: CountryCodeDb | null
   surface_total: number | null
   surface_covered: number | null
   rooms: number | null
@@ -97,6 +101,8 @@ export type OperationRow = {
   subtitle: string | null
   province: string
   province_code: string
+  country: CountryCodeDb | null
+  locale: string | null
   city: string | null
   current_stage_key: string | null
   stages_state: Record<string, unknown>

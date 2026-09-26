@@ -28,6 +28,7 @@ import type {
   VisitServiceType, VisitStatus, GeoPoint, PartnerReview, ClientReview,
   SafetyFlag, VisitEventName, ReferenceAnswers, ReportedIssue,
 } from '@/types/varaVisit'
+import type { Currency } from '@/types'
 import { buildVisitCode } from '@/types/varaVisit'
 import { generatePin } from '@/lib/varaVisit/session'
 
@@ -488,7 +489,7 @@ export interface BookingDraft {
   accessInstructions?: string
   guestsExpected?: number
   price: number
-  currency: 'USD' | 'ARS'
+  currency: Currency
   assignmentMode: 'CLIENT_CHOICE' | 'VARA_MATCH'
   chosenPartnerId?: string | null
 }

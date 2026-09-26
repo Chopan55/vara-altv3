@@ -1,4 +1,5 @@
 import { type ClassValue, clsx } from 'clsx'
+import type { Currency } from '@/types'
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs)
@@ -14,7 +15,7 @@ function numToAR(n: number): string {
 
 const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
-export function formatPrice(amount: number, currency: 'USD' | 'ARS' = 'USD'): string {
+export function formatPrice(amount: number, currency: Currency = 'USD'): string {
   /*
    * Un dato que falta se dice, no se imprime como "USD NaN".
    * Pasa con precios que vienen de un portal a medio leer, y aparece en la
@@ -23,10 +24,9 @@ export function formatPrice(amount: number, currency: 'USD' | 'ARS' = 'USD'): st
   if (typeof amount !== 'number' || !Number.isFinite(amount)) {
     return currency === 'USD' ? 'USD —' : '$ —'
   }
-  if (currency === 'USD') {
-    return `USD ${numToAR(amount)}`
-  }
-  return `$ ${numToAR(amount)}`
+  if (currency === 'USD') return `USD ${numToAR(amount)}`
+  if (currency === 'ARS') return `$ ${numToAR(amount)}`
+  return `${currency} ${numToAR(amount)}`
 }
 
 export function formatDate(dateStr: string): string {

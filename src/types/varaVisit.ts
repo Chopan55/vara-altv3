@@ -360,7 +360,7 @@ export const MAX_QUIZ_ATTEMPTS = 3
 
 // ───────────────────────────── Booking ─────────────────────────────
 
-export type VisitCurrency = 'USD' | 'ARS'
+export type VisitCurrency = 'USD' | 'ARS' | 'MXN' | 'CLP' | 'COP' | 'BRL' | 'PEN' | 'UYU' | 'PYG'
 
 /**
  * Ciclo de vida de una visita. Cada estado corresponde a un hecho verificable,
