@@ -19,6 +19,70 @@ import {
   fetchSellerTasks, toggleSellerTask, setSellerTaskDueDate,
   type SellerTaskState,
 } from '@/lib/supabase/sellerTasks'
+import { fetchActivity, getLastSeen, markSeen } from '@/lib/supabase/activity'
+import { newSince, isMilestone, familyOf } from '@/lib/activity/model'
+
+function NovedadesWidget({ operationId }: { operationId: string }) {
+  const [events, setEvents] = useState<ReturnType<typeof newSince>>(null)
+  const [seen, setSeen] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    const lastSeen = getLastSeen(operationId)
+    // Marcar como visto ahora para que la próxima visita no lo muestre de nuevo
+    markSeen(operationId)
+    fetchActivity(operationId).then(all => {
+      if (!alive) return
+      const fresh = newSince(all.filter(isMilestone), lastSeen)
+      setEvents(fresh)
+      setSeen(true)
+    })
+    return () => { alive = false }
+  }, [operationId])
+
+  if (!seen || !events || events.length === 0) return null
+
+  const familyIcon = (e: (typeof events)[0]) => {
+    const f = familyOf(e.kind)
+    if (f === 'DOCUMENT') return <FileText size={12} className="text-blue-500" />
+    if (f === 'OFFER') return <DollarSign size={12} className="text-green-500" />
+    if (f === 'PROPERTY') return <Home size={12} className="text-brand-500" />
+    return <Clock size={12} className="text-slate-400" />
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-brand-100 shadow-card overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50 bg-brand-50/40">
+        <div className="flex items-center gap-2">
+          <Sparkles size={13} className="text-brand-500" />
+          <h3 className="text-sm font-semibold text-slate-800">
+            {events.length === 1
+              ? 'Una novedad desde tu última visita'
+              : `${events.length} novedades desde tu última visita`}
+          </h3>
+        </div>
+        <span className="rounded-full bg-brand-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center flex-shrink-0">
+          {events.length}
+        </span>
+      </div>
+      <div className="divide-y divide-slate-50">
+        {events.slice(0, 5).map(e => (
+          <div key={e.id} className="flex items-start gap-3 px-5 py-3">
+            <div className="w-6 h-6 bg-slate-50 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              {familyIcon(e)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-slate-700 leading-snug">{e.summary}</p>
+            </div>
+            <span className="text-[11px] text-slate-300 flex-shrink-0 mt-0.5 whitespace-nowrap">
+              {new Date(e.createdAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function computeIntelligence(txn: Transaction) {
   const allTasks = txn.stages.flatMap(s => s.tasks)
@@ -811,6 +875,9 @@ export default function Dashboard() {
 
         {/* GUIDANCE BANNER — NBA contextual */}
         <GuidanceBanner />
+
+        {/* NOVEDADES — qué cambió desde la última visita (milestones de activity_events) */}
+        {activeOperationId && <NovedadesWidget operationId={activeOperationId} />}
 
         {/* GLOBAL NBA — alertas cross-operación */}
         {globalAlerts.length > 0 && (
