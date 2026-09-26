@@ -197,6 +197,19 @@ export function getProvinceList() {
   }))
 }
 
+const MX_CODES = new Set([
+  'CDMX', 'JALISCO', 'NUEVO_LEON', 'ESTADO_DE_MEXICO',
+  'PUEBLA', 'GUANAJUATO', 'CHIHUAHUA', 'BAJA_CALIFORNIA', 'QUERETARO', 'YUCATAN',
+])
+
+export function getProvinceListGrouped() {
+  const all = getProvinceList()
+  return [
+    { country: 'AR', label: 'Argentina', items: all.filter(p => !MX_CODES.has(p.code)) },
+    { country: 'MX', label: 'México', items: all.filter(p => MX_CODES.has(p.code)) },
+  ]
+}
+
 export function formatPercent(rate: number): string {
   if (rate === 0) return '0%'
   return `${(rate * 100).toFixed(2).replace(/\.?0+$/, '')}%`

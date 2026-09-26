@@ -6,10 +6,10 @@ import { VaraLogo } from '@/components/ui/VaraLogo'
 import { formatPrice } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
 import { useJurisdiction } from '@/hooks/useJurisdiction'
-import { generateChecklist, formatPercent, getProvinceList } from '@/lib/regulations'
+import { generateChecklist, formatPercent, getProvinceListGrouped } from '@/lib/regulations'
 import type { ProvinceCode } from '@/data/regulations/types'
 
-const PROVINCE_OPTIONS = getProvinceList().map(p => ({ code: p.code, label: p.displayName }))
+const PROVINCE_GROUPS = getProvinceListGrouped()
 
 export function CostosPanel() {
   const vara = useVaraState()
@@ -94,8 +94,12 @@ export function CostosPanel() {
               onChange={e => setSelectedProvince(e.target.value)}
               className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-brand-400 pr-8"
             >
-              {PROVINCE_OPTIONS.map(p => (
-                <option key={p.code} value={p.code}>{p.label}</option>
+              {PROVINCE_GROUPS.map(group => (
+                <optgroup key={group.country} label={group.label}>
+                  {group.items.map(p => (
+                    <option key={p.code} value={p.code}>{p.displayName}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
             <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
