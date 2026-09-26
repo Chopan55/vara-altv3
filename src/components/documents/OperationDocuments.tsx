@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  FileText, Upload, Loader2, AlertCircle, Trash2, ExternalLink, Plus, Check,
+  FileText, Upload, Loader2, AlertCircle, Trash2, ExternalLink, Plus, Check, Sparkles, ShieldAlert,
 } from 'lucide-react'
 import {
   DOCUMENT_CATEGORY_LABELS, DOCUMENT_STATUS_LABELS, sortDocuments, summarize,
@@ -89,6 +89,14 @@ function AddDocumentForm({ onCreate, busy, categoryLabels }: {
   )
 }
 
+interface DocSummary {
+  holders: string[]
+  encumbrances: string[]
+  restrictions: string[]
+  alerts: string[]
+  excerpt: string
+}
+
 function DocumentRow({ doc, onUpload, onDelete, uploading, categoryLabels }: {
   doc: OperationDocument
   onUpload: (id: string, file: File) => void
@@ -98,6 +106,37 @@ function DocumentRow({ doc, onUpload, onDelete, uploading, categoryLabels }: {
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [opening, setOpening] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [summary, setSummary] = useState<DocSummary | null>(null)
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null)
+
+  const isPdf = doc.storagePath?.toLowerCase().endsWith('.pdf') ?? false
+
+  const analyze = async () => {
+    setAnalyzing(true)
+    setAnalyzeError(null)
+    try {
+      const res = await fetch('/api/doc-intelligence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: doc.id }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        if (err.error === 'not_a_pdf') setAnalyzeError('Solo se analizan PDFs.')
+        else if (err.error === 'disabled') setAnalyzeError('Análisis de documentos no disponible aún.')
+        else if (err.error === 'ai_unavailable') setAnalyzeError('IA no disponible ahora.')
+        else setAnalyzeError('No se pudo analizar el documento.')
+      } else {
+        const data = await res.json() as { summary: DocSummary }
+        setSummary(data.summary)
+      }
+    } catch {
+      setAnalyzeError('Error de conexión.')
+    } finally {
+      setAnalyzing(false)
+    }
+  }
 
   const open = async () => {
     if (!doc.storagePath) return
@@ -154,11 +193,77 @@ function DocumentRow({ doc, onUpload, onDelete, uploading, categoryLabels }: {
               </button>
             )}
 
+            {uploaded && isPdf && !summary && (
+              <button onClick={analyze} disabled={analyzing}
+                className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:text-amber-700 disabled:opacity-40">
+                {analyzing ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+                {analyzing ? 'Analizando…' : 'Analizar con IA'}
+              </button>
+            )}
+
             <button onClick={() => onDelete(doc.id)}
               className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-rose-500 ml-auto">
               <Trash2 size={11} /> Quitar
             </button>
           </div>
+
+          {analyzeError && (
+            <p className="text-xs text-rose-600 mt-2">{analyzeError}</p>
+          )}
+
+          {summary && (
+            <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Sparkles size={11} className="text-amber-500" />
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Análisis IA</p>
+              </div>
+              {summary.holders.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-500 mb-0.5">Titulares / Partes</p>
+                  <p className="text-xs text-slate-700">{summary.holders.join(' · ')}</p>
+                </div>
+              )}
+              {summary.encumbrances.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-rose-500 mb-0.5">Cargas detectadas</p>
+                  <ul className="space-y-0.5">
+                    {summary.encumbrances.map((e, i) => (
+                      <li key={i} className="text-xs text-rose-700 flex items-start gap-1.5">
+                        <ShieldAlert size={10} className="flex-shrink-0 mt-0.5" />{e}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {summary.restrictions.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-amber-600 mb-0.5">Restricciones</p>
+                  <ul className="space-y-0.5">
+                    {summary.restrictions.map((r, i) => (
+                      <li key={i} className="text-xs text-amber-700">{r}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {summary.alerts.length > 0 && (
+                <div className="bg-rose-50 rounded-lg px-2.5 py-2 space-y-1">
+                  <p className="text-[10px] font-bold text-rose-600 uppercase tracking-wide">Alertas para revisar con profesional</p>
+                  {summary.alerts.map((a, i) => (
+                    <p key={i} className="text-xs text-rose-700">{a}</p>
+                  ))}
+                </div>
+              )}
+              {summary.encumbrances.length === 0 && summary.restrictions.length === 0 && summary.alerts.length === 0 && (
+                <p className="text-xs text-slate-500">Sin cargas ni restricciones detectadas.</p>
+              )}
+              <p className="text-[10px] text-slate-300 pt-1">
+                [INFERENCIA] Verificar siempre con escribano antes de firmar.
+              </p>
+              <button onClick={() => setSummary(null)} className="text-[10px] text-slate-400 hover:text-slate-600">
+                Cerrar análisis
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
