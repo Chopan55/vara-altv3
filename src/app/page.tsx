@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Shield, Zap, TrendingUp, CheckCircle2, ChevronRight, Sparkles } from 'lucide-react'
+import { ArrowRight, Shield, Zap, TrendingUp, CheckCircle2, ChevronRight, Sparkles, Globe } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 
 const risks = [
@@ -27,10 +27,10 @@ const features = [
     title: 'Detectamos los riesgos antes de que te cuesten plata',
     body: 'Inhibición de bienes, deudas de ABL, documentación faltante, problemas dominiales. Cada riesgo tiene severidad, evidencia y recomendación accionable.',
     stat: '6', statLabel: 'categorías de riesgo',
-    cta: '/operacion/txn-001',
+    cta: '/dashboard',
   },
   {
-    badge: 'Visualizá el potencial',
+    badge: 'Visual Intelligence',
     title: 'IA que transforma cualquier ambiente — antes de comprar',
     body: 'Subí una foto del living o la cocina y VARA analiza qué reformas aplicar, cuánto costarían en USD y cómo quedaría el resultado con DALL-E 3.',
     stat: 'IA', statLabel: 'GPT-4o + DALL-E 3',
@@ -63,7 +63,7 @@ export default function LandingPage() {
             <Link href="/vara-labs" className="hidden sm:flex items-center gap-1.5 text-sm text-slate-400 font-medium hover:text-white transition-colors">
               <Sparkles size={13} className="text-brand-400" /> Labs
             </Link>
-            <Link href="/dashboard" className="hidden sm:block text-sm text-slate-400 font-medium hover:text-white transition-colors">Demo</Link>
+            <Link href="/dashboard" className="hidden sm:block text-sm text-slate-400 font-medium hover:text-white transition-colors">Explorar</Link>
             <Link href="/login" className="text-sm text-slate-300 font-semibold hover:text-white transition-colors">
               Entrar
             </Link>
@@ -78,27 +78,42 @@ export default function LandingPage() {
       <section className="hero-glow relative pt-24 pb-20 px-5">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-brand-400/10 border border-brand-400/20 text-brand-300 text-[11px] font-bold px-3 py-1.5 rounded-full mb-8 uppercase tracking-widest">
-            Argentina · Operaciones inmobiliarias
+            <Globe size={10} /> Argentina · México · LATAM
           </div>
           <h1 className="text-5xl md:text-7xl font-black leading-[1.05] mb-6 tracking-tight text-balance">
             Tu próxima operación<br />
             <span className="gradient-text">sin sorpresas</span>
           </h1>
-          <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed text-balance">
-            VARA calcula los costos reales, detecta los riesgos y te dice exactamente qué hacer en cada paso de la compra o venta.
+          <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed text-balance">
+            VARA calcula los costos reales, detecta los riesgos y te dice exactamente qué hacer en cada paso de tu compra o venta inmobiliaria.
           </p>
+
+          {/* Comprar / Vender — explicit above the fold */}
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2">
+              <div className="w-2 h-2 rounded-full bg-brand-400" />
+              <span className="text-sm font-semibold text-slate-300">Comprando</span>
+              <span className="text-xs text-slate-600">costos · riesgos · negociación</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span className="text-sm font-semibold text-slate-300">Vendiendo</span>
+              <span className="text-xs text-slate-600">publicación · ofertas · checklist</span>
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
             <Link href="/onboarding" className="bg-brand-500 hover:bg-brand-400 text-white font-bold px-8 py-4 rounded-2xl transition-all hover:scale-[1.02] flex items-center justify-center gap-2 text-base shadow-lg shadow-brand-500/30">
               Empezar operación gratis <ArrowRight size={16} />
             </Link>
             <Link href="/dashboard" className="bg-white/5 hover:bg-white/10 text-white font-semibold px-8 py-4 rounded-2xl border border-white/10 transition-colors text-base">
-              Ver demo →
+              Ver el producto →
             </Link>
           </div>
-          <p className="text-xs text-slate-600">Sin registro · Demo funcional · Datos ficticios</p>
+          <p className="text-xs text-slate-600">Sin registro · Empezá en 2 minutos</p>
         </div>
 
-        {/* Product mockup */}
+        {/* Product mockup — 6-story: operación / estado / riesgos / costos / bloqueo / recomendación */}
         <div className="max-w-3xl mx-auto mt-16">
           <div className="card-glow bg-[#1e1b47] rounded-3xl overflow-hidden border border-white/5">
             {/* Fake browser bar */}
@@ -109,13 +124,12 @@ export default function LandingPage() {
                 <div className="w-3 h-3 rounded-full bg-emerald-500/60" />
               </div>
               <div className="flex-1 bg-slate-700/50 rounded-lg text-[11px] text-slate-500 px-3 py-1 text-center">
-                vara.app/operacion/txn-001
+                vara.app
               </div>
             </div>
 
-            {/* Dashboard content */}
             <div className="p-5 md:p-8">
-              {/* Header op */}
+              {/* 1 + 2: operación y estado */}
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <div className="text-[10px] font-bold text-brand-400 uppercase tracking-widest mb-1">Buenos Aires · Compra · USD 185.000</div>
@@ -131,18 +145,18 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Status banner */}
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-center gap-3 mb-5">
+              {/* 5: bloqueo */}
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-center gap-3 mb-4">
                 <div className="w-2 h-2 bg-red-400 rounded-full flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <span className="text-red-400 font-bold text-xs">Bloqueada ·</span>
-                  <span className="text-slate-400 text-xs ml-1">Ahora: Solicitar escritura · Comprador/Escribano</span>
+                  <span className="text-slate-400 text-xs ml-1">Solicitar escritura · Comprador/Escribano</span>
                 </div>
                 <span className="text-xs text-slate-500 flex-shrink-0">4 docs pendientes</span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Risks */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* 3: riesgos */}
                 <div className="bg-slate-800/50 rounded-2xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Shield size={13} className="text-slate-400" />
@@ -160,7 +174,7 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Costs */}
+                {/* 4: costos */}
                 <div className="bg-slate-800/50 rounded-2xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <TrendingUp size={13} className="text-slate-400" />
@@ -181,7 +195,15 @@ export default function LandingPage() {
                     <span className="text-xs text-slate-400">Total gastos</span>
                     <span className="text-sm font-black text-white">USD 5.920</span>
                   </div>
-                  <p className="text-[10px] text-slate-600 mt-2">Ejemplo · PBA · USD 185.000 · Fuentes: ARBA, Col. Escribanos, Min. Justicia</p>
+                </div>
+              </div>
+
+              {/* 6: VARA recomienda */}
+              <div className="bg-brand-400/10 border border-brand-400/20 rounded-xl p-3 flex items-start gap-3">
+                <Zap size={13} className="text-brand-400 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <span className="text-brand-400 font-bold text-xs">VARA recomienda ahora: </span>
+                  <span className="text-slate-300 text-xs">Pedile al vendedor la inhibición de bienes antes de firmar el boleto — sin esto la operación no puede avanzar.</span>
                 </div>
               </div>
             </div>
@@ -227,7 +249,7 @@ export default function LandingPage() {
                     <h3 className="text-xl md:text-2xl font-bold text-white mb-3 leading-snug">{f.title}</h3>
                     <p className="text-slate-400 text-sm leading-relaxed mb-5">{f.body}</p>
                     <Link href={f.cta} className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-400 hover:text-brand-300 transition-colors group-hover:gap-2.5">
-                      Ver en el demo <ArrowRight size={13} />
+                      Ver en el producto <ArrowRight size={13} />
                     </Link>
                   </div>
                   <div className="md:w-32 text-center md:text-right flex-shrink-0">
@@ -241,7 +263,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Trust quote */}
+      {/* Trust */}
       <section className="px-5 py-16">
         <div className="max-w-3xl mx-auto text-center">
           <div className="bg-[#1e1b47] border border-white/8 rounded-3xl p-10 card-glow">
@@ -268,7 +290,7 @@ export default function LandingPage() {
             <h2 className="text-3xl md:text-4xl font-black text-white mb-4 text-balance">
               Tu próxima compra o venta,<br className="hidden md:block" /> con claridad total
             </h2>
-            <p className="text-slate-400 mb-8 text-balance">Demo funcional. Sin registro. Datos ficticios.</p>
+            <p className="text-slate-400 mb-8 text-balance">Gratis. Sin registro. Listo en 2 minutos.</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/onboarding" className="bg-brand-500 hover:bg-brand-400 text-white font-black px-8 py-4 rounded-2xl transition-all hover:scale-[1.02] flex items-center justify-center gap-2 text-base shadow-xl shadow-brand-500/30">
                 Empezar mi operación <ArrowRight size={16} />
@@ -285,10 +307,10 @@ export default function LandingPage() {
       <footer className="border-t border-white/5 px-5 py-8">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <VaraLogo size={22} />
-          <p className="text-xs text-slate-600">MVP · Plataforma en desarrollo · Datos ficticios</p>
+          <p className="text-xs text-slate-600">© 2026 VARA · Plataforma inmobiliaria</p>
           <div className="flex items-center gap-4 text-xs text-slate-600">
             <Link href="/vara-labs" className="hover:text-slate-400 transition-colors">Labs</Link>
-            <Link href="/dashboard" className="hover:text-slate-400 transition-colors">Demo</Link>
+            <Link href="/dashboard" className="hover:text-slate-400 transition-colors">Explorar</Link>
             <Link href="/costos" className="hover:text-slate-400 transition-colors">Costos</Link>
           </div>
         </div>
