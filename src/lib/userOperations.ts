@@ -1,4 +1,4 @@
-import type { UserOperationSummary } from '@/types'
+import type { UserOperationSummary, CountryCode } from '@/types'
 import { log } from '@/lib/observability/logger'
 
 /**
@@ -22,6 +22,7 @@ export interface StoredOperation {
   province: string
   provinceCode: string
   city: string
+  country?: CountryCode
   propertyId?: string
   progress: number
   createdAt: number
@@ -65,6 +66,7 @@ export interface NewOperationInput {
   city?: string
   title?: string
   propertyId?: string
+  country?: CountryCode
 }
 
 export function createOperation(input: NewOperationInput): StoredOperation {
@@ -76,6 +78,7 @@ export function createOperation(input: NewOperationInput): StoredOperation {
     province: input.province,
     provinceCode: input.provinceCode,
     city: input.city ?? '',
+    country: input.country,
     propertyId: input.propertyId,
     progress: 0,
     createdAt: Date.now(),

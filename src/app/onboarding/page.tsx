@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { resolveProvinceCode, generateChecklist } from '@/lib/regulations'
 import { createOperationAnywhere } from '@/lib/userOperations'
-import type { OperationType } from '@/types'
+import type { OperationType, CountryCode } from '@/types'
 import type { ScrapeResult } from '@/app/api/scrape-property/route'
 
 const TOTAL_STEPS = 4
@@ -19,7 +19,15 @@ const operationTypes = [
   { id: 'SELL_PROPERTY', icon: TrendingUp, title: 'Quiero vender', desc: 'Tengo una propiedad que quiero vender' },
 ]
 
-const provinces = ['Buenos Aires', 'CABA', 'Córdoba', 'Santa Fe', 'Mendoza', 'Otro']
+const COUNTRIES: { code: CountryCode; label: string; flag: string }[] = [
+  { code: 'AR', label: 'Argentina', flag: '🇦🇷' },
+  { code: 'MX', label: 'México', flag: '🇲🇽' },
+]
+
+const PROVINCES_BY_COUNTRY: Record<string, string[]> = {
+  AR: ['Buenos Aires', 'CABA', 'Córdoba', 'Santa Fe', 'Mendoza', 'Otro'],
+  MX: ['Ciudad de México', 'Jalisco', 'Nuevo León', 'Estado de México', 'Querétaro', 'Puebla', 'Guanajuato', 'Chihuahua', 'Baja California', 'Yucatán', 'Otro MX'],
+}
 
 type ScrapeStatus = 'idle' | 'loading' | 'success' | 'partial' | 'expired' | 'blocked' | 'error'
 
@@ -133,6 +141,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1)
   const [name, setName] = useState('')
   const [type, setType] = useState('')
+  const [country, setCountry] = useState<CountryCode>('AR')
   const [province, setProvince] = useState('')
   const [propertyUrl, setPropertyUrl] = useState('')
 
@@ -158,12 +167,12 @@ export default function OnboardingPage() {
 
   const checklist = useMemo(() => {
     if (!province || !type) return null
-    const code = resolveProvinceCode(province)
+    const code = resolveProvinceCode(province, country)
     const price = typeof scrapeData.price === 'number' && scrapeData.price > 0
       ? scrapeData.price
       : REFERENCE_PRICE
-    return generateChecklist(code, type as OperationType, price)
-  }, [province, type, scrapeData.price])
+    return generateChecklist(code, type as OperationType, price, country)
+  }, [province, type, country, scrapeData.price])
 
   const isBuy = type === 'BUY_PROPERTY'
 
@@ -218,13 +227,14 @@ export default function OnboardingPage() {
 
   async function handleStart() {
     saveToStorage({ name, type, province, propertyUrl })
+    try { localStorage.setItem('vara_country', country) } catch {}
 
-    // Creamos la operación de verdad: va a la base si hay sesión, si no al navegador.
     const op = await createOperationAnywhere({
       type: type === 'SELL_PROPERTY' ? 'SELL' : 'BUY',
       province,
-      provinceCode: resolveProvinceCode(province),
+      provinceCode: resolveProvinceCode(province, country),
       title: type === 'SELL_PROPERTY' ? 'Mi venta' : 'Mi compra',
+      country,
     })
     try { localStorage.setItem('vara_operation_id', op.id) } catch {}
 
@@ -318,28 +328,51 @@ export default function OnboardingPage() {
           </>
         )}
 
-        {/* STEP 3: Provincia */}
+        {/* STEP 3: País + Provincia/Estado */}
         {step === 3 && (
           <>
-            <div className="mb-8">
+            <div className="mb-6">
               <p className="text-xs font-bold text-brand-500 uppercase tracking-widest mb-2">Paso 3</p>
-              <h1 className="text-2xl font-extrabold text-slate-900 mb-1">¿En qué provincia?</h1>
-              <p className="text-slate-400 text-sm">La normativa varía por provincia. Esto personaliza tu checklist.</p>
+              <h1 className="text-2xl font-extrabold text-slate-900 mb-1">¿Dónde es la operación?</h1>
+              <p className="text-slate-400 text-sm">La normativa varía por país y región. Esto personaliza tu checklist.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              {provinces.map(p => (
-                <button
-                  key={p}
-                  onClick={() => { setProvince(p); setStep(4) }}
-                  className={cn(
-                    'p-4 rounded-2xl border-2 font-semibold text-sm transition-all',
-                    province === p ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-100 text-slate-600 hover:border-slate-200'
-                  )}
-                >
-                  {p}
-                </button>
-              ))}
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">País</p>
+              <div className="grid grid-cols-2 gap-3">
+                {COUNTRIES.map(c => (
+                  <button
+                    key={c.code}
+                    onClick={() => { setCountry(c.code); setProvince('') }}
+                    className={cn(
+                      'p-3 rounded-2xl border-2 font-semibold text-sm transition-all flex items-center gap-2',
+                      country === c.code ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-100 text-slate-600 hover:border-slate-200'
+                    )}
+                  >
+                    <span>{c.flag}</span> {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
+                {country === 'MX' ? 'Estado' : 'Provincia'}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {(PROVINCES_BY_COUNTRY[country] ?? PROVINCES_BY_COUNTRY.AR).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => { setProvince(p); setStep(4) }}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 font-semibold text-sm transition-all text-left',
+                      province === p ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-100 text-slate-600 hover:border-slate-200'
+                    )}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <button onClick={() => setStep(2)} className="mt-6 text-sm text-slate-400 hover:text-slate-600">← Volver</button>
@@ -361,7 +394,11 @@ export default function OnboardingPage() {
                 <span className="font-semibold text-slate-800">{operationTypes.find(o => o.id === type)?.title ?? type}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Provincia</span>
+                <span className="text-slate-500">País</span>
+                <span className="font-semibold text-slate-800">{COUNTRIES.find(c => c.code === country)?.label ?? country}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">{country === 'MX' ? 'Estado' : 'Provincia'}</span>
                 <span className="font-semibold text-slate-800">{checklist.provinceName}</span>
               </div>
               <div className="flex justify-between text-sm">
