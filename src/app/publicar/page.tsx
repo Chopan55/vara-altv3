@@ -7,8 +7,9 @@ import {
   MapPin, Eye, Edit3, Send, X, Star, AlertCircle,
   ImagePlus, ChevronDown, Check,
 } from 'lucide-react'
-import { VaraLogo } from '@/components/ui/VaraLogo'
 import { cn } from '@/lib/utils'
+import { useOperations } from '@/hooks/useOperations'
+import { toggleSellerTask } from '@/lib/supabase/sellerTasks'
 import { loadPhotos, savePhoto, deletePhoto, updatePhotoMeta, setCoverPhoto } from '@/lib/photoStore'
 import {
   hasPhotoSession, uploadPhoto, listPhotos, deletePhotoRemote,
@@ -84,6 +85,9 @@ const PROPERTY_TYPES = ['Casa', 'Departamento', 'PH', 'Terreno', 'Local comercia
 const FEATURES = ['Pileta', 'Quincho', 'Jardín', 'Cochera', 'Seguridad 24hs', 'Parrilla', 'Luminoso', 'Balcón']
 
 export default function PublicarPage() {
+  const { operations, activeTransactionData } = useOperations()
+  const sellOp = operations.find(o => o.type === 'SELL') ?? null
+
   const [activeTab, setActiveTab] = useState<Tab>('datos')
   const [published, setPublished] = useState<string[]>([])
   const [photos, setPhotos] = useState<PhotoItem[]>([])
@@ -179,13 +183,25 @@ export default function PublicarPage() {
   const [inCloud, setInCloud] = useState(false)
   const [uploading, setUploading] = useState(false)
 
-  // Recupera el borrador guardado (el form arranca vacío, nunca con datos de ejemplo).
+  // Recupera el borrador guardado; si no hay, pre-fill con datos reales de la operación.
   useEffect(() => {
     try {
       const saved = localStorage.getItem(DRAFT_KEY)
-      if (saved) setForm({ ...EMPTY_FORM, ...JSON.parse(saved) })
+      if (saved) { setForm({ ...EMPTY_FORM, ...JSON.parse(saved) }); return }
     } catch {}
-  }, [])
+    // Pre-fill desde la operación de venta activa si hay datos de propiedad
+    const prop = activeTransactionData?.property
+    if (prop || sellOp) {
+      const partial: Partial<PublishForm> = {}
+      if (prop?.price) partial.price = String(prop.price)
+      if (prop?.surface) partial.surface = String(prop.surface)
+      if (activeTransactionData?.city) partial.city = activeTransactionData.city
+      if (activeTransactionData?.province) partial.neighborhood = activeTransactionData.province
+      if (sellOp?.title) partial.title = sellOp.title
+      if (Object.keys(partial).length > 0) setForm(prev => ({ ...prev, ...partial }))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sellOp?.id])
 
   useEffect(() => {
     if (form === EMPTY_FORM) return
@@ -232,6 +248,10 @@ export default function PublicarPage() {
       existing.push({ portalId, title: form.title, price: form.price, city: form.city, timestamp: Date.now() })
       localStorage.setItem('vara_publish_requests', JSON.stringify(existing))
     } catch {}
+    // Primer portal publicado → marcar tarea 'publish' del checklist vendedor como hecha
+    if (!published.length && sellOp) {
+      void toggleSellerTask(sellOp.id, 'publish', true)
+    }
   }
 
   const formComplete = Boolean(form.title && form.price && form.address && form.description)
