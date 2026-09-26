@@ -1,12 +1,50 @@
 'use client'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle2, ExternalLink, Info, MessageSquare } from 'lucide-react'
-import { VaraLogo } from '@/components/ui/VaraLogo'
+import { useState, useEffect, useMemo } from 'react'
+import { ArrowLeft, CheckCircle2, ExternalLink, Info, MessageSquare, Phone, Mail, Users } from 'lucide-react'
 import { useOperations } from '@/hooks/useOperations'
 import type { Transaction, CountryCode } from '@/types'
 import { getProfessionalLabel } from '@/lib/utils'
 import { useJurisdiction } from '@/hooks/useJurisdiction'
-import { useMemo } from 'react'
+import { tryCreateClient } from '@/lib/supabase/client'
+import type { ParticipantRoleDb } from '@/lib/supabase/types'
+
+interface Participant {
+  id: string
+  name: string
+  role: ParticipantRoleDb
+  email?: string
+  phone?: string
+  notes?: string
+}
+
+const ROLE_LABELS: Record<ParticipantRoleDb, string> = {
+  NOTARY: 'Escribano/a', BROKER: 'Martillero / Inmobiliaria',
+  ACCOUNTANT: 'Contador/a', LAWYER: 'Abogado/a',
+  APPRAISER: 'Tasador/a', COUNTERPARTY: 'La otra parte',
+  BANK: 'Banco', OTHER: 'Otro',
+}
+
+function useParticipants(operationId: string | null) {
+  const [people, setPeople] = useState<Participant[]>([])
+  useEffect(() => {
+    if (!operationId) return
+    const supabase = tryCreateClient()
+    if (!supabase) return
+    supabase
+      .from('operation_participants')
+      .select('id, name, role, email, phone, notes')
+      .eq('operation_id', operationId)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        if (data) setPeople(data.map(r => ({
+          id: r.id, name: r.name, role: r.role as ParticipantRoleDb,
+          email: r.email ?? undefined, phone: r.phone ?? undefined, notes: r.notes ?? undefined,
+        })))
+      })
+  }, [operationId])
+  return people
+}
 
 const specialtyEmoji: Record<string, string> = {
   ESCRIBANO: '📜', ABOGADO: '⚖️', AGRIMENSOR: '📐', TASADOR: '🏠', GESTOR: '📋',
@@ -63,8 +101,9 @@ const OFFICIAL_REGISTRIES: { specialty: string; org: string; url: string; note: 
 ]
 
 export default function ProfesionalesPage() {
-  const { activeTransactionData } = useOperations()
+  const { activeTransactionData, activeOperationId } = useOperations()
   const operationNeeds = getOperationNeeds(activeTransactionData)
+  const participants = useParticipants(activeOperationId)
 
   const country = useMemo<CountryCode>(() => {
     try { return (localStorage.getItem('vara_country') as CountryCode) || 'AR' } catch { return 'AR' }
@@ -105,6 +144,54 @@ export default function ProfesionalesPage() {
             </div>
           </div>
         </div>
+
+        {/* Equipo real de la operación */}
+        {participants.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
+              <div className="flex items-center gap-2">
+                <Users size={14} className="text-brand-500" />
+                <h2 className="font-semibold text-slate-800 text-sm">Tu equipo en esta operación</h2>
+              </div>
+              {activeOperationId && (
+                <Link href={`/operacion/${activeOperationId}?tab=equipo`}
+                  className="text-[11px] text-brand-600 font-semibold hover:underline">
+                  Gestionar →
+                </Link>
+              )}
+            </div>
+            <div className="divide-y divide-slate-50">
+              {participants.map(p => (
+                <div key={p.id} className="flex items-center gap-3 px-5 py-3">
+                  <div className="w-9 h-9 bg-gradient-to-br from-brand-100 to-brand-200 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-brand-700 font-bold text-sm">{p.name.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 leading-tight truncate">{p.name}</p>
+                    <p className="text-[11px] text-slate-400">{ROLE_LABELS[p.role]}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {p.phone && (
+                      <a href={`https://wa.me/${p.phone.replace(/\D/g, '')}`}
+                        target="_blank" rel="noopener noreferrer"
+                        title="WhatsApp"
+                        className="w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                        <Phone size={12} className="text-emerald-600" />
+                      </a>
+                    )}
+                    {p.email && (
+                      <a href={`mailto:${p.email}`}
+                        title="Email"
+                        className="w-7 h-7 rounded-lg bg-slate-50 hover:bg-slate-100 flex items-center justify-center transition-colors">
+                        <Mail size={12} className="text-slate-500" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Qué necesita la operación — lógica real */}
         {operationNeeds.length > 0 && (
