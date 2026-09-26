@@ -1,11 +1,21 @@
 import type { OperationType, Currency } from '@/types'
 
-export type ProvinceCode =
+// ── Argentina (24 provincias) ──────────────────────────────────────────────
+export type ARProvinceCode =
   | 'CABA' | 'BUENOS_AIRES' | 'CORDOBA' | 'SANTA_FE' | 'MENDOZA'
   | 'TUCUMAN' | 'ENTRE_RIOS' | 'SALTA' | 'MISIONES' | 'CHACO'
   | 'CORRIENTES' | 'SANTIAGO_DEL_ESTERO' | 'SAN_JUAN' | 'JUJUY'
   | 'RIO_NEGRO' | 'NEUQUEN' | 'FORMOSA' | 'CHUBUT' | 'SAN_LUIS'
   | 'CATAMARCA' | 'LA_RIOJA' | 'LA_PAMPA' | 'SANTA_CRUZ' | 'TIERRA_DEL_FUEGO'
+
+// ── México (top 10 mercados inmobiliarios) ─────────────────────────────────
+export type MXStateCode =
+  | 'CDMX' | 'JALISCO' | 'NUEVO_LEON' | 'ESTADO_DE_MEXICO'
+  | 'PUEBLA' | 'GUANAJUATO' | 'CHIHUAHUA' | 'BAJA_CALIFORNIA'
+  | 'QUERETARO' | 'YUCATAN'
+
+// Agregar nuevos países: extender con un nuevo type y sumarlo al union
+export type ProvinceCode = ARProvinceCode | MXStateCode
 
 export type DataConfidence = 'VERIFIED' | 'PARTIAL' | 'ESTIMATED' | 'UNVERIFIED'
 

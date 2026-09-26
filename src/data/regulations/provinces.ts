@@ -1,4 +1,5 @@
 import type { ProvinceRegulation } from './types'
+import { MX_PROVINCES } from './mx'
 
 export const ALL_PROVINCES: ProvinceRegulation[] = [
   {
@@ -621,15 +622,38 @@ export const ALL_PROVINCES: ProvinceRegulation[] = [
   },
 ]
 
+export const ALL_PROVINCES_WITH_MX: ProvinceRegulation[] = [
+  ...ALL_PROVINCES,
+  ...MX_PROVINCES,
+]
+
 export const PROVINCE_MAP = Object.fromEntries(
-  ALL_PROVINCES.map(p => [p.code, p])
+  ALL_PROVINCES_WITH_MX.map(p => [p.code, p])
 ) as Record<string, ProvinceRegulation>
 
 export const ONBOARDING_PROVINCE_TO_CODE: Record<string, string> = {
+  // Argentina
   'Buenos Aires': 'BUENOS_AIRES',
   'CABA': 'CABA',
   'Córdoba': 'CORDOBA',
   'Rosario': 'SANTA_FE',
   'Mendoza': 'MENDOZA',
   'Otro': 'BUENOS_AIRES',
+  // México
+  'Ciudad de México': 'CDMX',
+  'CDMX': 'CDMX',
+  'Jalisco': 'JALISCO',
+  'Guadalajara': 'JALISCO',
+  'Nuevo León': 'NUEVO_LEON',
+  'Monterrey': 'NUEVO_LEON',
+  'Estado de México': 'ESTADO_DE_MEXICO',
+  'Querétaro': 'QUERETARO',
+  'Puebla': 'PUEBLA',
+  'Guanajuato': 'GUANAJUATO',
+  'Chihuahua': 'CHIHUAHUA',
+  'Baja California': 'BAJA_CALIFORNIA',
+  'Tijuana': 'BAJA_CALIFORNIA',
+  'Yucatán': 'YUCATAN',
+  'Mérida': 'YUCATAN',
+  'Otro MX': 'CDMX',
 }

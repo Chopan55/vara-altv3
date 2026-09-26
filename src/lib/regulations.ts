@@ -1,4 +1,4 @@
-import { PROVINCE_MAP, ONBOARDING_PROVINCE_TO_CODE, ALL_PROVINCES } from '@/data/regulations/provinces'
+import { PROVINCE_MAP, ONBOARDING_PROVINCE_TO_CODE, ALL_PROVINCES_WITH_MX } from '@/data/regulations/provinces'
 import type { RegulatoryChecklist, ProvinceCode, CostBreakdown, CostLine, ChecklistStage } from '@/data/regulations/types'
 import type { OperationType, CountryCode } from '@/types'
 import { getJurisdiction } from '@/lib/jurisdiction'
@@ -188,7 +188,7 @@ export function generateChecklist(
 }
 
 export function getProvinceList() {
-  return ALL_PROVINCES.map(p => ({
+  return ALL_PROVINCES_WITH_MX.map(p => ({
     code: p.code,
     name: p.name,
     displayName: p.displayName,
