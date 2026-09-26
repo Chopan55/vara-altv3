@@ -11,6 +11,8 @@ import { Progress } from '@/components/ui/Progress'
 import { mockTransaction } from '@/data/mock'
 import { useOperation } from '@/hooks/useOperation'
 import { useOperations } from '@/hooks/useOperations'
+import { getOperation } from '@/lib/userOperations'
+import { buildTransaction } from '@/lib/operationFromChecklist'
 import { cn, formatPrice, formatDate, getStatusLabel } from '@/lib/utils'
 import { generateChecklist } from '@/lib/regulations'
 import { primaryAction } from '@/lib/nba/engine'
@@ -109,9 +111,11 @@ export default function OperacionPage() {
   const { relations, getTransactionData } = useOperations()
   const crossRelations = relations.filter(r => r.fromOperationId === operationId || r.toOperationId === operationId)
   const isDemoOperation = ['txn-001', 'txn-002', 'txn-003'].includes(operationId)
-  const txn = operation ?? (isDemoOperation ? mockTransaction : null)
+  // Para operaciones reales del usuario (guardadas en localStorage), buildTransaction las arma.
+  const userOp = !operation && !isDemoOperation ? getOperation(operationId) : null
+  const txn = operation ?? (userOp ? buildTransaction(userOp) : null) ?? (isDemoOperation ? mockTransaction : null)
 
-  if (notFound || !txn) {
+  if (!txn) {
     return (
       <div className="min-h-screen bg-[var(--background)] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">

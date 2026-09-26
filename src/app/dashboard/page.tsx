@@ -412,8 +412,8 @@ function SellerDashboard({ userName, province }: { userName: string; province: s
         <div className="grid grid-cols-2 gap-2.5">
           {[
             { href: '/asistente', icon: MessageSquare, label: 'Asistente VARA', sub: 'Preguntá lo que necesitás' },
+            { href: '/vara-labs', icon: Sparkles, label: 'VARA Labs', sub: 'Negociación y simuladores' },
             { href: '/costos', icon: DollarSign, label: 'Calculá tus costos', sub: 'Costos del vendedor' },
-            { href: '/publicar', icon: Home, label: 'Publicar', sub: 'Crear aviso en portales' },
             { href: '/profesionales', icon: Users, label: 'Profesionales', sub: 'Escribanos e inmobiliarias' },
           ].map(({ href, icon: Icon, label, sub }) => (
             <Link key={href} href={href}
@@ -674,6 +674,22 @@ function RightRail({
           Hacer una consulta →
         </Link>
       </section>
+
+      <section className="rounded-2xl bg-white border border-slate-200/70 shadow-card p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles size={14} className="text-amber-500" aria-hidden="true" />
+          <h2 className="text-sm font-bold text-slate-900">VARA Labs</h2>
+        </div>
+        <p className="text-xs text-slate-500 leading-relaxed mb-3">
+          Negociación inteligente, simuladores, análisis IA y lo que viene.
+        </p>
+        <Link
+          href="/vara-labs"
+          className="block rounded-xl bg-amber-50 hover:bg-amber-100 px-3 py-2.5 text-center text-xs font-bold text-amber-700 transition-colors"
+        >
+          Explorar Labs →
+        </Link>
+      </section>
     </aside>
   )
 }
@@ -910,7 +926,7 @@ export default function Dashboard() {
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Compra</span>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{txn.type === 'BUY_PROPERTY' ? 'Compra' : 'Venta'}</span>
                 <span className={cn('flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full border', statusConfig.bg, statusConfig.color)}>
                   <span className={cn('w-1.5 h-1.5 rounded-full', statusConfig.dot)} />
                   {statusConfig.label}

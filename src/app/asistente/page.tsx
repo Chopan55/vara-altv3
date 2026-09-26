@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Send, Bot, User, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
+import { ArrowLeft, Send, Bot, User, ChevronDown, ChevronUp, Sparkles, Handshake } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { cn } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
@@ -118,6 +118,20 @@ export default function AsistentePage() {
           </div>
         </div>
       </header>
+
+      {/* Coach de negociación */}
+      <div className="bg-brand-50 border-b border-brand-100 px-4 py-2.5 flex-shrink-0">
+        <div className="max-w-4xl mx-auto">
+          <Link
+            href="/negociacion"
+            className="flex items-center gap-2 text-sm font-semibold text-brand-700 hover:text-brand-900 transition-colors"
+          >
+            <Handshake size={14} />
+            Coach de Negociación — pegá el mensaje y VARA te dice qué responder
+            <span className="ml-auto text-brand-400 text-xs">→</span>
+          </Link>
+        </div>
+      </div>
 
       {/* FAQ chips */}
       <div className="bg-white border-b border-slate-100 px-4 py-3 flex-shrink-0">

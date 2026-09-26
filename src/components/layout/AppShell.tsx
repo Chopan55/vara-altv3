@@ -68,6 +68,7 @@ function getSellNav(operationId: string): NavItem[] {
 const SECONDARY_NAV: NavItem[] = [
   { href: '/guia', icon: BookOpen, label: 'Guía' },
   { href: '/asistente', icon: MessageSquare, label: 'Asistente' },
+  { href: '/vara-labs', icon: Sparkles, label: 'VARA Labs', tag: 'Labs' },
 ]
 
 function isActive(pathname: string, search: string, href: string) {
