@@ -28,6 +28,7 @@ const PAGE_CONTEXT: Record<string, string> = {
   '/visitas': 'El usuario está usando el checklist de visita de propiedades.',
   '/vara-labs': 'El usuario está en VARA Labs explorando herramientas de negociación.',
   '/negociacion': 'El usuario está en el módulo de negociación inteligente.',
+  '/acciones': 'El usuario está en el centro de acciones viendo todas sus tareas pendientes urgentes.',
 }
 
 function getPageContext(pathname: string, operationId: string): string {

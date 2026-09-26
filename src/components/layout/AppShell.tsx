@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, Menu, X, Inbox,
   LogIn, LogOut, BookOpen, Search, Plus, Sparkles,
   ShieldAlert, Users, Landmark, Tag, MapPin, CalendarCheck, Briefcase,
-  ClipboardCheck,
+  ClipboardCheck, Zap,
 } from 'lucide-react'
 import { tryCreateClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -39,6 +39,7 @@ function getBuyNav(operationId: string): NavItem[] {
   const opHref = operationId ? `/operacion/${operationId}` : '/dashboard'
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
+    { href: '/acciones', icon: Zap, label: 'Acciones' },
     { href: '/propiedades', icon: Building2, label: 'Mis propiedades' },
     { href: '/visitas', icon: ClipboardCheck, label: 'Checklist de visita' },
     { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', tag: 'Nuevo' },
@@ -55,6 +56,7 @@ function getSellNav(operationId: string): NavItem[] {
   const opHref = operationId ? `/operacion/${operationId}` : '/dashboard'
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
+    { href: '/acciones', icon: Zap, label: 'Acciones' },
     { href: '/publicar', icon: Share2, label: 'Mi propiedad' },
     { href: '/ofertas', icon: Inbox, label: 'Ofertas y negociación' },
     { href: '/visitas-vendedor', icon: Eye, label: 'Quién quiere visitar' },
