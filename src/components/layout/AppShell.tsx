@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { useVaraState } from '@/hooks/useVaraState'
 import { GuiameButton } from '@/components/guidance/GuiameButton'
+import { VaraAIFloat } from '@/components/ai/VaraAIFloat'
 
 const NO_SHELL = new Set(['/', '/onboarding', '/login'])
 
@@ -435,6 +436,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
 
         <GuiameButton />
+        <VaraAIFloat />
       </div>
     </div>
   )
