@@ -12,6 +12,7 @@ import type {
   NegotiationMode, NegotiationContext, NegotiationResponse, CallPrep, NegotiationBrief, EmotionAlert,
 } from '@/app/api/negotiation/route'
 import { useNegotiationStore, type Negotiation } from '@/hooks/useNegotiationStore'
+import type { CountryCode } from '@/types'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -844,6 +845,9 @@ function ContextEditor({ ctx, onSave }: { ctx: NegotiationContext; onSave: (c: N
 
 export default function NegociacionPage() {
   const store = useNegotiationStore()
+  const country: CountryCode = (() => {
+    try { return (localStorage.getItem('vara_country') as CountryCode) || 'AR' } catch { return 'AR' }
+  })()
   const [mode, setMode] = useState<NegotiationMode>('reply')
   const [channel, setChannel] = useState<Channel>('whatsapp')
   const [message, setMessage] = useState('')
@@ -881,6 +885,7 @@ export default function NegociacionPage() {
           mode,
           message: message.trim() || undefined,
           context: { ...ctx, channel },
+          country,
         }),
       })
       const data = await res.json()

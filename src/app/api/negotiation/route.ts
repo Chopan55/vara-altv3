@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { log } from '@/lib/observability/logger'
+import type { CountryCode } from '@/types'
 
 export type NegotiationMode =
   | 'prepare'
@@ -78,7 +79,7 @@ export interface NegotiationResponse {
   emotionAlert?: EmotionAlert
 }
 
-const BASE_SYSTEM_PROMPT = `Sos VARA Negotiation Intelligence.
+const BASE_SYSTEM_PROMPT_AR = `Sos VARA Negotiation Intelligence.
 
 Tu propósito es ayudar a un usuario de VARA a navegar negociaciones vinculadas a operaciones inmobiliarias de manera inteligente, calmada, ética y efectiva.
 
@@ -136,6 +137,15 @@ Cuando el mensaje recibido sea provocativo, agresivo, presionante, urgente en to
 - "reframe": una sola oración que ayude al usuario a ver la situación con calma y perspectiva
 - "breathe": instrucción corta de 5-10 palabras para no responder en caliente (ej: "Esperá 15 minutos antes de responder.")
 Si el mensaje es neutro o positivo, omitir el campo o poner "detected": false.`
+
+function buildSystemPrompt(country?: CountryCode): string {
+  if (country === 'MX') {
+    return BASE_SYSTEM_PROMPT_AR
+      .replace('escribanos', 'notarios')
+      .replace('agrimensores', 'peritos valuadores')
+  }
+  return BASE_SYSTEM_PROMPT_AR
+}
 
 function buildModePrompt(mode: NegotiationMode, ctx: NegotiationContext): string {
   const ctxBlock = `
@@ -300,6 +310,7 @@ export async function POST(req: Request) {
     mode?: NegotiationMode
     message?: string
     context?: NegotiationContext
+    country?: CountryCode
   }
 
   if (!body.message?.trim() && body.mode !== 'prepare') {
@@ -313,8 +324,9 @@ export async function POST(req: Request) {
 
   const mode: NegotiationMode = body.mode ?? 'reply'
   const ctx: NegotiationContext = body.context ?? {}
+  const country: CountryCode = body.country ?? 'AR'
 
-  const systemPrompt = `${BASE_SYSTEM_PROMPT}\n\n${buildModePrompt(mode, ctx)}`
+  const systemPrompt = `${buildSystemPrompt(country)}\n\n${buildModePrompt(mode, ctx)}`
 
   const userContent = body.message?.trim()
     ? `Mensaje / situación:\n\n${body.message}`
@@ -344,7 +356,7 @@ export async function POST(req: Request) {
     const data = await res.json() as { choices: Array<{ message: { content: string } }> }
     const result: NegotiationResponse = JSON.parse(data.choices[0].message.content)
 
-    log.info('negotiation.ok', { mode, channel: ctx.channel })
+    log.info('negotiation.ok', { mode, channel: ctx.channel, country })
     return NextResponse.json({ result })
   } catch (err) {
     log.error('negotiation.failed', err)
