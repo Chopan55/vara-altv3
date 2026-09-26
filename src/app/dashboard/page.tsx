@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowRight, MapPin, AlertTriangle, FileText, DollarSign, MessageSquare, Clock, ChevronRight, TrendingUp, ShieldAlert, CheckCircle2, CircleDot, Users, Sparkles, Plus, Link2, Home, CheckSquare, BarChart2, ShoppingCart, Tag, Building2, Trash2, Zap, Briefcase, Shield, Calendar } from 'lucide-react'
+import { ArrowRight, MapPin, AlertTriangle, FileText, DollarSign, MessageSquare, Clock, ChevronRight, TrendingUp, ShieldAlert, CheckCircle2, CircleDot, Users, Sparkles, Plus, Link2, Home, CheckSquare, BarChart2, ShoppingCart, Tag, Building2, Trash2, Zap, Briefcase, Shield, Calendar, Loader2 } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { Progress } from '@/components/ui/Progress'
 import { InfoTip } from '@/components/ui/InfoTip'
@@ -15,6 +15,10 @@ import { GuidanceBanner } from '@/components/guidance/GuidanceBanner'
 import { loadUserProperties, type UserProperty } from '@/lib/userProperties'
 import type { UserOperationSummary, Transaction } from '@/types'
 import { computeNextActions, primaryAction, CATEGORY_LABELS } from '@/lib/nba/engine'
+import {
+  fetchSellerTasks, toggleSellerTask, setSellerTaskDueDate,
+  type SellerTaskState,
+} from '@/lib/supabase/sellerTasks'
 
 function computeIntelligence(txn: Transaction) {
   const allTasks = txn.stages.flatMap(s => s.tasks)
@@ -130,31 +134,11 @@ function EmptyState({ userName, propertyUrl }: { userName: string; propertyUrl: 
   )
 }
 
-interface ChecklistItemState {
-  id: string
-  label: string
-  detail: string
-  done: boolean
-  dueDate?: string  // YYYY-MM-DD
-}
-
-const SELLER_CHECKLIST_BASE: ChecklistItemState[] = [
-  { id: 'docs',      label: 'Reunir documentación del inmueble', detail: 'Título, planos, impuestos al día',       done: false },
-  { id: 'price',     label: 'Definir precio de publicación',     detail: 'Basado en comparables de la zona',      done: false },
-  { id: 'photos',    label: 'Fotos profesionales',               detail: 'Al menos 12 fotos de buena calidad',    done: false },
-  { id: 'publish',   label: 'Publicar en portales',              detail: 'Zonaprop, Argenprop, MercadoLibre',     done: false },
-  { id: 'visits',    label: 'Organizar visitas',                 detail: 'Coordinar con potenciales compradores', done: false },
-  { id: 'offer',     label: 'Evaluar ofertas recibidas',         detail: 'Reserva y boleto de compraventa',       done: false },
-  { id: 'escritura', label: 'Escriturar',                        detail: 'Con escribano y comprador',             done: false },
-]
-
 /** Días estimados desde hoy para cada paso de una venta típica en Argentina. */
 const ESTIMATED_DAYS: Record<string, number> = {
   docs: 7, price: 3, photos: 10, publish: 14,
   visits: 30, offer: 60, escritura: 120,
 }
-
-const CHECKLIST_KEY_V2 = 'vara_seller_checklist_v2'
 
 function isoDate(daysFromNow: number): string {
   const d = new Date()
@@ -167,65 +151,49 @@ function fmtDueDate(iso: string): string {
   return new Date(y, m - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
 }
 
-function loadChecklist(): ChecklistItemState[] {
-  try {
-    const v2 = localStorage.getItem(CHECKLIST_KEY_V2)
-    if (v2) {
-      const saved = JSON.parse(v2) as ChecklistItemState[]
-      if (Array.isArray(saved) && saved[0]?.id) {
-        return SELLER_CHECKLIST_BASE.map(base => {
-          const s = saved.find(x => x.id === base.id)
-          return s ? { ...base, done: s.done, dueDate: s.dueDate } : base
-        })
-      }
-    }
-    // Migra el formato viejo (string[] de done ids)
-    const legacy = localStorage.getItem('vara_seller_checklist')
-    if (legacy) {
-      const doneIds: string[] = JSON.parse(legacy)
-      return SELLER_CHECKLIST_BASE.map(item => ({ ...item, done: doneIds.includes(item.id) }))
-    }
-  } catch {}
-  return SELLER_CHECKLIST_BASE.map(i => ({ ...i }))
-}
-
-function saveChecklist(list: ChecklistItemState[]): void {
-  try { localStorage.setItem(CHECKLIST_KEY_V2, JSON.stringify(list)) } catch {}
-}
-
-function SellerDashboard({ userName, province }: { userName: string; province: string }) {
-  const [checklist, setChecklist] = useState<ChecklistItemState[]>(() => loadChecklist())
+function SellerDashboard({ userName, province, operationId }: { userName: string; province: string; operationId: string }) {
+  const [tasks, setTasks] = useState<SellerTaskState[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [editingDateId, setEditingDateId] = useState<string | null>(null)
 
-  const toggleItem = (id: string) => {
-    setChecklist(prev => {
-      const next = prev.map(i => i.id === id ? { ...i, done: !i.done } : i)
-      saveChecklist(next)
-      return next
+  useEffect(() => {
+    let alive = true
+    fetchSellerTasks(operationId).then(result => {
+      if (!alive) return
+      if (result) setTasks(result)
+      setLoaded(true)
     })
+    return () => { alive = false }
+  }, [operationId])
+
+  const toggleItem = async (key: string) => {
+    const task = tasks.find(t => t.key === key)
+    if (!task) return
+    const next = !task.done
+    setTasks(prev => prev.map(t => t.key === key ? { ...t, done: next } : t))
+    await toggleSellerTask(operationId, key, next)
   }
 
-  const setItemDate = (id: string, date: string) => {
-    setChecklist(prev => {
-      const next = prev.map(i => i.id === id ? { ...i, dueDate: date || undefined } : i)
-      saveChecklist(next)
-      return next
-    })
+  const setItemDate = async (key: string, date: string) => {
+    setTasks(prev => prev.map(t => t.key === key ? { ...t, dueDate: date || undefined } : t))
+    await setSellerTaskDueDate(operationId, key, date || null)
   }
 
-  const estimateDates = () => {
-    setChecklist(prev => {
-      const next = prev.map(item => ({
-        ...item,
-        dueDate: item.done ? item.dueDate : isoDate(ESTIMATED_DAYS[item.id] ?? 30),
-      }))
-      saveChecklist(next)
-      return next
-    })
+  const estimateDates = async () => {
+    const updated = tasks.map(t => ({
+      ...t,
+      dueDate: t.done ? t.dueDate : isoDate(ESTIMATED_DAYS[t.key] ?? 30),
+    }))
+    setTasks(updated)
+    await Promise.all(
+      updated
+        .filter(t => !t.done && t.dueDate)
+        .map(t => setSellerTaskDueDate(operationId, t.key, t.dueDate!))
+    )
   }
 
-  const done = checklist.filter(i => i.done).length
-  const progress = Math.round((done / checklist.length) * 100)
+  const done = tasks.filter(t => t.done).length
+  const progress = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0
 
   const sellerCosts = [
     { label: 'Comisión inmobiliaria', value: '3–4% del precio' },
@@ -233,6 +201,14 @@ function SellerDashboard({ userName, province }: { userName: string; province: s
     { label: 'ITI / Ganancia', value: '1.5–3% según caso' },
     { label: 'Plusvalía municipal', value: 'Varía por provincia' },
   ]
+
+  if (!loaded) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 size={20} className="animate-spin text-slate-300" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -259,7 +235,7 @@ function SellerDashboard({ userName, province }: { userName: string; province: s
                   No mide tiempo ni plata: mide cuántos pasos del proceso ya resolviste.
                 </InfoTip>
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">{done} de {checklist.length} pasos completados</p>
+              <p className="text-xs text-slate-400 mt-0.5">{done} de {tasks.length} pasos completados</p>
             </div>
             <span className="text-2xl font-extrabold text-slate-900">{progress}%</span>
           </div>
@@ -268,7 +244,7 @@ function SellerDashboard({ userName, province }: { userName: string; province: s
 
         {/* NEXT BEST ACTION */}
         {(() => {
-          const next = checklist.find(i => !i.done)
+          const next = tasks.find(t => !t.done)
           if (!next) return null
           return (
             <div className="bg-amber-500 rounded-2xl p-5 text-slate-900">
@@ -276,10 +252,10 @@ function SellerDashboard({ userName, province }: { userName: string; province: s
                 <TrendingUp size={13} className="opacity-50" />
                 <p className="text-xs font-bold opacity-50 uppercase tracking-widest">Próximo paso</p>
               </div>
-              <h3 className="font-extrabold text-base mb-1 leading-tight">{next.label}</h3>
-              <p className="text-sm opacity-70 leading-relaxed mb-4">{next.detail}</p>
+              <h3 className="font-extrabold text-base mb-1 leading-tight">{next.title}</h3>
+              <p className="text-sm opacity-70 leading-relaxed mb-4">{next.description}</p>
               <button
-                onClick={() => toggleItem(next.id)}
+                onClick={() => toggleItem(next.key)}
                 className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors"
               >
                 Marcar como hecho <ArrowRight size={14} />
@@ -304,53 +280,51 @@ function SellerDashboard({ userName, province }: { userName: string; province: s
               >
                 <Sparkles size={10} /> Estimar fechas
               </button>
-              <span className="text-xs text-slate-400">{done}/{checklist.length}</span>
+              <span className="text-xs text-slate-400">{done}/{tasks.length}</span>
             </div>
           </div>
           <div className="divide-y divide-slate-50">
-            {checklist.map(item => (
-              <div key={item.id} className="flex items-center gap-2 px-5 py-3 hover:bg-slate-50 transition-colors">
-                {/* Zona de toggle: checkbox + texto */}
+            {tasks.map(task => (
+              <div key={task.key} className="flex items-center gap-2 px-5 py-3 hover:bg-slate-50 transition-colors">
                 <button
-                  onClick={() => toggleItem(item.id)}
+                  onClick={() => toggleItem(task.key)}
                   className="flex items-center gap-3 flex-1 text-left min-w-0"
                 >
                   <div className={cn(
                     'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                    item.done ? 'bg-brand-600 border-brand-600' : 'border-slate-200'
+                    task.done ? 'bg-brand-600 border-brand-600' : 'border-slate-200'
                   )}>
-                    {item.done && <CheckCircle2 size={12} className="text-white" strokeWidth={3} />}
+                    {task.done && <CheckCircle2 size={12} className="text-white" strokeWidth={3} />}
                   </div>
                   <div className="min-w-0">
-                    <p className={cn('text-sm font-medium leading-tight', item.done ? 'text-slate-400 line-through' : 'text-slate-800')}>
-                      {item.label}
+                    <p className={cn('text-sm font-medium leading-tight', task.done ? 'text-slate-400 line-through' : 'text-slate-800')}>
+                      {task.title}
                     </p>
-                    <p className="text-xs text-slate-400 mt-0.5 truncate">{item.detail}</p>
+                    <p className="text-xs text-slate-400 mt-0.5 truncate">{task.description}</p>
                   </div>
                 </button>
-                {/* Fecha: manual o estimada */}
                 <div className="flex-shrink-0">
-                  {editingDateId === item.id ? (
+                  {editingDateId === task.key ? (
                     <input
                       type="date"
                       autoFocus
-                      value={item.dueDate ?? ''}
-                      onChange={e => setItemDate(item.id, e.target.value)}
+                      value={task.dueDate ?? ''}
+                      onChange={e => setItemDate(task.key, e.target.value)}
                       onBlur={() => setEditingDateId(null)}
                       className="text-xs border border-brand-300 rounded-lg px-2 py-1 text-slate-700 outline-none focus:border-brand-500 bg-white"
                     />
                   ) : (
                     <button
-                      onClick={() => setEditingDateId(item.id)}
-                      title={item.dueDate ? 'Cambiar fecha' : 'Fijar fecha'}
+                      onClick={() => setEditingDateId(task.key)}
+                      title={task.dueDate ? 'Cambiar fecha' : 'Fijar fecha'}
                       className={cn(
                         'text-[11px] px-2 py-1 rounded-lg transition-colors flex items-center gap-1',
-                        item.dueDate
+                        task.dueDate
                           ? 'text-brand-600 bg-brand-50 hover:bg-brand-100 font-semibold'
                           : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'
                       )}
                     >
-                      {item.dueDate ? fmtDueDate(item.dueDate) : <Calendar size={11} />}
+                      {task.dueDate ? fmtDueDate(task.dueDate) : <Calendar size={11} />}
                     </button>
                   )}
                 </div>
@@ -734,7 +708,10 @@ export default function Dashboard() {
   }
 
   if (vara.loaded && vara.journeyType === 'SELL_PROPERTY') {
-    return <SellerDashboard userName={vara.userName} province={vara.province} />
+    const sellOp = operations.find(o => o.type === 'SELL')
+    if (sellOp) {
+      return <SellerDashboard userName={vara.userName} province={vara.province} operationId={sellOp.id} />
+    }
   }
 
   const displayName = vara.loaded && vara.userName ? vara.userName.split(' ')[0] : ''
