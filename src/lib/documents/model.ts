@@ -8,6 +8,7 @@
  *
  * La subida vive en `src/lib/supabase/documents.ts`.
  */
+import type { CountryCode } from '@/types'
 
 export type DocumentCategory =
   | 'ESCRITURA' | 'PLANOS' | 'INFORMES' | 'IMPUESTOS' | 'EXPENSAS'
@@ -54,6 +55,20 @@ export const CRITICAL_CATEGORIES: DocumentCategory[] = ['ESCRITURA', 'INFORMES',
 
 export function isCriticalCategory(c: DocumentCategory): boolean {
   return CRITICAL_CATEGORIES.includes(c)
+}
+
+const MX_CATEGORY_OVERRIDES: Partial<Record<DocumentCategory, string>> = {
+  ESCRITURA: 'Escritura Notarial',
+  RESERVA: 'Apartado',
+  IMPUESTOS: 'ISAI / ISR',
+  EXPENSAS: 'Mantenimiento / Cuotas',
+}
+
+export function getDocumentCategoryLabels(country?: CountryCode | null): Record<DocumentCategory, string> {
+  if (country === 'MX') {
+    return { ...DOCUMENT_CATEGORY_LABELS, ...MX_CATEGORY_OVERRIDES }
+  }
+  return DOCUMENT_CATEGORY_LABELS
 }
 
 export interface OperationDocument {

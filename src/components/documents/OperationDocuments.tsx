@@ -17,13 +17,14 @@ import {
 } from 'lucide-react'
 import {
   DOCUMENT_CATEGORY_LABELS, DOCUMENT_STATUS_LABELS, sortDocuments, summarize,
-  isCriticalCategory, hasFile, ACCEPTED_EXTENSIONS,
+  isCriticalCategory, hasFile, ACCEPTED_EXTENSIONS, getDocumentCategoryLabels,
   type DocumentCategory, type OperationDocument,
 } from '@/lib/documents/model'
 import {
   hasDocumentSession, fetchDocuments, createDocumentRequest,
   uploadDocument, signedUrlFor, deleteDocument,
 } from '@/lib/supabase/documents'
+import type { CountryCode } from '@/types'
 
 const ACCEPT_ATTR = ACCEPTED_EXTENSIONS.map(e => `.${e}`).join(',')
 const CATEGORIES = Object.keys(DOCUMENT_CATEGORY_LABELS) as DocumentCategory[]
@@ -41,9 +42,10 @@ function StatusPill({ doc }: { doc: OperationDocument }) {
   )
 }
 
-function AddDocumentForm({ onCreate, busy }: {
+function AddDocumentForm({ onCreate, busy, categoryLabels }: {
   onCreate: (name: string, category: DocumentCategory) => void
   busy: boolean
+  categoryLabels: Record<DocumentCategory, string>
 }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
@@ -69,7 +71,7 @@ function AddDocumentForm({ onCreate, busy }: {
         value={category} onChange={e => setCategory(e.target.value as DocumentCategory)}
         className="w-full border border-slate-200 focus:border-brand-400 rounded-lg px-3 py-2 text-xs text-slate-700 outline-none bg-white">
         {CATEGORIES.map(c => (
-          <option key={c} value={c}>{DOCUMENT_CATEGORY_LABELS[c]}</option>
+          <option key={c} value={c}>{categoryLabels[c]}</option>
         ))}
       </select>
       <div className="flex items-center gap-3">
@@ -87,11 +89,12 @@ function AddDocumentForm({ onCreate, busy }: {
   )
 }
 
-function DocumentRow({ doc, onUpload, onDelete, uploading }: {
+function DocumentRow({ doc, onUpload, onDelete, uploading, categoryLabels }: {
   doc: OperationDocument
   onUpload: (id: string, file: File) => void
   onDelete: (id: string) => void
   uploading: boolean
+  categoryLabels: Record<DocumentCategory, string>
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [opening, setOpening] = useState(false)
@@ -123,7 +126,7 @@ function DocumentRow({ doc, onUpload, onDelete, uploading }: {
             <StatusPill doc={doc} />
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">
-            {DOCUMENT_CATEGORY_LABELS[doc.category]}
+            {categoryLabels[doc.category]}
             {doc.version > 1 && ` · versión ${doc.version}`}
           </p>
 
@@ -162,7 +165,8 @@ function DocumentRow({ doc, onUpload, onDelete, uploading }: {
   )
 }
 
-export function OperationDocuments({ operationId }: { operationId: string }) {
+export function OperationDocuments({ operationId, country }: { operationId: string; country?: CountryCode }) {
+  const categoryLabels = getDocumentCategoryLabels(country)
   const [docs, setDocs] = useState<OperationDocument[]>([])
   const [session, setSession] = useState<boolean | null>(null)
   const [loaded, setLoaded] = useState(false)
@@ -254,11 +258,11 @@ export function OperationDocuments({ operationId }: { operationId: string }) {
       {docs.map(d => (
         <DocumentRow
           key={d.id} doc={d} uploading={busyId === d.id}
-          onUpload={upload} onDelete={remove}
+          onUpload={upload} onDelete={remove} categoryLabels={categoryLabels}
         />
       ))}
 
-      <AddDocumentForm onCreate={create} busy={busy} />
+      <AddDocumentForm onCreate={create} busy={busy} categoryLabels={categoryLabels} />
 
       <p className="text-[10px] text-slate-400 leading-relaxed">
         PDF o foto del documento, hasta 15 MB. Se guardan en privado y se abren con un
