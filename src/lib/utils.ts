@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
-import type { Currency } from '@/types'
+import type { Currency, CountryCode, ProfessionalRole } from '@/types'
+import { getJurisdiction } from '@/lib/jurisdiction'
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs)
@@ -73,10 +74,12 @@ export function getPropertyTypeLabel(type: string): string {
     HOUSE: 'Casa', APARTMENT: 'Departamento', PH: 'PH',
     LAND: 'Terreno', GARAGE: 'Garage', LOCAL: 'Local',
     OFFICE: 'Oficina', FIELD: 'Campo',
+    DEVELOPMENT_UNIT: 'Unidad en desarrollo', INDUSTRIAL: 'Industrial', OTHER: 'Otro',
   }
   return map[type] ?? type
 }
 
+/** Labels de profesionales AR legacy (specialty string libre) */
 export function getProfessionalLabel(specialty: string): string {
   const map: Record<string, string> = {
     ESCRIBANO: 'Escribano/a', ABOGADO: 'Abogado/a', AGRIMENSOR: 'Agrimensor/a',
@@ -84,4 +87,27 @@ export function getProfessionalLabel(specialty: string): string {
     CONTADOR: 'Contador/a', ADMINISTRADOR: 'Administrador/a',
   }
   return map[specialty] ?? specialty
+}
+
+/** Label de un rol profesional según la jurisdicción del país */
+export function getProfessionalRoleLabel(
+  role: ProfessionalRole,
+  country?: CountryCode | null,
+): string {
+  return getJurisdiction(country).professionalLabels[role]
+}
+
+/** Label del nivel de subdivisión territorial ('Provincia', 'Estado', 'Región'...) */
+export function getSubdivisionLabel(country?: CountryCode | null): string {
+  return getJurisdiction(country).subdivisionLabel
+}
+
+/** Label del depósito/seña/apartado según jurisdicción */
+export function getDepositLabel(country?: CountryCode | null): string {
+  return getJurisdiction(country).depositLabel
+}
+
+/** Label de cierre de la operación según jurisdicción */
+export function getClosingLabel(country?: CountryCode | null): string {
+  return getJurisdiction(country).closingStageLabel
 }
