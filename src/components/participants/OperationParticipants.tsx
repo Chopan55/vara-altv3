@@ -15,8 +15,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { Users, Plus, Trash2, Mail, Phone, Loader2, AlertCircle } from 'lucide-react'
 import { tryCreateClient } from '@/lib/supabase/client'
 import type { OperationParticipantRow, ParticipantRoleDb } from '@/lib/supabase/types'
+import type { CountryCode } from '@/types'
 
-const ROLE_LABELS: Record<ParticipantRoleDb, string> = {
+const ROLE_LABELS_BASE: Record<ParticipantRoleDb, string> = {
   NOTARY: 'Escribano/a',
   BROKER: 'Martillero / inmobiliaria',
   ACCOUNTANT: 'Contador/a',
@@ -27,7 +28,12 @@ const ROLE_LABELS: Record<ParticipantRoleDb, string> = {
   OTHER: 'Otro',
 }
 
-const ROLES = Object.keys(ROLE_LABELS) as ParticipantRoleDb[]
+function getRoleLabels(country?: CountryCode): Record<ParticipantRoleDb, string> {
+  if (country === 'MX') return { ...ROLE_LABELS_BASE, NOTARY: 'Notario/a' }
+  return ROLE_LABELS_BASE
+}
+
+const ROLES = Object.keys(ROLE_LABELS_BASE) as ParticipantRoleDb[]
 
 interface Participant {
   id: string
@@ -59,7 +65,7 @@ interface FormValues {
 
 const EMPTY: FormValues = { name: '', role: 'NOTARY', email: '', phone: '', notes: '' }
 
-function AddForm({ onAdd, busy }: { onAdd: (v: FormValues) => void; busy: boolean }) {
+function AddForm({ onAdd, busy, roleLabels }: { onAdd: (v: FormValues) => void; busy: boolean; roleLabels: Record<ParticipantRoleDb, string> }) {
   const [open, setOpen] = useState(false)
   const [v, setV] = useState<FormValues>(EMPTY)
 
@@ -82,7 +88,7 @@ function AddForm({ onAdd, busy }: { onAdd: (v: FormValues) => void; busy: boolea
       <select
         value={v.role} onChange={e => setV({ ...v, role: e.target.value as ParticipantRoleDb })}
         className="w-full border border-slate-200 focus:border-brand-400 rounded-lg px-3 py-2 text-xs text-slate-700 outline-none bg-white">
-        {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+        {ROLES.map(r => <option key={r} value={r}>{roleLabels[r]}</option>)}
       </select>
       <input
         value={v.phone} onChange={e => setV({ ...v, phone: e.target.value })}
@@ -113,7 +119,8 @@ function AddForm({ onAdd, busy }: { onAdd: (v: FormValues) => void; busy: boolea
   )
 }
 
-export function OperationParticipants({ operationId }: { operationId: string }) {
+export function OperationParticipants({ operationId, country }: { operationId: string; country?: CountryCode }) {
+  const roleLabels = getRoleLabels(country)
   const [people, setPeople] = useState<Participant[]>([])
   const [session, setSession] = useState<boolean | null>(null)
   const [loaded, setLoaded] = useState(false)
@@ -206,7 +213,7 @@ export function OperationParticipants({ operationId }: { operationId: string }) 
         <p className="text-sm font-semibold text-slate-800">Equipo</p>
         <p className="text-[11px] text-slate-400 mt-0.5">
           {people.length === 0
-            ? 'Quién más participa: escribano, martillero, la otra parte.'
+            ? `Quién más participa: ${roleLabels.NOTARY.toLowerCase()}, martillero, la otra parte.`
             : `${people.length} ${people.length === 1 ? 'persona' : 'personas'} en esta operación`}
         </p>
       </div>
@@ -237,7 +244,7 @@ export function OperationParticipants({ operationId }: { operationId: string }) 
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-slate-800 leading-tight">{p.name}</p>
-            <p className="text-[11px] text-slate-400">{ROLE_LABELS[p.role]}</p>
+            <p className="text-[11px] text-slate-400">{roleLabels[p.role]}</p>
             <div className="flex flex-wrap items-center gap-3 mt-1">
               {p.phone && (
                 <a href={`tel:${p.phone}`} className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800">
@@ -260,7 +267,7 @@ export function OperationParticipants({ operationId }: { operationId: string }) 
         </div>
       ))}
 
-      <AddForm onAdd={add} busy={busy} />
+      <AddForm onAdd={add} busy={busy} roleLabels={roleLabels} />
     </div>
   )
 }

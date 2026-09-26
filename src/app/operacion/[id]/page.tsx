@@ -22,7 +22,7 @@ import { ActivityLedger } from '@/components/activity/ActivityLedger'
 import { OperationParticipants } from '@/components/participants/OperationParticipants'
 import { OperationRisks } from '@/components/risks/OperationRisks'
 import type { ProvinceCode } from '@/data/regulations/types'
-import type { Task } from '@/types'
+import type { Task, CountryCode } from '@/types'
 
 function computeOperationIntel(txn: typeof mockTransaction) {
   const allTasks = txn.stages.flatMap(s => s.tasks)
@@ -114,6 +114,7 @@ export default function OperacionPage() {
   // Para operaciones reales del usuario (guardadas en localStorage), buildTransaction las arma.
   const userOp = !operation && !isDemoOperation ? getOperation(operationId) : null
   const txn = operation ?? (userOp ? buildTransaction(userOp) : null) ?? (isDemoOperation ? mockTransaction : null)
+  const country: CountryCode = userOp?.country ?? (() => { try { return (localStorage.getItem('vara_country') as CountryCode) || 'AR' } catch { return 'AR' } })()
 
   // Todos los hooks deben declararse antes de cualquier return condicional (Rules of Hooks).
   // El sidebar linkea directo a una pestaña (?tab=documentos).
@@ -428,7 +429,8 @@ export default function OperacionPage() {
               </p>
 
               {txn.documents.map(doc => {
-                const meta = DOC_META[doc.category] ?? { color: 'text-slate-600', bg: 'bg-slate-50', context: '', action: 'Consultar con el escribano' }
+                const closingProf = country === 'MX' ? 'el notario' : 'el escribano'
+                const meta = DOC_META[doc.category] ?? { color: 'text-slate-600', bg: 'bg-slate-50', context: '', action: `Consultar con ${closingProf}` }
                 const isPending = doc.status === 'PENDING' || doc.status === 'IN_REVIEW'
                 const resolvedRisks = meta.resolves ?? []
                 return (
@@ -570,7 +572,7 @@ export default function OperacionPage() {
                   ))}
                 </div>
               )}
-              <p className="text-xs text-slate-400 text-center px-4">Valores calculados por el motor regulatorio de VARA. Consultá con tu escribano para la liquidación exacta.</p>
+              <p className="text-xs text-slate-400 text-center px-4">Valores calculados por el motor regulatorio de VARA. Consultá con tu {country === 'MX' ? 'notario' : 'escribano'} para la liquidación exacta.</p>
             </div>
           )
         })()}
@@ -600,7 +602,7 @@ export default function OperacionPage() {
           </div>
         )}
 
-        {activeTab === 'participantes' && <OperationParticipants operationId={operationId} />}
+        {activeTab === 'participantes' && <OperationParticipants operationId={operationId} country={country} />}
 
         {activeTab === 'diseno' && (
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-6 text-center">
