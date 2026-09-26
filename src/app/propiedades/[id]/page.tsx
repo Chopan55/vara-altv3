@@ -2,7 +2,6 @@
 import { use, useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, Bed, Bath, Square, Upload, Sparkles, ChevronRight, TrendingUp, AlertCircle, Clock, DollarSign, Zap } from 'lucide-react'
-import { VaraLogo } from '@/components/ui/VaraLogo'
 import { Badge } from '@/components/ui/Badge'
 import { formatPrice, cn } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'

@@ -2,7 +2,6 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Send, Bot, User, ChevronDown, ChevronUp, Sparkles, Handshake } from 'lucide-react'
-import { VaraLogo } from '@/components/ui/VaraLogo'
 import { cn } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
 

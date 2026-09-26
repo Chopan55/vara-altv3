@@ -5,7 +5,6 @@ import {
   ArrowLeft, Calendar, Clock, User, CheckCircle2, XCircle,
   Phone, MessageSquare, MapPin, ChevronDown, ChevronUp, Plus,
 } from 'lucide-react'
-import { VaraLogo } from '@/components/ui/VaraLogo'
 import { cn } from '@/lib/utils'
 
 type SolicitudEstado = 'PENDIENTE' | 'CONFIRMADA' | 'RECHAZADA' | 'REALIZADA'

@@ -2,7 +2,6 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Search, ChevronDown, ChevronUp, AlertTriangle, MessageSquare, BookOpen } from 'lucide-react'
-import { VaraLogo } from '@/components/ui/VaraLogo'
 import { useVaraState } from '@/hooks/useVaraState'
 import { KNOWLEDGE, type KnowledgeEntry, type Audience } from '@/data/knowledge'
 

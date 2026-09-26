@@ -5,7 +5,6 @@ import {
   ArrowLeft, CheckCircle2, Circle, ChevronDown, ChevronUp,
   MessageSquare, StickyNote, RotateCcw, AlertTriangle, Camera,
 } from 'lucide-react'
-import { VaraLogo } from '@/components/ui/VaraLogo'
 import { mockVisitChecklist } from '@/data/mock'
 import { cn } from '@/lib/utils'
 

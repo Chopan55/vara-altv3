@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowRight, MapPin, AlertTriangle, FileText, DollarSign, MessageSquare, Clock, ChevronRight, TrendingUp, ShieldAlert, CheckCircle2, CircleDot, Users, Sparkles, Plus, Link2, Home, CheckSquare, BarChart2, ShoppingCart, Tag, Building2, Trash2, Zap, Briefcase, Shield, Calendar, Loader2 } from 'lucide-react'
-import { VaraLogo } from '@/components/ui/VaraLogo'
 import { Progress } from '@/components/ui/Progress'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { generateChecklist } from '@/lib/regulations'
