@@ -450,7 +450,7 @@ function SellerDashboard({ userName, province, operationId }: { userName: string
         <div className="grid grid-cols-2 gap-2.5">
           {[
             { href: '/asistente', icon: MessageSquare, label: 'Asistente VARA', sub: 'Preguntá lo que necesitás' },
-            { href: '/vara-labs', icon: Sparkles, label: 'VARA Labs', sub: 'Negociación y simuladores' },
+            { href: '/propiedades', icon: Sparkles, label: 'Transformar fotos', sub: 'Renovación virtual con IA' },
             { href: '/costos', icon: DollarSign, label: 'Calculá tus costos', sub: 'Costos del vendedor' },
             { href: '/profesionales', icon: Users, label: 'Profesionales', sub: 'Escribanos e inmobiliarias' },
           ].map(({ href, icon: Icon, label, sub }) => (

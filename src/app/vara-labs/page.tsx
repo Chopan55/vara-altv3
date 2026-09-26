@@ -25,6 +25,16 @@ interface LabFeature {
 const FEATURES: LabFeature[] = [
   // ── YA DISPONIBLES ──
   {
+    id: 'lf-019',
+    nombre: 'Visual Intelligence — Transformá fotos',
+    descripcion: 'Subí una foto de un ambiente y VARA te muestra cómo quedaría renovado con IA.',
+    detalle: 'VARA edita la foto que cargás (no genera una propiedad inventada) y te da un presupuesto estimado por reforma: pintura de fachada, renovación de interior, cocina, baño, jardín o dejar el ambiente vacío para fotografiar. También calcula el impacto en el costo total de adquisición.',
+    estado: 'LISTO',
+    href: '/propiedades',
+    icon: Sparkles,
+    tag: 'Vendedores',
+  },
+  {
     id: 'lf-004',
     nombre: 'Comparar propiedades',
     descripcion: 'Hasta 3 propiedades lado a lado: precio, superficie, costo por m².',
