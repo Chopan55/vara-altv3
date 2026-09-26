@@ -1,11 +1,11 @@
 import Link from 'next/link'
-import { ArrowRight, Shield, Zap, TrendingUp, CheckCircle2, ChevronRight, Sparkles, Globe } from 'lucide-react'
+import { ArrowRight, Shield, Zap, TrendingUp, CheckCircle2, ChevronRight, Sparkles, Globe, FileText, BarChart3 } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 
 const risks = [
-  { label: 'DOMINIAL', color: 'text-red-400', bg: 'bg-red-400/10', dot: 'bg-red-400' },
-  { label: 'FISCAL', color: 'text-brand-400', bg: 'bg-brand-400/10', dot: 'bg-brand-400' },
-  { label: 'DOCUMENTAL', color: 'text-emerald-400', bg: 'bg-emerald-400/10', dot: 'bg-emerald-400' },
+  { label: 'Dominial', desc: 'Observación en cadena de titularidad', color: 'text-red-600', bg: 'bg-red-50', dot: 'bg-red-500', badge: 'ALTO' },
+  { label: 'Fiscal', desc: 'Verificar estado de inhibiciones', color: 'text-amber-600', bg: 'bg-amber-50', dot: 'bg-amber-400', badge: 'MEDIO' },
+  { label: 'Documental', desc: 'Falta plano actualizado', color: 'text-slate-600', bg: 'bg-slate-50', dot: 'bg-slate-400', badge: 'BAJO' },
 ]
 
 const costItems = [
@@ -16,13 +16,15 @@ const costItems = [
 
 const features = [
   {
+    icon: BarChart3,
     badge: 'Motor Regulatorio',
-    title: 'Los costos reales de escrituración — calculados desde la fuente',
+    title: 'Costos reales de escrituración, calculados desde la fuente',
     body: 'VARA calcula sellos, honorarios e inscripción para las 24 provincias usando las fuentes legales vigentes. Cada número tiene jurisdicción, fuente y fecha de actualización.',
     stat: '24', statLabel: 'provincias cubiertas',
     cta: '/costos',
   },
   {
+    icon: Shield,
     badge: 'Risk Engine',
     title: 'Detectamos los riesgos antes de que te cuesten plata',
     body: 'Inhibición de bienes, deudas de ABL, documentación faltante, problemas dominiales. Cada riesgo tiene severidad, evidencia y recomendación accionable.',
@@ -30,6 +32,7 @@ const features = [
     cta: '/dashboard',
   },
   {
+    icon: FileText,
     badge: 'Visual Intelligence',
     title: 'IA que transforma cualquier ambiente — antes de comprar',
     body: 'Subí una foto del living o la cocina y VARA analiza qué reformas aplicar, cuánto costarían en USD y cómo quedaría el resultado con DALL-E 3.',
@@ -38,265 +41,311 @@ const features = [
   },
 ]
 
+const steps = [
+  { n: '01', title: 'Cargás tu operación', desc: 'Tipo, precio, provincia y si comprás o vendés.' },
+  { n: '02', title: 'VARA calcula y detecta', desc: 'Costos reales, riesgos por categoría y documentos requeridos.' },
+  { n: '03', title: 'Avanzás con claridad', desc: 'Cada paso tiene una acción concreta, sin ambigüedad.' },
+]
+
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-[#141233] text-white">
+    <main className="min-h-screen bg-white text-slate-900">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
         * { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
-        .gradient-text {
-          background: linear-gradient(135deg, #a5a9f0 0%, #8b8fe6 40%, #ffffff 100%);
+        .vara-gradient {
+          background: linear-gradient(135deg, #5b5fe6 0%, #7c7ff0 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
         }
-        .card-glow { box-shadow: 0 0 0 1px rgba(139,143,230,0.20), 0 20px 60px rgba(0,0,0,0.5); }
-        .hero-glow { background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(139,143,230,0.16) 0%, transparent 70%); }
-        .feature-line { background: linear-gradient(90deg, transparent, rgba(139,143,230,0.35), transparent); height: 1px; }
+        .product-shadow { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06), 0 24px 64px -12px rgba(91,95,230,0.12), 0 0 0 1px rgba(0,0,0,0.06); }
+        .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05); }
       `}</style>
 
       {/* Nav */}
-      <header className="sticky top-0 z-50 bg-[#141233]/85 backdrop-blur-xl border-b border-white/5">
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200/80">
         <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
           <VaraLogo size={26} />
-          <div className="flex items-center gap-4">
-            <Link href="/vara-labs" className="hidden sm:flex items-center gap-1.5 text-sm text-slate-400 font-medium hover:text-white transition-colors">
-              <Sparkles size={13} className="text-brand-400" /> Labs
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-500">
+            <Link href="/#como-funciona" className="hover:text-slate-900 transition-colors">Cómo funciona</Link>
+            <Link href="/vara-labs" className="flex items-center gap-1 hover:text-slate-900 transition-colors">
+              <Sparkles size={12} className="text-brand-500" /> Labs
             </Link>
-            <Link href="/dashboard" className="hidden sm:block text-sm text-slate-400 font-medium hover:text-white transition-colors">Explorar</Link>
-            <Link href="/login" className="text-sm text-slate-300 font-semibold hover:text-white transition-colors">
+            <Link href="/dashboard" className="hover:text-slate-900 transition-colors">Demo</Link>
+          </nav>
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">
               Entrar
             </Link>
-            <Link href="/onboarding" className="bg-brand-500 hover:bg-brand-400 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors flex items-center gap-1.5">
-              Empezar <ArrowRight size={13} />
+            <Link href="/onboarding" className="bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-sm">
+              Empezar gratis <ArrowRight size={13} />
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="hero-glow relative pt-24 pb-20 px-5">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-brand-400/10 border border-brand-400/20 text-brand-300 text-[11px] font-bold px-3 py-1.5 rounded-full mb-8 uppercase tracking-widest">
-            <Globe size={10} /> Argentina · México · LATAM
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black leading-[1.05] mb-6 tracking-tight text-balance">
-            Tu próxima operación<br />
-            <span className="gradient-text">sin sorpresas</span>
-          </h1>
-          <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed text-balance">
-            VARA calcula los costos reales, detecta los riesgos y te dice exactamente qué hacer en cada paso de tu compra o venta inmobiliaria.
-          </p>
-
-          {/* Comprar / Vender — explicit above the fold */}
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
-            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2">
-              <div className="w-2 h-2 rounded-full bg-brand-400" />
-              <span className="text-sm font-semibold text-slate-300">Comprando</span>
-              <span className="text-xs text-slate-600">costos · riesgos · negociación</span>
+      {/* Hero — two-column layout */}
+      <section className="max-w-7xl mx-auto px-5 pt-16 pb-20 lg:pt-20 lg:pb-24">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          {/* Left: copy */}
+          <div>
+            <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-100 text-brand-700 text-[11px] font-bold px-3 py-1.5 rounded-full mb-6 uppercase tracking-widest">
+              <Globe size={10} /> Argentina · México · LATAM
             </div>
-            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span className="text-sm font-semibold text-slate-300">Vendiendo</span>
-              <span className="text-xs text-slate-600">publicación · ofertas · checklist</span>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-[1.08] mb-5 tracking-tight text-balance text-slate-900">
+              Comprá o vendé<br />
+              una propiedad<br />
+              <span className="vara-gradient">sin sorpresas.</span>
+            </h1>
+            <p className="text-lg text-slate-500 mb-8 leading-relaxed max-w-lg">
+              VARA organiza documentos, costos, riesgos, visitas, ofertas y negociación, y te indica qué hacer en cada paso de la compra o venta.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+              <Link href="/onboarding" className="bg-brand-600 hover:bg-brand-500 text-white font-bold px-7 py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 text-base shadow-sm">
+                Empezar gratis <ArrowRight size={15} />
+              </Link>
+              <Link href="/dashboard" className="border border-slate-200 hover:border-slate-300 text-slate-700 font-semibold px-7 py-3.5 rounded-xl transition-colors text-base flex items-center justify-center gap-2">
+                Ver demo →
+              </Link>
             </div>
-          </div>
+            <p className="text-xs text-slate-400">Sin registro · Empezá en 2 minutos</p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
-            <Link href="/onboarding" className="bg-brand-500 hover:bg-brand-400 text-white font-bold px-8 py-4 rounded-2xl transition-all hover:scale-[1.02] flex items-center justify-center gap-2 text-base shadow-lg shadow-brand-500/30">
-              Empezar operación gratis <ArrowRight size={16} />
-            </Link>
-            <Link href="/dashboard" className="bg-white/5 hover:bg-white/10 text-white font-semibold px-8 py-4 rounded-2xl border border-white/10 transition-colors text-base">
-              Ver el producto →
-            </Link>
-          </div>
-          <p className="text-xs text-slate-600">Sin registro · Empezá en 2 minutos</p>
-        </div>
-
-        {/* Product mockup — 6-story: operación / estado / riesgos / costos / bloqueo / recomendación */}
-        <div className="max-w-3xl mx-auto mt-16">
-          <div className="card-glow bg-[#1e1b47] rounded-3xl overflow-hidden border border-white/5">
-            {/* Fake browser bar */}
-            <div className="bg-slate-800/60 px-5 py-3 flex items-center gap-3 border-b border-white/5">
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-red-500/60" />
-                <div className="w-3 h-3 rounded-full bg-brand-500/60" />
-                <div className="w-3 h-3 rounded-full bg-emerald-500/60" />
+            {/* Pills */}
+            <div className="flex flex-wrap gap-2 mt-8">
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-lg px-3 py-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+                <span className="text-xs font-semibold text-slate-700">Comprando</span>
+                <span className="text-xs text-slate-400">costos · riesgos · negociación</span>
               </div>
-              <div className="flex-1 bg-slate-700/50 rounded-lg text-[11px] text-slate-500 px-3 py-1 text-center">
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-lg px-3 py-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span className="text-xs font-semibold text-slate-700">Vendiendo</span>
+                <span className="text-xs text-slate-400">publicación · ofertas · checklist</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: product mockup — light UI */}
+          <div className="product-shadow rounded-2xl overflow-hidden border border-slate-200/80 bg-white">
+            {/* App chrome */}
+            <div className="bg-slate-50 border-b border-slate-200/80 px-4 py-2.5 flex items-center gap-3">
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+              </div>
+              <div className="flex-1 bg-white border border-slate-200 rounded-md text-[10px] text-slate-400 px-3 py-0.5 text-center font-medium">
                 vara.app
               </div>
             </div>
 
-            <div className="p-5 md:p-8">
-              {/* 1 + 2: operación y estado */}
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <div className="text-[10px] font-bold text-brand-400 uppercase tracking-widest mb-1">Buenos Aires · Compra · USD 185.000</div>
-                  <h3 className="text-white font-black text-xl">Compra de casa</h3>
-                  <p className="text-slate-500 text-sm mt-0.5">Pilar · Av. Los Robles 432</p>
+            {/* Top bar with tabs */}
+            <div className="border-b border-slate-100 px-5 pt-4 pb-0">
+              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Buenos Aires · Compra · USD 185.000</div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-black text-slate-900 text-lg">Compra de departamento</h3>
+                <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> En curso
                 </div>
-                <div className="text-right">
-                  <div className="text-3xl font-black text-white">42%</div>
-                  <div className="text-slate-500 text-xs">completado</div>
-                  <div className="w-16 h-1.5 bg-slate-700 rounded-full mt-2 ml-auto">
-                    <div className="w-[42%] h-full bg-brand-400 rounded-full" />
+              </div>
+              <div className="flex gap-4 text-[11px] font-semibold">
+                {['Operación', 'Documentos', 'Costos', 'Riesgos', 'Negociación'].map((t, i) => (
+                  <span key={t} className={i === 0 ? 'text-brand-600 border-b-2 border-brand-500 pb-2' : 'text-slate-400 pb-2'}>{t}</span>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-5 space-y-3">
+              {/* Progress */}
+              <div className="flex items-center gap-3 bg-slate-50 rounded-xl p-3">
+                <div className="flex-1">
+                  <div className="flex justify-between mb-1.5">
+                    <span className="text-xs font-semibold text-slate-700">Progreso de operación</span>
+                    <span className="text-xs font-black text-brand-600">42%</span>
+                  </div>
+                  <div className="h-2 bg-slate-200 rounded-full">
+                    <div className="w-[42%] h-full bg-brand-500 rounded-full" />
                   </div>
                 </div>
               </div>
 
-              {/* 5: bloqueo */}
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-center gap-3 mb-4">
-                <div className="w-2 h-2 bg-red-400 rounded-full flex-shrink-0" />
+              {/* Next action */}
+              <div className="bg-brand-600 rounded-xl p-3.5 flex items-center gap-3">
+                <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Zap size={13} className="text-white" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <span className="text-red-400 font-bold text-xs">Bloqueada ·</span>
-                  <span className="text-slate-400 text-xs ml-1">Solicitar escritura · Comprador/Escribano</span>
+                  <p className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-0.5">Tu próximo paso</p>
+                  <p className="text-sm font-bold text-white">Solicitar escritura</p>
                 </div>
-                <span className="text-xs text-slate-500 flex-shrink-0">4 docs pendientes</span>
+                <ChevronRight size={14} className="text-white/50 flex-shrink-0" />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                {/* 3: riesgos */}
-                <div className="bg-slate-800/50 rounded-2xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Shield size={13} className="text-slate-400" />
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Riesgos detectados</span>
-                    <span className="ml-auto bg-red-500/20 text-red-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">3</span>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Riesgos */}
+                <div className="border border-slate-100 rounded-xl p-3 card-shadow">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <Shield size={11} className="text-slate-500" />
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Riesgos</span>
+                    </div>
+                    <span className="bg-red-100 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">3</span>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {risks.map(r => (
-                      <div key={r.label} className={`${r.bg} rounded-xl px-3 py-2 flex items-center gap-2`}>
+                      <div key={r.label} className={`${r.bg} rounded-lg px-2 py-1.5 flex items-center gap-1.5`}>
                         <div className={`w-1.5 h-1.5 rounded-full ${r.dot} flex-shrink-0`} />
-                        <span className={`text-xs font-bold ${r.color}`}>{r.label}</span>
-                        <ChevronRight size={10} className="ml-auto text-slate-600" />
+                        <span className={`text-[10px] font-bold ${r.color} flex-1`}>{r.label}</span>
+                        <span className={`text-[9px] font-bold ${r.color} opacity-70`}>{r.badge}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* 4: costos */}
-                <div className="bg-slate-800/50 rounded-2xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <TrendingUp size={13} className="text-slate-400" />
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Costos reales</span>
+                {/* Costos */}
+                <div className="border border-slate-100 rounded-xl p-3 card-shadow">
+                  <div className="flex items-center gap-1.5 mb-2.5">
+                    <TrendingUp size={11} className="text-slate-500" />
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Costos</span>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {costItems.map(c => (
-                      <div key={c.label} className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xs text-slate-300 font-medium truncate">{c.label}</p>
-                          <p className="text-[10px] text-slate-600 truncate">{c.src}</p>
-                        </div>
-                        <span className="text-xs font-bold text-brand-400 flex-shrink-0">{c.val}</span>
+                      <div key={c.label} className="flex justify-between gap-1">
+                        <p className="text-[10px] text-slate-500 truncate">{c.label.split(' ')[0]}</p>
+                        <span className="text-[10px] font-bold text-brand-600 flex-shrink-0">{c.val}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 pt-3 border-t border-slate-700 flex justify-between">
-                    <span className="text-xs text-slate-400">Total gastos</span>
-                    <span className="text-sm font-black text-white">USD 5.920</span>
+                  <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between">
+                    <span className="text-[10px] text-slate-400">Total</span>
+                    <span className="text-xs font-black text-slate-900">USD 5.920</span>
                   </div>
                 </div>
               </div>
 
-              {/* 6: VARA recomienda */}
-              <div className="bg-brand-400/10 border border-brand-400/20 rounded-xl p-3 flex items-start gap-3">
-                <Zap size={13} className="text-brand-400 flex-shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <span className="text-brand-400 font-bold text-xs">VARA recomienda ahora: </span>
-                  <span className="text-slate-300 text-xs">Pedile al vendedor la inhibición de bienes antes de firmar el boleto — sin esto la operación no puede avanzar.</span>
-                </div>
+              {/* VARA recomienda */}
+              <div className="border border-brand-100 bg-brand-50 rounded-xl p-3 flex items-start gap-2.5">
+                <Sparkles size={11} className="text-brand-600 flex-shrink-0 mt-0.5" />
+                <p className="text-[11px] text-brand-800 leading-snug">
+                  <strong>VARA recomienda:</strong> Pedile la inhibición de bienes antes de firmar el boleto.
+                </p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Stats */}
-      <div className="feature-line" />
-      <section className="max-w-4xl mx-auto px-5 py-14 grid grid-cols-2 md:grid-cols-4 gap-6">
-        {[
-          { n: '24', label: 'provincias con costos reales' },
-          { n: '6', label: 'categorías de riesgo cubiertas' },
-          { n: 'IA', label: 'análisis visual de ambientes' },
-          { n: '0', label: 'costos sin fuente declarada' },
-        ].map(({ n, label }) => (
-          <div key={label} className="text-center">
-            <div className="text-4xl font-black text-brand-400 mb-1">{n}</div>
-            <div className="text-xs text-slate-500 leading-relaxed">{label}</div>
-          </div>
-        ))}
+      {/* Stats bar */}
+      <div className="border-y border-slate-100 bg-slate-50">
+        <div className="max-w-4xl mx-auto px-5 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
+          {[
+            { n: '24', label: 'provincias con costos reales' },
+            { n: '6', label: 'categorías de riesgo cubiertas' },
+            { n: 'IA', label: 'análisis visual de ambientes' },
+            { n: '0', label: 'costos sin fuente declarada' },
+          ].map(({ n, label }) => (
+            <div key={label} className="text-center">
+              <div className="text-3xl font-black text-brand-600 mb-1">{n}</div>
+              <div className="text-xs text-slate-500 leading-relaxed">{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* How it works */}
+      <section id="como-funciona" className="max-w-5xl mx-auto px-5 py-20">
+        <div className="text-center mb-14">
+          <p className="text-xs font-bold text-brand-600 uppercase tracking-widest mb-3">Cómo funciona</p>
+          <h2 className="text-3xl md:text-4xl font-black text-slate-900 text-balance">
+            De la confusión a la claridad<br className="hidden md:block" /> en tres pasos
+          </h2>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {steps.map((s) => (
+            <div key={s.n} className="border border-slate-100 rounded-2xl p-6 card-shadow bg-white">
+              <div className="text-4xl font-black text-slate-100 mb-4 leading-none">{s.n}</div>
+              <h3 className="font-bold text-slate-900 mb-2">{s.title}</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
+            </div>
+          ))}
+        </div>
       </section>
-      <div className="feature-line" />
 
       {/* Features */}
-      <section className="py-20 px-5">
+      <section className="bg-slate-50 border-y border-slate-100 py-20 px-5">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-xs font-bold text-brand-400 uppercase tracking-widest mb-3">Capacidades</p>
-            <h2 className="text-3xl md:text-4xl font-black text-white text-balance">
+          <div className="text-center mb-14">
+            <p className="text-xs font-bold text-brand-600 uppercase tracking-widest mb-3">Capacidades</p>
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 text-balance">
               Toda la complejidad en VARA.<br className="hidden md:block" /> Cero en tu cabeza.
             </h2>
           </div>
 
-          <div className="space-y-4">
-            {features.map((f) => (
-              <div key={f.badge} className="bg-[#1e1b47] border border-white/8 rounded-3xl p-6 md:p-8 hover:border-brand-400/20 transition-colors group">
-                <div className="flex flex-col md:flex-row md:items-center gap-6">
-                  <div className="flex-1">
-                    <div className="inline-flex items-center gap-1.5 bg-brand-400/10 border border-brand-400/20 text-brand-400 text-[10px] font-black px-2.5 py-1 rounded-full mb-4 uppercase tracking-wider">
-                      <Zap size={9} /> {f.badge}
+          <div className="space-y-3">
+            {features.map((f) => {
+              const Icon = f.icon
+              return (
+                <div key={f.badge} className="bg-white border border-slate-100 rounded-2xl p-6 md:p-7 hover:border-brand-200 hover:shadow-sm transition-all group card-shadow">
+                  <div className="flex flex-col md:flex-row md:items-start gap-5">
+                    <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Icon size={18} className="text-brand-600" />
                     </div>
-                    <h3 className="text-xl md:text-2xl font-bold text-white mb-3 leading-snug">{f.title}</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed mb-5">{f.body}</p>
-                    <Link href={f.cta} className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-400 hover:text-brand-300 transition-colors group-hover:gap-2.5">
-                      Ver en el producto <ArrowRight size={13} />
-                    </Link>
-                  </div>
-                  <div className="md:w-32 text-center md:text-right flex-shrink-0">
-                    <div className="text-5xl md:text-6xl font-black text-white/10 group-hover:text-brand-400/20 transition-colors leading-none">{f.stat}</div>
-                    <div className="text-xs text-slate-600 mt-1 leading-snug">{f.statLabel}</div>
+                    <div className="flex-1">
+                      <div className="inline-flex items-center gap-1.5 bg-brand-50 text-brand-700 text-[10px] font-black px-2 py-0.5 rounded-full mb-3 uppercase tracking-wider">
+                        {f.badge}
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-900 mb-2 leading-snug">{f.title}</h3>
+                      <p className="text-slate-500 text-sm leading-relaxed mb-4">{f.body}</p>
+                      <Link href={f.cta} className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 hover:text-brand-500 transition-colors">
+                        Ver en el producto <ArrowRight size={13} />
+                      </Link>
+                    </div>
+                    <div className="md:w-24 text-center md:text-right flex-shrink-0 hidden md:block">
+                      <div className="text-5xl font-black text-slate-100 group-hover:text-brand-100 transition-colors leading-none">{f.stat}</div>
+                      <div className="text-[10px] text-slate-400 mt-1 leading-snug">{f.statLabel}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Trust quote */}
+      <section className="max-w-3xl mx-auto px-5 py-20 text-center">
+        <div className="border border-slate-100 rounded-2xl p-10 card-shadow bg-white">
+          <div className="text-3xl text-brand-400 mb-5 font-serif leading-none">&ldquo;</div>
+          <blockquote className="text-xl md:text-2xl font-bold text-slate-900 leading-snug mb-5 text-balance">
+            Si VARA no tiene suficiente información para determinarlo, VARA dice que no sabe.
+          </blockquote>
+          <p className="text-slate-400 text-sm mb-6">Toda la inteligencia tiene fuente, jurisdicción y nivel de confianza declarado.</p>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            {['Fuente verificada', 'Jurisdicción declarada', 'Nivel de confianza declarado'].map(t => (
+              <span key={t} className="flex items-center gap-1.5 text-xs text-slate-500">
+                <CheckCircle2 size={13} className="text-emerald-500" /> {t}
+              </span>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Trust */}
-      <section className="px-5 py-16">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="bg-[#1e1b47] border border-white/8 rounded-3xl p-10 card-glow">
-            <div className="text-4xl text-brand-400 mb-6 font-serif leading-none">&ldquo;</div>
-            <blockquote className="text-xl md:text-2xl font-bold text-white leading-snug mb-6 text-balance">
-              Si VARA no tiene suficiente información para determinarlo, VARA dice que no sabe.
-            </blockquote>
-            <p className="text-slate-500 text-sm">Toda la inteligencia tiene fuente, jurisdicción y nivel de confianza declarado.</p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              {['Fuente verificada', 'Jurisdicción declarada', 'Nivel de confianza declarado'].map(t => (
-                <span key={t} className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                  <CheckCircle2 size={11} className="text-emerald-400" /> {t}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* CTA final */}
-      <section className="px-5 pb-20">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="bg-gradient-to-br from-brand-400/20 via-brand-400/5 to-transparent border border-brand-400/20 rounded-3xl p-12">
-            <h2 className="text-3xl md:text-4xl font-black text-white mb-4 text-balance">
+      <section className="px-5 pb-24">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-brand-600 rounded-2xl p-10 md:p-14 text-center text-white">
+            <h2 className="text-3xl md:text-4xl font-black mb-4 text-balance">
               Tu próxima compra o venta,<br className="hidden md:block" /> con claridad total
             </h2>
-            <p className="text-slate-400 mb-8 text-balance">Gratis. Sin registro. Listo en 2 minutos.</p>
+            <p className="text-brand-200 mb-8 text-base">Gratis. Sin registro. Listo en 2 minutos.</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/onboarding" className="bg-brand-500 hover:bg-brand-400 text-white font-black px-8 py-4 rounded-2xl transition-all hover:scale-[1.02] flex items-center justify-center gap-2 text-base shadow-xl shadow-brand-500/30">
-                Empezar mi operación <ArrowRight size={16} />
+              <Link href="/onboarding" className="bg-white text-brand-700 font-black px-8 py-3.5 rounded-xl transition-all hover:bg-brand-50 flex items-center justify-center gap-2 text-base shadow-sm">
+                Empezar mi operación <ArrowRight size={15} />
               </Link>
-              <Link href="/vara-labs" className="bg-white/5 hover:bg-white/10 text-white font-semibold px-8 py-4 rounded-2xl border border-white/10 transition-colors flex items-center justify-center gap-2">
-                <Sparkles size={14} className="text-brand-400" /> Ver VARA Labs
+              <Link href="/vara-labs" className="bg-white/10 hover:bg-white/20 text-white font-semibold px-8 py-3.5 rounded-xl border border-white/20 transition-colors flex items-center justify-center gap-2">
+                <Sparkles size={14} /> Ver VARA Labs
               </Link>
             </div>
           </div>
@@ -304,14 +353,14 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 px-5 py-8">
+      <footer className="border-t border-slate-100 px-5 py-8 bg-white">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <VaraLogo size={22} />
-          <p className="text-xs text-slate-600">© 2026 VARA · Plataforma inmobiliaria</p>
-          <div className="flex items-center gap-4 text-xs text-slate-600">
-            <Link href="/vara-labs" className="hover:text-slate-400 transition-colors">Labs</Link>
-            <Link href="/dashboard" className="hover:text-slate-400 transition-colors">Explorar</Link>
-            <Link href="/costos" className="hover:text-slate-400 transition-colors">Costos</Link>
+          <p className="text-xs text-slate-400">© 2026 VARA · Plataforma inmobiliaria</p>
+          <div className="flex items-center gap-5 text-xs text-slate-400">
+            <Link href="/vara-labs" className="hover:text-slate-700 transition-colors">Labs</Link>
+            <Link href="/dashboard" className="hover:text-slate-700 transition-colors">Explorar</Link>
+            <Link href="/costos" className="hover:text-slate-700 transition-colors">Costos</Link>
           </div>
         </div>
       </footer>
