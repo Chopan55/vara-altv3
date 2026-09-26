@@ -3,8 +3,10 @@ import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, ExternalLink, Info, MessageSquare } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { useOperations } from '@/hooks/useOperations'
-import type { Transaction } from '@/types'
+import type { Transaction, CountryCode } from '@/types'
 import { getProfessionalLabel } from '@/lib/utils'
+import { useJurisdiction } from '@/hooks/useJurisdiction'
+import { useMemo } from 'react'
 
 const specialtyEmoji: Record<string, string> = {
   ESCRIBANO: '📜', ABOGADO: '⚖️', AGRIMENSOR: '📐', TASADOR: '🏠', GESTOR: '📋',
@@ -64,6 +66,15 @@ export default function ProfesionalesPage() {
   const { activeTransactionData } = useOperations()
   const operationNeeds = getOperationNeeds(activeTransactionData)
 
+  const country = useMemo<CountryCode>(() => {
+    try { return (localStorage.getItem('vara_country') as CountryCode) || 'AR' } catch { return 'AR' }
+  }, [])
+  const j = useJurisdiction(country)
+
+  const closingProfLabel = j.professionalLabels.CLOSING_PROFESSIONAL
+  const legalLabel = j.professionalLabels.LEGAL_ADVISOR
+  const surveyorLabel = j.professionalLabels.SURVEYOR
+
   return (
     <div className="min-h-screen bg-[var(--background)]">
       <header className="px-4 lg:px-6 pt-8 pb-3">
@@ -107,7 +118,9 @@ export default function ProfesionalesPage() {
                 <div key={need} className="flex items-center gap-3 bg-brand-50 rounded-xl px-3 py-2.5">
                   <span className="text-base">{specialtyEmoji[need] ?? '👤'}</span>
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">{getProfessionalLabel(need)}</p>
+                    <p className="text-sm font-semibold text-slate-800">
+                      {need === 'ESCRIBANO' ? closingProfLabel : need === 'ABOGADO' ? legalLabel : need === 'AGRIMENSOR' ? surveyorLabel : getProfessionalLabel(need)}
+                    </p>
                     <p className="text-[11px] text-slate-500">
                       {need === 'ESCRIBANO' && 'Hay documentación de escritura pendiente o tareas bloqueadas.'}
                       {need === 'AGRIMENSOR' && 'Faltan planos o mensura de la propiedad.'}
