@@ -497,6 +497,11 @@ function OperationCard({ op, isActive, onSelect, getTransactionData, onDelete, i
               <h3 className="font-bold text-slate-900 text-base leading-tight truncate">{op.title}</h3>
               <p className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
                 <MapPin size={10} aria-hidden="true" />{op.city}{op.province ? `, ${op.province}` : ''}
+                {op.country && op.country !== 'AR' && (
+                  <span className="ml-1 text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">
+                    {op.country}
+                  </span>
+                )}
               </p>
             </button>
             <div className="flex items-center gap-1.5 flex-shrink-0">
