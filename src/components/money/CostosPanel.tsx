@@ -5,6 +5,7 @@ import { ArrowLeft, Info, AlertCircle, ChevronDown, ChevronRight, CreditCard, Li
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { formatPrice } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
+import { useJurisdiction } from '@/hooks/useJurisdiction'
 import { generateChecklist, formatPercent, getProvinceList } from '@/lib/regulations'
 import type { ProvinceCode } from '@/data/regulations/types'
 
@@ -13,7 +14,8 @@ const PROVINCE_OPTIONS = getProvinceList().map(p => ({ code: p.code, label: p.di
 export function CostosPanel() {
   const vara = useVaraState()
   const isSeller = vara.loaded && vara.journeyType === 'SELL_PROPERTY'
-  const [selectedProvince, setSelectedProvince] = useState<string>('BUENOS_AIRES')
+  const j = useJurisdiction()
+  const [selectedProvince, setSelectedProvince] = useState<string>(j.defaultProvinceCode)
 
   /*
    * Arranca en 0, no en 185.000.
@@ -85,7 +87,7 @@ export function CostosPanel() {
 
         {/* Selector de provincia */}
         <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-4">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Provincia del inmueble</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">{j.subdivisionLabel} del inmueble</p>
           <div className="relative">
             <select
               value={selectedProvince}
@@ -100,7 +102,7 @@ export function CostosPanel() {
           </div>
           {checklist.dataConfidence !== 'VERIFIED' && (
             <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
-              <AlertCircle size={11} /> Datos {checklist.dataConfidence === 'ESTIMATED' ? 'estimados' : 'parciales'} — verificar con escribano local
+              <AlertCircle size={11} /> Datos {checklist.dataConfidence === 'ESTIMATED' ? 'estimados' : 'parciales'} — verificar con {j.professionalLabels.CLOSING_PROFESSIONAL.toLowerCase()} local
             </p>
           )}
         </div>
@@ -212,7 +214,7 @@ export function CostosPanel() {
         <div className="flex gap-2 bg-amber-50 rounded-2xl p-4">
           <Info size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-amber-700 leading-relaxed">
-            Valores estimativos basados en fuentes oficiales y secundarias. Confianza del dato: <strong>{checklist.dataConfidence === 'VERIFIED' ? 'VERIFICADO' : checklist.dataConfidence === 'PARTIAL' ? 'PARCIAL' : 'ESTIMADO'}</strong>. Consultá con un escribano matriculado en {checklist.provinceName} para la liquidación exacta.
+            Valores estimativos basados en fuentes oficiales y secundarias. Confianza del dato: <strong>{checklist.dataConfidence === 'VERIFIED' ? 'VERIFICADO' : checklist.dataConfidence === 'PARTIAL' ? 'PARCIAL' : 'ESTIMADO'}</strong>. Consultá con {j.professionalLabels.CLOSING_PROFESSIONAL.toLowerCase()} matriculado/a en {checklist.provinceName} para la liquidación exacta.
           </p>
         </div>
 
