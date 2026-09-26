@@ -4,6 +4,16 @@ export function cn(...inputs: ClassValue[]) {
   return clsx(inputs)
 }
 
+// Formateador determinístico: produce el mismo string en Node.js y en el browser.
+// toLocaleString('es-AR') varía según los datos ICU instalados en el servidor,
+// causando hydration error #418 cuando el resultado del SSR difiere del cliente.
+function numToAR(n: number): string {
+  const int = Math.abs(Math.round(n)).toString()
+  return int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
+const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
 export function formatPrice(amount: number, currency: 'USD' | 'ARS' = 'USD'): string {
   /*
    * Un dato que falta se dice, no se imprime como "USD NaN".
@@ -14,9 +24,9 @@ export function formatPrice(amount: number, currency: 'USD' | 'ARS' = 'USD'): st
     return currency === 'USD' ? 'USD —' : '$ —'
   }
   if (currency === 'USD') {
-    return `USD ${amount.toLocaleString('es-AR')}`
+    return `USD ${numToAR(amount)}`
   }
-  return `$ ${amount.toLocaleString('es-AR')}`
+  return `$ ${numToAR(amount)}`
 }
 
 export function formatDate(dateStr: string): string {
@@ -24,12 +34,15 @@ export function formatDate(dateStr: string): string {
   if (!dateStr) return ''
   const date = new Date(dateStr + 'T00:00:00')
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
+  const d = String(date.getDate()).padStart(2, '0')
+  const m = MONTHS_ES[date.getMonth()]
+  const y = date.getFullYear()
+  return `${d} ${m} ${y}`
 }
 
 export function formatSurface(m2: number): string {
   if (typeof m2 !== 'number' || !Number.isFinite(m2)) return '— m²'
-  return `${m2.toLocaleString('es-AR')} m²`
+  return `${numToAR(m2)} m²`
 }
 
 

@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Handshake, History } from 'lucide-react'
@@ -115,6 +115,15 @@ export default function OperacionPage() {
   const userOp = !operation && !isDemoOperation ? getOperation(operationId) : null
   const txn = operation ?? (userOp ? buildTransaction(userOp) : null) ?? (isDemoOperation ? mockTransaction : null)
 
+  // Todos los hooks deben declararse antes de cualquier return condicional (Rules of Hooks).
+  // El sidebar linkea directo a una pestaña (?tab=documentos).
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
+  const [openStage, setOpenStage] = useState<string>('')
+  useEffect(() => {
+    if (txn && !openStage) setOpenStage(txn.currentStageId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [txn?.currentStageId])
+
   if (!txn) {
     return (
       <div className="min-h-screen bg-[var(--background)] flex items-center justify-center px-4">
@@ -132,10 +141,6 @@ export default function OperacionPage() {
 
   const intel = computeOperationIntel(txn)
   const nextAction = primaryAction({ transaction: txn })
-  // El sidebar linkea directo a una pestaña (?tab=documentos). Sin esto,
-  // "Documentos" y "Riesgos" del menú caerían siempre en Tareas.
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
-  const [openStage, setOpenStage] = useState<string>(txn.currentStageId)
 
   const riskCount = txn.risks?.length ?? 0
   const highRisks = txn.risks?.filter(r => r.severity === 'HIGH').length ?? 0
@@ -322,15 +327,22 @@ export default function OperacionPage() {
       )}
 
       <div className="bg-white border-b border-slate-100 sticky top-[57px] z-10">
-        <div className="max-w-4xl mx-auto px-4 flex overflow-x-auto no-scrollbar">
-          {tabs.map(({ id, label, icon: Icon, badge }) => (
-            <button key={id} onClick={() => setActiveTab(id)}
-              className={cn('flex items-center gap-1.5 px-3 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0',
-                activeTab === id ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-400')}>
-              <Icon size={14} />{label}
-              {badge && <span className="ml-0.5 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none">{badge}</span>}
-            </button>
-          ))}
+        {/* overflow-x-auto en el contenedor externo; pl-4 al primer ítem y pr-4 al spacer final
+            para que el padding se incluya en el área de scroll y no corte el último tab en mobile. */}
+        <div className="max-w-4xl mx-auto overflow-x-auto no-scrollbar">
+          <div className="flex w-max min-w-full">
+            {tabs.map(({ id, label, icon: Icon, badge }, i) => (
+              <button key={id} onClick={() => setActiveTab(id)}
+                className={cn(
+                  'flex items-center gap-1.5 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0',
+                  i === 0 ? 'pl-4 pr-3' : i === tabs.length - 1 ? 'pl-3 pr-4' : 'px-3',
+                  activeTab === id ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-400',
+                )}>
+                <Icon size={14} />{label}
+                {badge && <span className="ml-0.5 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none">{badge}</span>}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
