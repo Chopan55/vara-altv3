@@ -1,6 +1,7 @@
 import { PROVINCE_MAP, ONBOARDING_PROVINCE_TO_CODE, ALL_PROVINCES } from '@/data/regulations/provinces'
 import type { RegulatoryChecklist, ProvinceCode, CostBreakdown, CostLine, ChecklistStage } from '@/data/regulations/types'
-import type { OperationType } from '@/types'
+import type { OperationType, CountryCode } from '@/types'
+import { getJurisdiction } from '@/lib/jurisdiction'
 
 const UNIVERSAL_DOCS_SELLER: ChecklistStage['tasks'] = [
   { id: 'u-v1', title: 'DNI vigente + CUIT/CUIL', description: 'Documento Nacional de Identidad vigente más constancia de CUIT o CUIL.', responsibleParty: 'Vendedor', documents: ['DNI', 'Constancia CUIT/CUIL'] },
@@ -28,20 +29,24 @@ function makeCostLine(label: string, min: number, max: number, source: string, n
   return { label, minAmount: min, maxAmount: max, currency: 'USD', isEstimate: true, source, notes }
 }
 
-export function getRegulation(provinceCode: string) {
-  return PROVINCE_MAP[provinceCode] ?? PROVINCE_MAP['BUENOS_AIRES']
+export function getRegulation(provinceCode: string, country?: CountryCode | null) {
+  const defaultCode = getJurisdiction(country).defaultProvinceCode
+  return PROVINCE_MAP[provinceCode] ?? PROVINCE_MAP[defaultCode] ?? PROVINCE_MAP['BUENOS_AIRES']
 }
 
-export function resolveProvinceCode(onboardingProvince: string): ProvinceCode {
-  return (ONBOARDING_PROVINCE_TO_CODE[onboardingProvince] ?? 'BUENOS_AIRES') as ProvinceCode
+export function resolveProvinceCode(onboardingProvince: string, country?: CountryCode | null): ProvinceCode {
+  const defaultCode = getJurisdiction(country).defaultProvinceCode
+  return (ONBOARDING_PROVINCE_TO_CODE[onboardingProvince] ?? defaultCode) as ProvinceCode
 }
 
 export function generateChecklist(
   provinceCode: ProvinceCode | string,
   operationType: OperationType,
-  propertyValueUSD = 0
+  propertyValueUSD = 0,
+  country?: CountryCode | null,
 ): RegulatoryChecklist {
-  const reg = PROVINCE_MAP[provinceCode] ?? PROVINCE_MAP['BUENOS_AIRES']
+  const defaultCode = getJurisdiction(country).defaultProvinceCode
+  const reg = PROVINCE_MAP[provinceCode] ?? PROVINCE_MAP[defaultCode] ?? PROVINCE_MAP['BUENOS_AIRES']
 
   const stampBuyerRate = reg.stampTax.totalRate * reg.stampTax.buyerShare
   const stampSellerRate = reg.stampTax.totalRate * reg.stampTax.sellerShare
