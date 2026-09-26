@@ -109,7 +109,7 @@ export default function LandingPage() {
                 <div className="w-3 h-3 rounded-full bg-emerald-500/60" />
               </div>
               <div className="flex-1 bg-slate-700/50 rounded-lg text-[11px] text-slate-500 px-3 py-1 text-center">
-                propos-mvp.vercel.app/operacion/txn-001
+                vara.app/operacion/txn-001
               </div>
             </div>
 
