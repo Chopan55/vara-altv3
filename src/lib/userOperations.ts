@@ -152,7 +152,11 @@ export async function migrateOperationsToSupabase(): Promise<number> {
       }
     } catch {}
   }
-  try { localStorage.setItem(OPS_MIGRATED_KEY, '1') } catch {}
+  // Solo marcar migrado si al menos una operación fue subida exitosamente,
+  // o si no había nada que migrar. Nunca marcar si hubo intentos fallidos.
+  if (n > 0 || local.length === 0) {
+    try { localStorage.setItem(OPS_MIGRATED_KEY, '1') } catch {}
+  }
   return n
 }
 
@@ -182,6 +186,23 @@ export async function createOperationAnywhere(input: NewOperationInput): Promise
     } catch (err) { log.error('operations.create.supabase.failed', err) }
   }
   return local
+}
+
+/**
+ * Carga una operación por ID. Busca primero en local; si no la encuentra y
+ * hay sesión activa, la busca en Supabase. Así las operaciones remotas
+ * (guardadas en la base pero no en este navegador) pueden abrirse normalmente.
+ */
+export async function loadOperation(id: string): Promise<StoredOperation | null> {
+  const local = getOperation(id)
+  if (local) return local
+  if (await hasSession()) {
+    try {
+      const { getOperationById } = await import('@/lib/supabase/operations')
+      return await getOperationById(id)
+    } catch (err) { log.error('operations.loadById.supabase.failed', err) }
+  }
+  return null
 }
 
 export async function deleteOperationAnywhere(id: string): Promise<void> {

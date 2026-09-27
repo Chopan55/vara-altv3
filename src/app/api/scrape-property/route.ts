@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { requireAuth } from '@/lib/api/requireAuth'
 
 export const maxDuration = 60
 
@@ -86,13 +87,47 @@ function assertPublicUrl(raw: string): URL {
 function num(v: unknown): number | undefined {
   if (typeof v === 'number') return isFinite(v) && v > 0 ? v : undefined
   if (typeof v !== 'string') return undefined
-  // "US$ 185.000" / "185,000" / "420 m²"
+  // "US$ 185.000" / "185,000" / "185.000" / "420 m²"
   const cleaned = v.replace(/[^\d.,]/g, '')
   if (!cleaned) return undefined
-  // Argentine format: dot = thousands, comma = decimals
-  const normalized = cleaned.includes(',')
-    ? cleaned.replace(/\./g, '').replace(',', '.')
-    : cleaned.replace(/\.(?=\d{3}\b)/g, '')
+
+  const hasDot = cleaned.includes('.')
+  const hasComma = cleaned.includes(',')
+  let normalized: string
+
+  if (hasComma && hasDot) {
+    // Ambos separadores: el que aparece último es el decimal
+    const lastDot = cleaned.lastIndexOf('.')
+    const lastComma = cleaned.lastIndexOf(',')
+    if (lastDot > lastComma) {
+      // Formato: 1,234.56 (internacional) — coma = miles, punto = decimal
+      normalized = cleaned.replace(/,/g, '')
+    } else {
+      // Formato: 1.234,56 (argentino) — punto = miles, coma = decimal
+      normalized = cleaned.replace(/\./g, '').replace(',', '.')
+    }
+  } else if (hasComma && !hasDot) {
+    // Solo coma: si hay exactamente 3 dígitos después → miles (185,000 → 185000)
+    // Si hay menos de 3 dígitos después → decimal (185,5 → 185.5)
+    const afterComma = cleaned.split(',')[1] ?? ''
+    if (afterComma.length === 3) {
+      normalized = cleaned.replace(',', '') // separador de miles
+    } else {
+      normalized = cleaned.replace(',', '.') // separador decimal
+    }
+  } else if (hasDot && !hasComma) {
+    // Solo punto: si hay exactamente 3 dígitos después → miles (185.000 → 185000)
+    // Si hay menos de 3 dígitos → decimal (185.5 → 185.5)
+    const afterDot = cleaned.split('.')[1] ?? ''
+    if (afterDot.length === 3) {
+      normalized = cleaned.replace('.', '') // separador de miles
+    } else {
+      normalized = cleaned // ya es decimal
+    }
+  } else {
+    normalized = cleaned
+  }
+
   const n = parseFloat(normalized)
   return isFinite(n) && n > 0 ? n : undefined
 }
@@ -315,6 +350,9 @@ function cleanPhotos(raw: string[]): string[] {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth()
+  if (auth.error) return auth.error
+
   let url = ''
   let pastedText = ''
   try {
@@ -360,14 +398,30 @@ export async function POST(req: NextRequest) {
       } satisfies ScrapeResult)
     }
 
-    // ── Layer 1+2: direct fetch (follows redirects) ──
+    // ── Layer 1+2: direct fetch (manual redirects — re-validate each Location) ──
     try {
-      const res = await fetch(url, { signal: controller.signal, headers: BROWSER_HEADERS, redirect: 'follow' })
-      // 410/404 = aviso dado de baja, pero el body suele traer datos igual.
-      expired = res.status === 410 || res.status === 404
-      const body = await res.text()
-      blocked = isBotWall(res.status, body)
-      if (!blocked && (res.ok || expired)) html = body
+      let fetchUrl = url
+      let hops = 0
+      let res: Response | null = null
+      while (hops < 5) {
+        res = await fetch(fetchUrl, { signal: controller.signal, headers: BROWSER_HEADERS, redirect: 'manual' })
+        if (res.status >= 300 && res.status < 400) {
+          const location = res.headers.get('location')
+          if (!location) break
+          try { assertPublicUrl(location) } catch { break }
+          fetchUrl = location
+          hops++
+          continue
+        }
+        break
+      }
+      if (res) {
+        // 410/404 = aviso dado de baja, pero el body suele traer datos igual.
+        expired = res.status === 410 || res.status === 404
+        const body = await res.text()
+        blocked = isBotWall(res.status, body)
+        if (!blocked && (res.ok || expired)) html = body
+      }
     } catch { /* cae a reader */ }
 
     if (html) {

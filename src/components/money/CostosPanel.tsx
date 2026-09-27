@@ -11,7 +11,12 @@ import type { ProvinceCode } from '@/data/regulations/types'
 
 const PROVINCE_GROUPS = getProvinceListGrouped()
 
-export function CostosPanel() {
+interface CostosPanelProps {
+  /** ID de la propiedad de la operación activa. Si se provee, busca esa propiedad específica (H12). */
+  operationPropertyId?: string
+}
+
+export function CostosPanel({ operationPropertyId }: CostosPanelProps = {}) {
   const vara = useVaraState()
   const isSeller = vara.loaded && vara.journeyType === 'SELL_PROPERTY'
   const j = useJurisdiction()
@@ -19,30 +24,45 @@ export function CostosPanel() {
 
   /*
    * Arranca en 0, no en 185.000.
-   *
-   * Antes había un precio escrito a mano y la cabecera decía "Propiedad:
-   * USD 185.000" como si fuera la tuya. Alguien podía leer un total de
-   * costos calculado sobre una casa que no existe y tomarlo por propio.
-   * Si tenés una propiedad cargada usamos ESA; si no, pedimos el número.
+   * Si se provee operationPropertyId, buscamos ESA propiedad específica (H12).
+   * Si no tiene precio, pedimos el número al usuario en vez de usar otra propiedad.
    */
   const [propertyPrice, setPropertyPrice] = useState(0)
   const [priceFromProperty, setPriceFromProperty] = useState(false)
+  const [noPropertyPrice, setNoPropertyPrice] = useState(false)
 
   useEffect(() => {
     let alive = true
-    import('@/lib/candidates/store')
-      .then(m => m.loadCandidates())
-      .then(list => {
-        if (!alive) return
-        const withPrice = list.find(c => c.price > 0 && c.status !== 'DISCARDED')
-        if (withPrice) {
-          setPropertyPrice(withPrice.price)
-          setPriceFromProperty(true)
-        }
-      })
-      .catch(() => { /* sin propiedad cargada, el usuario pone el número */ })
+    if (operationPropertyId) {
+      // Buscar específicamente la propiedad de la operación (H12)
+      import('@/lib/candidates/store')
+        .then(m => m.loadCandidates())
+        .then(list => {
+          if (!alive) return
+          const match = list.find(c => c.id === operationPropertyId)
+          if (match && match.price > 0) {
+            setPropertyPrice(match.price)
+            setPriceFromProperty(true)
+          } else {
+            setNoPropertyPrice(true)
+          }
+        })
+        .catch(() => { setNoPropertyPrice(true) })
+    } else {
+      import('@/lib/candidates/store')
+        .then(m => m.loadCandidates())
+        .then(list => {
+          if (!alive) return
+          const withPrice = list.find(c => c.price > 0 && c.status !== 'DISCARDED')
+          if (withPrice) {
+            setPropertyPrice(withPrice.price)
+            setPriceFromProperty(true)
+          }
+        })
+        .catch(() => { /* sin propiedad cargada, el usuario pone el número */ })
+    }
     return () => { alive = false }
-  }, [])
+  }, [operationPropertyId])
 
   const hasPrice = propertyPrice > 0
 
@@ -115,6 +135,14 @@ export function CostosPanel() {
           Sin precio no hay nada que calcular. Antes esto mostraba
           "USD 0 – USD 0" con un 0% al lado, que se lee como un resultado.
         */}
+        {noPropertyPrice && operationPropertyId && !hasPrice && (
+          <div className="bg-amber-50 rounded-2xl border border-amber-200 p-4 text-center mb-2">
+            <p className="text-sm font-semibold text-amber-800 mb-1">Ingresá el precio para calcular costos</p>
+            <p className="text-xs text-amber-700">
+              La propiedad de esta operación no tiene precio cargado. Ingresalo arriba para ver los costos reales.
+            </p>
+          </div>
+        )}
         {!hasPrice && (
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-6 text-center">
             <p className="text-sm font-semibold text-slate-800 mb-1">Falta el valor de la propiedad</p>

@@ -66,6 +66,12 @@ export interface RiskInput {
   dataConfidence?: 'VERIFIED' | 'PARTIAL' | 'ESTIMATED'
   /** Para poder testear sin depender del reloj. */
   today?: string
+  /**
+   * true cuando los documentos se cargaron exitosamente (incluso si la lista está vacía).
+   * false o undefined cuando la carga no fue confirmada — en ese caso no se puede
+   * distinguir "sin documentos" de "error al cargar". (H10)
+   */
+  documentsLoaded?: boolean
 }
 
 // ───────────────────────── Reglas ─────────────────────────
@@ -209,7 +215,32 @@ function ruleUnverifiedProvince(input: RiskInput): DerivedRisk[] {
   }]
 }
 
+/**
+ * Datos insuficientes para evaluar. Se emite cuando no hay confirmación de que
+ * los documentos se cargaron — distingue "evaluación completa sin riesgos" de
+ * "no tenemos datos" (H10).
+ */
+function ruleInsufficientData(input: RiskInput): DerivedRisk[] {
+  // Si la carga fue confirmada (documentsLoaded=true), confiamos en la lista aunque esté vacía.
+  if (input.documentsLoaded) return []
+  // Si no hay documentos y no hay confirmación de carga, emitir aviso.
+  if (input.documents.length === 0) {
+    return [{
+      id: 'data.insufficient',
+      level: 'MEDIUM',
+      area: 'DATOS',
+      label: 'No hay información suficiente para evaluar riesgos documentales',
+      detail: 'Todavía no se cargaron documentos para esta operación, o la carga no pudo completarse. No es posible confirmar que no haya riesgos.',
+      evidence: ['Lista de documentos vacía o no confirmada'],
+      action: 'Cargá los documentos requeridos para que VARA pueda hacer la evaluación.',
+      priority: 5,
+    }]
+  }
+  return []
+}
+
 const RULES = [
+  ruleInsufficientData,
   ruleMissingCriticalDocs,
   ruleRejectedDocs,
   ruleExpiringOffer,

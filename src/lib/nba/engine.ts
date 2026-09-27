@@ -252,18 +252,41 @@ const ruleOtherDocs: Rule = txn => {
   }
 }
 
-/** Todo al día. Decirlo es tan útil como decir qué falta. */
-const ruleAllClear: Rule = txn => ({
-  id: 'all_clear',
-  priority: 90,
-  category: 'REVIEW',
-  title: 'No hay nada pendiente de tu lado',
-  why: 'Revisá el estado de la operación para confirmar que todo sigue en orden.',
-  evidence: ['Sin tareas bloqueadas', 'Sin riesgos altos', 'Sin documentos pendientes'],
-  cta: { label: 'Ver mi operación', href: opHref(txn) },
-  blocking: false,
-  blockingEntities: [],
-})
+/** Todo al día — solo cuando realmente no hay nada pendiente en NINGUNA etapa (H09). */
+const ruleAllClear: Rule = txn => {
+  const anyPending = allTasks(txn).some(t => t.status === 'TODO' || t.status === 'IN_PROGRESS')
+  if (anyPending) {
+    // Hay tareas pendientes pero no están en la etapa actual: apuntar a la siguiente etapa con trabajo.
+    const nextStageWithWork = txn.stages.find(
+      s => s.id !== txn.currentStageId && s.tasks.some(t => t.status === 'TODO' || t.status === 'IN_PROGRESS')
+    )
+    if (nextStageWithWork) {
+      return {
+        id: 'continue_next_stage',
+        priority: 55,
+        category: 'TASK',
+        title: `Continuá con: ${nextStageWithWork.label}`,
+        why: 'Hay tareas pendientes en la siguiente etapa.',
+        evidence: [`${nextStageWithWork.tasks.filter(t => t.status === 'TODO' || t.status === 'IN_PROGRESS').length} tarea(s) pendiente(s)`],
+        cta: { label: 'Ver tareas', href: opHref(txn, 'tareas') },
+        blocking: false,
+        blockingEntities: [],
+      }
+    }
+    return null
+  }
+  return {
+    id: 'all_clear',
+    priority: 90,
+    category: 'REVIEW',
+    title: 'No hay nada pendiente de tu lado',
+    why: 'Revisá el estado de la operación para confirmar que todo sigue en orden.',
+    evidence: ['Sin tareas bloqueadas', 'Sin riesgos altos', 'Sin documentos pendientes'],
+    cta: { label: 'Ver mi operación', href: opHref(txn) },
+    blocking: false,
+    blockingEntities: [],
+  }
+}
 
 const RULES: Rule[] = [
   ruleBlockedTasks,

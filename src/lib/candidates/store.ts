@@ -221,7 +221,18 @@ export async function promoteCandidate(id: string): Promise<StatusChangeResult> 
     propertyId: c.id,
   })
 
-  return markPromoted(id, op.id)
+  // Marcar el candidato atómicamente: si falla, revertir la operación creada (H21)
+  const result = await markPromoted(id, op.id)
+  if (!result.ok) {
+    try {
+      const { deleteOperationAnywhere } = await import('@/lib/userOperations')
+      await deleteOperationAnywhere(op.id)
+    } catch (rollbackErr) {
+      log.error('candidate.promote.rollback.failed', rollbackErr, { operationId: op.id })
+    }
+    return { ok: false, reason: result.reason ?? 'No pudimos completar la promoción.' }
+  }
+  return result
 }
 
 /**

@@ -1,8 +1,50 @@
 import OpenAI from 'openai'
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { findKnowledge, type Audience } from '@/data/knowledge'
+import { requireAuth } from '@/lib/api/requireAuth'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+/** Carga el contexto verificado de una operación desde Supabase (H18). */
+async function loadOperationContext(operationId: string): Promise<string | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseKey) return null
+
+  try {
+    const cookieStore = cookies()
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
+      cookies: {
+        get: (name: string) => cookieStore.get(name)?.value,
+      },
+    })
+
+    // RLS garantiza que solo el dueño de la operación puede leerla
+    const { data: op, error } = await supabase
+      .from('operations')
+      .select('id, type, title, status, province, city, country, property_id')
+      .eq('id', operationId)
+      .maybeSingle()
+
+    if (error || !op) return null
+
+    const lines = [
+      'Datos verificados de la operación del usuario (fuente: base de datos):',
+      `- Tipo: ${op.type}`,
+      `- Título: ${op.title ?? '—'}`,
+      `- Estado: ${op.status}`,
+      `- Provincia/Estado: ${op.province ?? '—'}`,
+      `- Ciudad: ${op.city ?? '—'}`,
+      `- País: ${op.country ?? 'AR'}`,
+    ]
+    if (op.property_id) lines.push(`- Propiedad asociada ID: ${op.property_id}`)
+    return lines.join('\n')
+  } catch {
+    return null
+  }
+}
 
 const SYSTEM_PROMPT = `Sos VARA, el asistente de la plataforma VARA para operaciones inmobiliarias en Argentina.
 
@@ -48,8 +90,11 @@ CÓMO RESPONDÉS:
 - Si el usuario menciona su operación, usá ese contexto.`
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth()
+  if (auth.error) return auth.error
+
   try {
-    const { messages, context } = await req.json()
+    const { messages, context, operationId } = await req.json()
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: 'Mensajes inválidos' }, { status: 400 })
@@ -80,10 +125,20 @@ export async function POST(req: NextRequest) {
         ].join('\n\n')
       : ''
 
-    const systemContent =
-      (context
-        ? [SYSTEM_PROMPT, '', 'Contexto de la operación actual del usuario:', String(context)].join('\n')
-        : SYSTEM_PROMPT) + kb
+    // Si se provee operationId, cargar contexto verificado desde Supabase (H18)
+    const verifiedContext = typeof operationId === 'string' && operationId
+      ? await loadOperationContext(operationId)
+      : null
+
+    const contextParts: string[] = [SYSTEM_PROMPT]
+    if (verifiedContext) {
+      contextParts.push('', verifiedContext)
+    }
+    // El context del cliente es adicional (info de página), no fuente de verdad
+    if (typeof context === 'string' && context) {
+      contextParts.push('', 'Contexto adicional de la pantalla actual (no verificado):', context)
+    }
+    const systemContent = contextParts.join('\n') + kb
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',

@@ -17,6 +17,27 @@ const UNIVERSAL_DOCS_BUYER: ChecklistStage['tasks'] = [
   { id: 'u-c3', title: 'Documentación de estado civil', description: 'Libreta matrimonial, sentencia de divorcio, o acta de nacimiento.', responsibleParty: 'Comprador', documents: ['Libreta matrimonial o acta de soltería'] },
 ]
 
+/**
+ * Documentación del comprador para México (H13).
+ * Reemplaza los requisitos argentinos (DNI/CUIT/CUIL/UIF) por los equivalentes mexicanos.
+ * AVISO: datos sintéticos para prueba arquitectónica — validar con notario mexicano antes de usar en producción.
+ */
+const MX_DOCS_BUYER: ChecklistStage['tasks'] = [
+  { id: 'mx-c1', title: 'INE / pasaporte vigente', description: 'Credencial para votar (INE/IFE) vigente o pasaporte. Identificación oficial con fotografía.', responsibleParty: 'Comprador', documents: ['INE o pasaporte'] },
+  { id: 'mx-c2', title: 'RFC con homoclave', description: 'Registro Federal de Contribuyentes vigente. El notario lo requiere para la escritura.', responsibleParty: 'Comprador', documents: ['Constancia de RFC'] },
+  { id: 'mx-c3', title: 'Constancia de situación fiscal (SAT)', description: 'Documento emitido por el SAT que acredita el RFC y la situación fiscal del comprador.', responsibleParty: 'Comprador', documents: ['Constancia de situación fiscal'] },
+  { id: 'mx-c4', title: 'Documentación de estado civil', description: 'Acta de matrimonio o acta de nacimiento según estado civil. Los bienes de la sociedad conyugal requieren firma de ambos cónyuges.', responsibleParty: 'Comprador', documents: ['Acta de matrimonio o nacimiento'] },
+  { id: 'mx-c5', title: 'CURP', description: 'Clave Única de Registro de Población. Necesaria para trámites ante el RPC.', responsibleParty: 'Comprador', documents: ['Constancia CURP'] },
+]
+
+const MX_DOCS_SELLER: ChecklistStage['tasks'] = [
+  { id: 'mx-v1', title: 'INE / pasaporte vigente', description: 'Identificación oficial vigente del vendedor.', responsibleParty: 'Vendedor', documents: ['INE o pasaporte'] },
+  { id: 'mx-v2', title: 'Escritura o título de propiedad', description: 'Escritura pública inscripta en el Registro Público de la Propiedad que acredita la titularidad.', responsibleParty: 'Vendedor', documents: ['Escritura de propiedad inscripta'] },
+  { id: 'mx-v3', title: 'Boletas de predial y agua al corriente', description: 'Predial municipal e impuesto al agua al corriente de pago. El notario los requiere para la escritura.', responsibleParty: 'Vendedor', documents: ['Boleta predial', 'Boleta agua'] },
+  { id: 'mx-v4', title: 'Certificado de libertad de gravamen', description: 'Emitido por el Registro Público de la Propiedad. Acredita que el inmueble no tiene hipotecas ni embargos.', responsibleParty: 'Vendedor', documents: ['Certificado de libertad de gravamen'] },
+  { id: 'mx-v5', title: 'RFC con homoclave (vendedor)', description: 'Registro Federal de Contribuyentes del vendedor para la declaración fiscal de la operación.', responsibleParty: 'Vendedor', documents: ['Constancia de RFC vendedor'] },
+]
+
 const NOTARY_TASKS: ChecklistStage['tasks'] = [
   { id: 'n-1', title: 'Estudio de títulos (últimos 20 años)', description: 'El escribano analiza la cadena de titularidad de los últimos 20 años para detectar vicios, irregularidades o limitaciones al dominio.', responsibleParty: 'Escribano', documents: ['Informe de dominio'], warnings: ['Si el título tiene vicios, puede impedir o demorar la escrituración'] },
   { id: 'n-2', title: 'Informe de dominio y gravámenes (Registro)', description: 'El escribano solicita el informe oficial al Registro que muestra hipotecas, embargos y restricciones vigentes.', responsibleParty: 'Escribano', documents: ['Informe de dominio del RPI'] },
@@ -136,6 +157,11 @@ export function generateChecklist(
     })),
   ]
 
+  // Seleccionar documentos según país (H13): MX usa INE/RFC/CURP, no DNI/CUIT/UIF
+  const isMX = country === 'MX'
+  const buyerDocs = isMX ? MX_DOCS_BUYER : UNIVERSAL_DOCS_BUYER
+  const sellerDocs = isMX ? MX_DOCS_SELLER : UNIVERSAL_DOCS_SELLER
+
   const stages: ChecklistStage[] = [
     {
       order: 1, name: 'Reserva', durationDays: '3-10 días',
@@ -147,11 +173,11 @@ export function generateChecklist(
     },
     {
       order: 2, name: 'Documentación del vendedor', durationDays: '10-25 días',
-      tasks: [...UNIVERSAL_DOCS_SELLER, ...provinceDocTasks],
+      tasks: [...sellerDocs, ...provinceDocTasks],
     },
     {
       order: 3, name: 'Documentación del comprador', durationDays: '5-10 días',
-      tasks: UNIVERSAL_DOCS_BUYER,
+      tasks: buyerDocs,
     },
     {
       order: 4, name: 'Estudio de títulos y certificaciones', durationDays: '15-25 días',

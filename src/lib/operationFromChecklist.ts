@@ -56,10 +56,11 @@ export function buildTransaction(op: StoredOperation, propertyPrice = 0): Transa
     }))
 
     const done = tasks.filter(t => t.status === 'DONE').length
-    const status: TransactionStage['status'] =
-      done === tasks.length && tasks.length > 0 ? 'COMPLETED'
-      : done > 0 ? 'CURRENT'
-      : i === 0 ? 'CURRENT' : 'UPCOMING'
+    const allDone = tasks.length > 0 && done === tasks.length
+    // Marcar como COMPLETED solo si todas sus tareas están hechas.
+    // CURRENT y UPCOMING se calculan en una segunda pasada para que
+    // currentStageId pueda apuntar a la primera etapa no completada (H08).
+    const status: TransactionStage['status'] = allDone ? 'COMPLETED' : 'UPCOMING'
 
     return {
       id: stageId,
@@ -72,10 +73,37 @@ export function buildTransaction(op: StoredOperation, propertyPrice = 0): Transa
     }
   })
 
+  // Segunda pasada: marcar la primera etapa no completada como CURRENT (H08)
+  const firstNonCompletedIdx = stages.findIndex(s => s.status !== 'COMPLETED')
+  if (firstNonCompletedIdx >= 0) {
+    stages[firstNonCompletedIdx] = { ...stages[firstNonCompletedIdx], status: 'CURRENT' }
+  } else if (stages.length > 0) {
+    // Todas completadas: la última queda como CURRENT
+    stages[stages.length - 1] = { ...stages[stages.length - 1], status: 'CURRENT' }
+  }
+
   const allTasks = stages.flatMap(s => s.tasks)
   const doneCount = allTasks.filter(t => t.status === 'DONE').length
   const progress = allTasks.length ? Math.round((doneCount / allTasks.length) * 100) : 0
-  const current = stages.find(s => s.status === 'CURRENT') ?? stages[0]
+
+  // currentStageId: primera etapa NO completada (H08).
+  // Si todas están completadas, la última sigue siendo CURRENT.
+  // Si ninguna tiene CURRENT (e.g. todas UPCOMING), usar la primera.
+  const firstNotCompleted = stages.find(s => s.status !== 'COMPLETED')
+  const current = firstNotCompleted ?? stages[stages.length - 1] ?? stages[0]
+
+  // Categorizar documentos por nombre (H07): escritura → ESCRITURA, plano → PLANOS, etc.
+  function inferDocCategory(name: string): Document['category'] {
+    const n = name.toLowerCase()
+    if (/escritura/.test(n)) return 'ESCRITURA'
+    if (/plano|mensura|catastro/.test(n)) return 'PLANOS'
+    if (/inhibici[oó]n|dominio|gravamen|libre deuda|expensa/.test(n)) return 'DOMINIO'
+    if (/dni|cuit|cuil|ine|rfc|pasaporte|situaci[oó]n fiscal|estado civil|libreta|divorcio|nacimiento/.test(n)) return 'IDENTIDAD'
+    if (/sello|impuesto|sellado|registro|inscripci[oó]n/.test(n)) return 'IMPOSITIVO'
+    if (/boleto|reserva/.test(n)) return 'CONTRATO'
+    if (/declaraci[oó]n jurada|uif|origen de fondos/.test(n)) return 'COMPLIANCE'
+    return 'OTROS'
+  }
 
   // Los documentos salen de lo que piden las tareas: nada inventado.
   const seen = new Set<string>()
@@ -85,7 +113,7 @@ export function buildTransaction(op: StoredOperation, propertyPrice = 0): Transa
     .map((name, i) => ({
       id: `doc-${i}`,
       name,
-      category: 'OTROS' as const,
+      category: inferDocCategory(name),
       status: 'PENDING' as const,
       transactionId: op.id,
       version: 1,

@@ -26,7 +26,7 @@ export async function hasPhotoSession(): Promise<boolean> {
   return Boolean(data.user)
 }
 
-export async function uploadPhoto(file: Blob, label: string, isCover: boolean): Promise<RemotePhoto | null> {
+export async function uploadPhoto(file: Blob, label: string, isCover: boolean, propertyId?: string): Promise<RemotePhoto | null> {
   const supabase = tryCreateClient()
   if (!supabase) return null
   const { data: u } = await supabase.auth.getUser()
@@ -48,7 +48,7 @@ export async function uploadPhoto(file: Blob, label: string, isCover: boolean): 
 
   const { data, error } = await supabase
     .from('property_photos')
-    .insert({ user_id: userId, storage_path: storagePath, label, is_cover: isCover })
+    .insert({ user_id: userId, storage_path: storagePath, label, is_cover: isCover, property_id: propertyId ?? null })
     .select('id, created_at')
     .single()
 
@@ -69,13 +69,15 @@ async function signedUrl(path: string): Promise<string | null> {
   return data?.signedUrl ?? null
 }
 
-export async function listPhotos(): Promise<RemotePhoto[]> {
+export async function listPhotos(propertyId?: string): Promise<RemotePhoto[]> {
   const supabase = tryCreateClient()
   if (!supabase) return []
-  const { data, error } = await supabase
+  let query = supabase
     .from('property_photos')
-    .select('id, storage_path, label, is_cover, created_at')
+    .select('id, storage_path, label, is_cover, created_at, property_id')
     .order('created_at', { ascending: true })
+  if (propertyId) query = query.eq('property_id', propertyId)
+  const { data, error } = await query
   if (error || !data) return []
 
   const out: RemotePhoto[] = []

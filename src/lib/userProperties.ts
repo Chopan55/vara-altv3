@@ -152,7 +152,38 @@ export function getUserProperties(): UserProperty[] {
 }
 
 export function getUserPropertyById(id: string): UserProperty | null {
-  return getUserProperties().find(p => p.id === id) ?? null
+  const legacy = getUserProperties().find(p => p.id === id)
+  if (legacy) return legacy
+  // También buscar en el store de candidatos (IDs con formato cand_xxx) (H06)
+  if (typeof localStorage === 'undefined') return null
+  try {
+    const raw = localStorage.getItem('vara_candidates')
+    if (!raw) return null
+    const list = JSON.parse(raw) as Array<Record<string, unknown>>
+    const candidate = list.find(c => c.id === id)
+    if (!candidate) return null
+    const base: Property = {
+      id: String(candidate.id ?? id),
+      type: guessType(String(candidate.propertyType ?? candidate.title ?? '')),
+      operationType: 'sale',
+      price: n(candidate.price),
+      currency: candidate.currency === 'ARS' ? 'ARS' : 'USD',
+      title: s(candidate.title) || 'Candidato',
+      address: s(candidate.address),
+      neighborhood: s(candidate.neighborhood),
+      city: s(candidate.city),
+      province: s(candidate.province),
+      surface: n(candidate.surface) || n(candidate.totalM2),
+      rooms: n(candidate.rooms),
+      bedrooms: n(candidate.bedrooms),
+      bathrooms: n(candidate.bathrooms),
+      garage: false,
+      description: s(candidate.description),
+      images: Array.isArray(candidate.images) ? candidate.images as string[] : [],
+      features: [],
+    }
+    return { ...base, source: 'imported', incompleteFields: missingOf(base) }
+  } catch { return null }
 }
 
 export function clearImportedProperty(): void {

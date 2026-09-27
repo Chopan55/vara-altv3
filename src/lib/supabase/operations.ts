@@ -14,10 +14,23 @@ export function rowToStored(r: OperationRow): StoredOperation {
     province: r.province,
     provinceCode: r.province_code,
     city: r.city ?? '',
+    country: (r as Record<string, unknown>).country as StoredOperation['country'] ?? undefined,
     propertyId: r.property_id ?? undefined,
     progress: 0,
     createdAt: new Date(r.created_at).getTime(),
   }
+}
+
+export async function getOperationById(id: string): Promise<StoredOperation | null> {
+  const supabase = tryCreateClient()
+  if (!supabase) return null
+  const { data, error } = await supabase
+    .from('operations')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+  if (error || !data) return null
+  return rowToStored(data)
 }
 
 export async function fetchOperations(): Promise<StoredOperation[]> {
@@ -49,6 +62,7 @@ export async function insertOperation(op: StoredOperation): Promise<string | nul
       province_code: op.provinceCode,
       city: op.city || null,
       property_id: op.propertyId ?? null,
+      country: op.country ?? null,
     })
     .select('id')
     .single()

@@ -177,17 +177,12 @@ export async function counterOffer(input: {
   const supabase = tryCreateClient()
   if (!supabase) return { ok: false, error: 'No hay conexión con la base.' }
 
-  const { error: upErr } = await supabase
-    .from('offers')
-    .update({ status: 'COUNTERED', responded_at: new Date().toISOString() })
-    .eq('id', input.parent.id)
-  if (upErr) return { ok: false, error: 'No pudimos registrar la respuesta.' }
-
-  return createOffer({
+  // Primero crear la contraoferta; solo si tiene éxito, marcar la original como COUNTERED (H17).
+  // Así, si el insert falla, la oferta original queda intacta y no hay registro huérfano.
+  const newOfferResult = await createOffer({
     operationId: input.parent.operationId,
     propertyId: input.parent.propertyId,
     parentOfferId: input.parent.id,
-    // La contraoferta viene de la otra parte.
     party: input.parent.party === 'BUYER' ? 'SELLER' : 'BUYER',
     amount: input.amount,
     currency: input.parent.currency,
@@ -196,6 +191,18 @@ export async function counterOffer(input: {
     message: input.message,
     send: true,
   })
+  if (!newOfferResult.ok) return newOfferResult
+
+  const { error: upErr } = await supabase
+    .from('offers')
+    .update({ status: 'COUNTERED', responded_at: new Date().toISOString() })
+    .eq('id', input.parent.id)
+  if (upErr) {
+    // La contraoferta se creó pero no pudimos marcar la original: loguear pero devolver éxito
+    // (la contraoferta existe; el estado inconsistente es recuperable).
+    log.error('offer.counter.mark_original.failed', upErr, { parentId: input.parent.id })
+  }
+  return newOfferResult
 }
 
 /** Solo se borra un borrador. Una oferta enviada se retira, no se borra. */

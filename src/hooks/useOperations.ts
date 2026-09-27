@@ -1,13 +1,13 @@
 'use client'
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import {
-  mockUserOperations,
   OPERATION_STORE,
   mockOperationRelations,
 } from '@/data/mock'
 import type { UserOperationSummary, OperationRelation, Transaction } from '@/types'
+import type { StoredOperation } from '@/lib/userOperations'
 import { useVaraState } from '@/hooks/useVaraState'
-import { getOperations, getOperation, toSummary, loadOperations, deleteOperationAnywhere } from '@/lib/userOperations'
+import { getOperations, toSummary, loadOperations, loadOperation, deleteOperationAnywhere } from '@/lib/userOperations'
 import { buildTransaction, clearTaskState } from '@/lib/operationFromChecklist'
 
 export interface OperationsState {
@@ -23,41 +23,54 @@ export interface OperationsState {
   /** true cuando no hay operaciones propias y se muestran las de demostración. */
   usingDemo: boolean
   loaded: boolean
+  error: boolean
   deleteOperation: (id: string) => void
 }
 
 export function useOperations(): OperationsState {
   const vara = useVaraState()
   const [own, setOwn] = useState<UserOperationSummary[]>([])
+  // ownRaw holds full StoredOperation objects (with provinceCode etc) for buildTransaction
+  const [ownRaw, setOwnRaw] = useState<StoredOperation[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
 
   const reload = useCallback(() => {
     // Primero lo local para que la pantalla no parpadee, después lo de la base.
-    setOwn(getOperations().map(toSummary))
-    loadOperations().then(ops => setOwn(ops.map(toSummary))).catch(() => {})
+    const local = getOperations()
+    setOwn(local.map(toSummary))
+    setOwnRaw(local)
+    loadOperations()
+      .then(ops => { setOwn(ops.map(toSummary)); setOwnRaw(ops) })
+      .catch(() => { setError(true) })
+      .finally(() => setLoaded(true))
   }, [])
 
-  useEffect(() => { reload(); setLoaded(true) }, [reload])
+  useEffect(() => { reload() }, [reload])
 
   const deleteOperation = useCallback((id: string) => {
     clearTaskState(id)
     void deleteOperationAnywhere(id).finally(reload)
     setOwn(prev => prev.filter(o => o.id !== id))
+    setOwnRaw(prev => prev.filter(o => o.id !== id))
   }, [reload])
 
   const state = useMemo(() => {
     // Una operación propia arma sus etapas con el motor regulatorio; las demo salen del store.
     const resolveTxn = (operationId: string): Transaction | null => {
-      const ownOp = getOperation(operationId)
+      // Usar ownRaw (datos completos con provinceCode) en vez de getOperation() que solo lee localStorage.
+      const ownOp = ownRaw.find(op => op.id === operationId)
       if (ownOp) return buildTransaction(ownOp)
       return OPERATION_STORE[operationId] ?? null
     }
 
-    // Solo operaciones del usuario. Las de ejemplo confundían más de lo que ayudaban:
-    // parecían suyas y no se podían borrar.
     const usingDemo = false
     const operations = own
-    const activeOperationId = vara.operationId ?? operations[0]?.id ?? null
+    // Tratar string vacío igual que null/undefined (H14)
+    const selectedId = vara.operationId || null
+    const activeOperationId = selectedId && operations.some(op => op.id === selectedId)
+      ? selectedId
+      : operations[0]?.id ?? null
     const activeOperation = operations.find(op => op.id === activeOperationId) ?? null
     const activeTransactionData = activeOperationId ? resolveTxn(activeOperationId) : null
 
@@ -85,9 +98,9 @@ export function useOperations(): OperationsState {
       getTransactionData,
       usingDemo,
     }
-  }, [vara.operationId, own])
+  }, [vara.operationId, own, ownRaw])
 
-  return { ...state, loaded, deleteOperation }
+  return { ...state, loaded, error, deleteOperation }
 }
 
 export function useGlobalNextBestAction() {

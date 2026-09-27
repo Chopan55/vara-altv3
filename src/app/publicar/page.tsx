@@ -241,17 +241,19 @@ export default function PublicarPage() {
         : [...prev.features, f],
     }))
 
+  /**
+   * Guarda el borrador de solicitud de publicación localmente (H16).
+   * NO marca la tarea como DONE — eso requiere confirmación real (URL de publicación).
+   * El texto del botón dice exactamente qué hace.
+   */
   const handlePublish = (portalId: string) => {
     setPublished(prev => prev.includes(portalId) ? prev : [...prev, portalId])
     try {
       const existing = JSON.parse(localStorage.getItem('vara_publish_requests') || '[]')
-      existing.push({ portalId, title: form.title, price: form.price, city: form.city, timestamp: Date.now() })
+      existing.push({ portalId, title: form.title, price: form.price, city: form.city, timestamp: Date.now(), status: 'DRAFT' })
       localStorage.setItem('vara_publish_requests', JSON.stringify(existing))
     } catch {}
-    // Primer portal publicado → marcar tarea 'publish' del checklist vendedor como hecha
-    if (!published.length && sellOp) {
-      void toggleSellerTask(sellOp.id, 'publish', true)
-    }
+    // NO marcar tarea como DONE automáticamente: la publicación real requiere evidencia (URL).
   }
 
   const formComplete = Boolean(form.title && form.price && form.address && form.description)
@@ -794,7 +796,7 @@ export default function PublicarPage() {
                         onClick={() => handlePublish(portal.id)}
                         className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5"
                       >
-                        <ExternalLink size={12} /> Publicar en {portal.name}
+                        <ExternalLink size={12} /> Solicitar publicación en {portal.name}
                       </button>
                     )}
                   </div>
@@ -811,7 +813,7 @@ export default function PublicarPage() {
                   </p>
                 </div>
                 <p className="text-xs text-amber-700 leading-relaxed">
-                  Servicio en modo piloto. Un coordinador VARA procesará tus publicaciones y te contactará para confirmar disponibilidad en cada portal.
+                  Borrador guardado localmente. La publicación en portales requiere coordinación manual — un coordinador VARA procesará tu solicitud y te contactará para confirmar. La tarea de publicación en tu operación se completa cuando tengás la URL del aviso publicado.
                 </p>
                 <Link href="/asistente" className="mt-2 flex items-center gap-1 text-xs font-semibold text-green-700 hover:underline">
                   Estrategia de negociación con VARA →
