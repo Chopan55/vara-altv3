@@ -7,6 +7,7 @@ import type { ScrapedData } from '@/app/api/scrape-property/route'
  */
 
 export const IMPORTED_KEY = 'vara_imported_property'
+export const IMPORTED_LIST_KEY = 'vara_imported_properties'
 export const DRAFT_KEY = 'vara_publish_draft'
 
 export interface ImportedProperty {
@@ -58,10 +59,10 @@ function missingOf(p: Partial<Property>): string[] {
   return out
 }
 
-function fromImported(imp: ImportedProperty): UserProperty {
+function fromImported(imp: ImportedProperty & { id?: string }): UserProperty {
   const d = imp.data ?? {}
   const base: Property = {
-    id: 'imported',
+    id: imp.id ?? `imported-${imp.importedAt ?? Date.now()}`,
     type: guessType(d.propertyType ?? d.title),
     operationType: 'sale',
     price: n(d.price),
@@ -135,6 +136,19 @@ export function getImportedProperty(): ImportedProperty | null {
   return imp && imp.data ? imp : null
 }
 
+export function getImportedProperties(): (ImportedProperty & { id: string })[] {
+  const list = readJson<ImportedProperty[]>(IMPORTED_LIST_KEY)
+  if (Array.isArray(list) && list.length > 0) {
+    return list
+      .filter(x => x && x.data)
+      .map(x => ({ ...x, id: `imported-${x.importedAt ?? 0}` }))
+  }
+  // Migración desde clave legacy.
+  const legacy = getImportedProperty()
+  if (legacy) return [{ ...legacy, id: `imported-${legacy.importedAt ?? 0}` }]
+  return []
+}
+
 /** Todas las propiedades reales del usuario. Array vacío si todavía no cargó ninguna. */
 export function getUserProperties(): UserProperty[] {
   const out: UserProperty[] = []
@@ -145,8 +159,9 @@ export function getUserProperties(): UserProperty[] {
     if (p) out.push(p)
   }
 
-  const imp = getImportedProperty()
-  if (imp) out.push(fromImported(imp))
+  for (const imp of getImportedProperties()) {
+    out.push(fromImported(imp))
+  }
 
   return out
 }

@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { findKnowledge, type Audience } from '@/data/knowledge'
-import { requireAuth } from '@/lib/api/requireAuth'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -91,9 +90,6 @@ CÓMO RESPONDÉS:
 - Si el usuario menciona su operación, usá ese contexto.`
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth()
-  if (auth.error) return auth.error
-
   try {
     const { messages, context, operationId } = await req.json()
 

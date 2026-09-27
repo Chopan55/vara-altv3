@@ -1,6 +1,5 @@
 import OpenAI, { toFile } from 'openai'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/api/requireAuth'
 
 export const maxDuration = 120
 
@@ -50,9 +49,6 @@ function buildEditPrompt(mode: TransformMode, instruction: string, roomType: str
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth()
-  if (auth.error) return auth.error
-
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ error: 'El servicio de IA no está configurado.' }, { status: 503 })
   }

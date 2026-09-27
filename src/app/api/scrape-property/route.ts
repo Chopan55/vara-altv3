@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
-import { requireAuth } from '@/lib/api/requireAuth'
 
 export const maxDuration = 60
 
@@ -350,9 +349,6 @@ function cleanPhotos(raw: string[]): string[] {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth()
-  if (auth.error) return auth.error
-
   let url = ''
   let pastedText = ''
   try {

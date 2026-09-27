@@ -77,9 +77,14 @@ async function saveImported(url: string, r: ScrapeResult): Promise<void> {
   }
 
   try {
-    localStorage.setItem('vara_imported_property', JSON.stringify({
-      url, portal: r.portal, data: d, photos, importedAt: Date.now(),
-    }))
+    const item = { url, portal: r.portal, data: d, photos, importedAt: Date.now() }
+    const raw = localStorage.getItem('vara_imported_properties')
+    const list: unknown[] = raw ? JSON.parse(raw) : []
+    const filtered = list.filter((x: unknown) => (x as { url: string }).url !== url)
+    filtered.push(item)
+    localStorage.setItem('vara_imported_properties', JSON.stringify(filtered))
+    // Clave legacy para compatibilidad con código que aún la lea.
+    localStorage.setItem('vara_imported_property', JSON.stringify(item))
   } catch {}
 }
 
@@ -99,6 +104,14 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, ...(text ? { text } : {}) }),
       })
+      if (!res.ok) {
+        setResult({
+          status: 'error', url, portal: null, method: 'none', data: {}, photos: [],
+          missingFields: [],
+          errorMessage: res.status === 401 ? 'No autorizado. Cerrá sesión y volvé a entrar.' : 'El servidor devolvió un error. Probá de nuevo.',
+        })
+        return
+      }
       const data: ScrapeResult = await res.json()
       setResult(data)
       if (data.status !== 'error' && data.status !== 'blocked') {
