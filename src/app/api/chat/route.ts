@@ -14,10 +14,11 @@ async function loadOperationContext(operationId: string): Promise<string | null>
   if (!supabaseUrl || !supabaseKey) return null
 
   try {
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const supabase = createServerClient(supabaseUrl, supabaseKey, {
       cookies: {
-        get: (name: string) => cookieStore.get(name)?.value,
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {},
       },
     })
 

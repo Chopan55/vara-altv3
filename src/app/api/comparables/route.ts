@@ -75,7 +75,7 @@ export interface ComparablesResponse {
 
 export async function POST(req: Request): Promise<NextResponse<ComparablesResponse>> {
   const auth = await requireAuth()
-  if (auth.error) return auth.error
+  if (auth.error) return auth.error as NextResponse<ComparablesResponse>
 
   let body: { url?: string }
   try {

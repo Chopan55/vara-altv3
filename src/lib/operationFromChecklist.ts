@@ -97,11 +97,11 @@ export function buildTransaction(op: StoredOperation, propertyPrice = 0): Transa
     const n = name.toLowerCase()
     if (/escritura/.test(n)) return 'ESCRITURA'
     if (/plano|mensura|catastro/.test(n)) return 'PLANOS'
-    if (/inhibici[oó]n|dominio|gravamen|libre deuda|expensa/.test(n)) return 'DOMINIO'
-    if (/dni|cuit|cuil|ine|rfc|pasaporte|situaci[oó]n fiscal|estado civil|libreta|divorcio|nacimiento/.test(n)) return 'IDENTIDAD'
-    if (/sello|impuesto|sellado|registro|inscripci[oó]n/.test(n)) return 'IMPOSITIVO'
-    if (/boleto|reserva/.test(n)) return 'CONTRATO'
-    if (/declaraci[oó]n jurada|uif|origen de fondos/.test(n)) return 'COMPLIANCE'
+    if (/inhibici[oó]n|dominio|gravamen|libre deuda|expensa/.test(n)) return 'INFORMES'
+    if (/dni|cuit|cuil|ine|rfc|pasaporte|situaci[oó]n fiscal|estado civil|libreta|divorcio|nacimiento/.test(n)) return 'CERTIFICADOS'
+    if (/sello|impuesto|sellado|registro|inscripci[oó]n/.test(n)) return 'IMPUESTOS'
+    if (/boleto|reserva/.test(n)) return 'CONTRATOS'
+    if (/declaraci[oó]n jurada|uif|origen de fondos/.test(n)) return 'CERTIFICADOS'
     return 'OTROS'
   }
 
