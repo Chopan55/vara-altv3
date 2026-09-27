@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { log } from '@/lib/observability/logger'
 import type { CountryCode } from '@/types'
+import { requireAuth } from '@/lib/api/requireAuth'
 
 export type NegotiationMode =
   | 'prepare'
@@ -306,6 +307,9 @@ Devolvé JSON con:
 }
 
 export async function POST(req: Request) {
+  const auth = await requireAuth()
+  if (auth.error) return auth.error
+
   const body = await req.json().catch(() => ({})) as {
     mode?: NegotiationMode
     message?: string

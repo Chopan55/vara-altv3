@@ -14,14 +14,14 @@ import {
   type IncidentCategory, type IncidentSeverity,
 } from '@/types/varaVisit'
 import {
-  verifyPin, canCheckIn, canStartVisit, canCheckOut, requestGeoPoint,
+  canCheckIn, canStartVisit, canCheckOut, requestGeoPoint,
   durationMinutes, checklistProgress,
-  PIN_ERROR_MESSAGES, CHECK_IN_BLOCK_MESSAGES, START_BLOCK_MESSAGES,
+  CHECK_IN_BLOCK_MESSAGES, START_BLOCK_MESSAGES,
 } from '@/lib/varaVisit/session'
 import {
   getBookingByCode, getSession, ensureSession, getMyPartner,
   checkIn as persistCheckIn, recordPinResult, startVisit as persistStart,
-  saveChecklist, checkOut as persistCheckOut, reportIncident, getBookingPin,
+  saveChecklist, checkOut as persistCheckOut, reportIncident,
 } from '@/lib/supabase/visits'
 
 /**
@@ -189,7 +189,6 @@ export default function VisitModePage() {
 
   // PIN
   const [pinInput, setPinInput] = useState('')
-  const [expectedPin, setExpectedPin] = useState<string | null>(null)
   const [pinError, setPinError] = useState<string | null>(null)
 
   // Cronómetro
@@ -208,8 +207,6 @@ export default function VisitModePage() {
     const me = await getMyPartner()
     setPartnerId(me?.id ?? null)
 
-    // El PIN lo lee el cliente por RLS; el partner recibe null y lo pide en voz alta.
-    setExpectedPin(await getBookingPin(b.id))
 
     const s = me ? await ensureSession(b.id, me.id) : await getSession(b.id)
     setSession(s)
@@ -248,20 +245,32 @@ export default function VisitModePage() {
 
   async function doVerifyPin() {
     if (!booking || !partnerId || !session) return
-    const result = verifyPin(expectedPin, pinInput, session.pinAttempts)
 
-    if (!result.ok) {
-      setPinError(PIN_ERROR_MESSAGES[result.reason])
-      // Solo persistimos si consumió intento: un tipeo no queda registrado.
-      if (result.reason === 'WRONG_PIN') {
-        await recordPinResult(booking.id, partnerId, false, session.pinAttempts + 1)
-        await reload()
+    setBusy(true); setPinError(null)
+    try {
+      const res = await fetch('/api/visit/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, pin: pinInput, previousAttempts: session.pinAttempts }),
+      })
+      const result = await res.json() as { ok: boolean; reason?: string; message?: string }
+
+      if (!result.ok) {
+        setPinError(result.message ?? 'El PIN no coincide.')
+        if (result.reason === 'WRONG_PIN') {
+          await recordPinResult(booking.id, partnerId, false, session.pinAttempts + 1)
+          await reload()
+        }
+        setPinInput('')
+        setBusy(false)
+        return
       }
-      setPinInput('')
+    } catch {
+      setPinError('Error al verificar. Intentá de nuevo.')
+      setBusy(false)
       return
     }
 
-    setBusy(true); setPinError(null)
     await recordPinResult(booking.id, partnerId, true, session.pinAttempts)
     const fresh = await getSession(booking.id)
     if (fresh) {
