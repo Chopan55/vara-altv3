@@ -202,7 +202,10 @@ export function getUserPropertyById(id: string): UserProperty | null {
 }
 
 export function clearImportedProperty(): void {
-  try { localStorage.removeItem(IMPORTED_KEY) } catch {}
+  try {
+    localStorage.removeItem(IMPORTED_KEY)
+    localStorage.removeItem(IMPORTED_LIST_KEY)
+  } catch {}
 }
 
 /* ─────────── Con sesión: Supabase. Sin sesión: el navegador. ─────────── */
