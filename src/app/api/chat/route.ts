@@ -4,7 +4,6 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { findKnowledge, type Audience } from '@/data/knowledge'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 /** Carga el contexto verificado de una operación desde Supabase (H18). */
 async function loadOperationContext(operationId: string): Promise<string | null> {
@@ -90,6 +89,7 @@ CÓMO RESPONDÉS:
 - Si el usuario menciona su operación, usá ese contexto.`
 
 export async function POST(req: NextRequest) {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   try {
     const { messages, context, operationId } = await req.json()
 
