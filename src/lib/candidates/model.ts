@@ -183,6 +183,105 @@ export function buildComparison(candidates: PropertyCandidate[]): ComparisonRow[
   return rows.filter(r => r.values.some(v => v !== null))
 }
 
+// ───────────────────────── Scoring ponderado ─────────────────────────
+
+export type ScoringCriterion = 'price_m2' | 'price' | 'surface' | 'rooms' | 'bedrooms' | 'expenses' | 'age'
+
+export const SCORING_CRITERION_LABELS: Record<ScoringCriterion, string> = {
+  price_m2: 'Precio/m²',
+  price: 'Precio total',
+  surface: 'Superficie',
+  rooms: 'Ambientes',
+  bedrooms: 'Dormitorios',
+  expenses: 'Expensas',
+  age: 'Antigüedad',
+}
+
+export interface ScoringWeight {
+  criterion: ScoringCriterion
+  enabled: boolean
+  /** 0–100, se normaliza entre los activos */
+  weight: number
+}
+
+export const DEFAULT_SCORING_WEIGHTS: ScoringWeight[] = [
+  { criterion: 'price_m2', enabled: true,  weight: 35 },
+  { criterion: 'price',    enabled: true,  weight: 25 },
+  { criterion: 'surface',  enabled: true,  weight: 20 },
+  { criterion: 'rooms',    enabled: true,  weight: 10 },
+  { criterion: 'bedrooms', enabled: false, weight: 5  },
+  { criterion: 'expenses', enabled: false, weight: 3  },
+  { criterion: 'age',      enabled: false, weight: 2  },
+]
+
+function rawValue(c: PropertyCandidate, criterion: ScoringCriterion): number | null {
+  switch (criterion) {
+    case 'price_m2': return c.price > 0 && c.surface > 0 ? c.price / c.surface : null
+    case 'price':    return c.price > 0 ? c.price : null
+    case 'surface':  return c.surface > 0 ? c.surface : null
+    case 'rooms':    return c.rooms > 0 ? c.rooms : null
+    case 'bedrooms': return c.bedrooms > 0 ? c.bedrooms : null
+    case 'expenses': return c.expenses && c.expenses > 0 ? c.expenses : null
+    case 'age':      return typeof (c as Record<string, unknown>).ageYears === 'number' ? (c as Record<string, unknown>).ageYears as number : null
+  }
+}
+
+const LOWER_IS_BETTER: ScoringCriterion[] = ['price_m2', 'price', 'expenses', 'age']
+
+export interface CandidateScore {
+  candidateId: string
+  score: number
+  breakdown: Partial<Record<ScoringCriterion, number>>
+}
+
+/**
+ * Scoring ponderado: normaliza cada criterio (min-max) y combina con los pesos.
+ * Si una propiedad no tiene el dato, recibe 0 en esa dimensión.
+ */
+export function scoreCandidates(
+  candidates: PropertyCandidate[],
+  weights: ScoringWeight[],
+): CandidateScore[] {
+  const active = weights.filter(w => w.enabled && w.weight > 0)
+  const totalWeight = active.reduce((s, w) => s + w.weight, 0)
+
+  const scores: CandidateScore[] = candidates.map(c => ({
+    candidateId: c.id,
+    score: 0,
+    breakdown: {},
+  }))
+
+  if (active.length === 0 || totalWeight === 0) return scores
+
+  for (const { criterion, weight } of active) {
+    const values = candidates.map(c => rawValue(c, criterion))
+    const known = values.filter((v): v is number => v !== null)
+    if (known.length < 1) continue
+
+    const min = Math.min(...known)
+    const max = Math.max(...known)
+    const range = max - min
+
+    values.forEach((v, i) => {
+      let normalized: number
+      if (v === null) {
+        normalized = 0
+      } else if (range === 0) {
+        normalized = 100
+      } else {
+        const ratio = (v - min) / range
+        normalized = LOWER_IS_BETTER.includes(criterion) ? (1 - ratio) * 100 : ratio * 100
+      }
+      const points = normalized * (weight / totalWeight)
+      scores[i].breakdown[criterion] = Math.round(points * 10) / 10
+      scores[i].score += points
+    })
+  }
+
+  scores.forEach(s => { s.score = Math.round(s.score) })
+  return scores
+}
+
 /**
  * Qué le falta a un candidato para poder decidir sobre él.
  * Es lo que la tarjeta muestra como "qué falta".

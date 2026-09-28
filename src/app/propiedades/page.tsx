@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/Badge'
 import { formatPrice, formatSurface, getPropertyTypeLabel } from '@/lib/utils'
 import {
   CANDIDATE_STATUS_LABELS, buildComparison, missingForDecision, sortCandidates,
-  type CandidateStatus, type PropertyCandidate,
+  scoreCandidates, DEFAULT_SCORING_WEIGHTS, SCORING_CRITERION_LABELS,
+  type CandidateStatus, type PropertyCandidate, type ScoringWeight,
 } from '@/lib/candidates/model'
 import {
   loadCandidates, setCandidateStatus, setCandidateNotes,
@@ -273,32 +274,147 @@ function nextStepFor(c: PropertyCandidate): string {
   return 'Ya la viste: si te convence, avanzá con ella.'
 }
 
+const WEIGHTS_KEY = 'vara_scoring_weights'
+
+function loadWeights(): ScoringWeight[] {
+  try {
+    const raw = localStorage.getItem(WEIGHTS_KEY)
+    if (raw) return JSON.parse(raw) as ScoringWeight[]
+  } catch {}
+  return DEFAULT_SCORING_WEIGHTS.map(w => ({ ...w }))
+}
+
+function saveWeights(w: ScoringWeight[]) {
+  try { localStorage.setItem(WEIGHTS_KEY, JSON.stringify(w)) } catch {}
+}
+
+const MEDALS = ['🥇', '🥈', '🥉']
+
 function ComparisonTable({ candidates }: { candidates: PropertyCandidate[] }) {
   const rows = useMemo(() => buildComparison(candidates), [candidates])
+  const [weights, setWeights] = useState<ScoringWeight[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_SCORING_WEIGHTS.map(w => ({ ...w }))
+    return loadWeights()
+  })
+  const [showWeights, setShowWeights] = useState(false)
+
+  const scores = useMemo(() => scoreCandidates(candidates, weights), [candidates, weights])
+  const ranked = useMemo(
+    () => [...scores].sort((a, b) => b.score - a.score),
+    [scores]
+  )
+
+  const totalEnabled = weights.filter(w => w.enabled).reduce((s, w) => s + w.weight, 0)
+
+  function toggleCriterion(idx: number) {
+    const next = weights.map((w, i) => i === idx ? { ...w, enabled: !w.enabled } : w)
+    setWeights(next)
+    saveWeights(next)
+  }
+
+  function setWeight(idx: number, val: number) {
+    const next = weights.map((w, i) => i === idx ? { ...w, weight: val } : w)
+    setWeights(next)
+    saveWeights(next)
+  }
+
+  const hasScores = weights.some(w => w.enabled) && candidates.length >= 2
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card overflow-hidden">
-      <div className="px-5 pt-4 pb-3 border-b border-slate-100">
-        <p className="font-bold text-slate-900 text-sm">Comparación</p>
-        <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-          VARA no elige por vos ni arma un puntaje: marca cuál gana en cada dato.
-          El peso que tiene cada uno lo ponés vos.
-        </p>
+      <div className="px-5 pt-4 pb-3 border-b border-slate-100 flex items-start justify-between gap-4">
+        <div>
+          <p className="font-bold text-slate-900 text-sm">Comparación</p>
+          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+            Activá los criterios que te importan y ajustá el peso de cada uno para ver el ranking.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowWeights(v => !v)}
+          className="flex-shrink-0 text-xs font-semibold text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+        >
+          {showWeights ? 'Ocultar criterios' : 'Configurar ponderación'}
+        </button>
       </div>
 
+      {/* Panel de ponderación */}
+      {showWeights && (
+        <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/60">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-3">Criterios y pesos</p>
+          <div className="space-y-2.5">
+            {weights.map((w, i) => (
+              <div key={w.criterion} className="flex items-center gap-3">
+                <button
+                  onClick={() => toggleCriterion(i)}
+                  className={`flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                    w.enabled ? 'bg-brand-600 border-brand-600' : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  {w.enabled && <Check size={10} className="text-white" strokeWidth={3} />}
+                </button>
+                <span className={`text-xs w-24 flex-shrink-0 ${w.enabled ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
+                  {SCORING_CRITERION_LABELS[w.criterion]}
+                </span>
+                <input
+                  type="range" min={1} max={100} value={w.weight}
+                  disabled={!w.enabled}
+                  onChange={e => setWeight(i, Number(e.target.value))}
+                  className="flex-1 h-1.5 accent-brand-600 disabled:opacity-30"
+                />
+                <span className={`text-xs tabular-nums w-8 text-right flex-shrink-0 ${w.enabled ? 'text-slate-700 font-semibold' : 'text-slate-300'}`}>
+                  {w.enabled ? `${Math.round((w.weight / (totalEnabled || 1)) * 100)}%` : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-slate-400 mt-3">
+            Los % se normalizan automáticamente entre los criterios activos. Se guardan en tu dispositivo.
+          </p>
+        </div>
+      )}
+
+      {/* Ranking */}
+      {hasScores && (
+        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Ranking</p>
+          <div className="flex flex-wrap gap-2">
+            {ranked.map((s, rank) => {
+              const c = candidates.find(c => c.id === s.candidateId)
+              if (!c) return null
+              return (
+                <div key={s.candidateId} className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                  <span className="text-base leading-none">{MEDALS[rank] ?? `${rank + 1}°`}</span>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 line-clamp-1">{c.title}</p>
+                    <p className="text-[10px] text-slate-400">{s.score} pts</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Tabla de comparación */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-slate-100">
               <th className="text-left text-[10px] font-bold text-slate-400 uppercase tracking-wide px-5 py-2.5 w-36">Dato</th>
-              {candidates.map(c => (
-                <th key={c.id} className="text-left px-4 py-2.5 min-w-[140px]">
-                  <span className="text-xs font-bold text-slate-800 line-clamp-2">{c.title}</span>
-                  <span className="block text-[10px] text-slate-400 font-normal mt-0.5">
-                    {[c.neighborhood, c.city].filter(Boolean).join(', ') || 'Sin ubicación'}
-                  </span>
-                </th>
-              ))}
+              {candidates.map((c, ci) => {
+                const rank = ranked.findIndex(s => s.candidateId === c.id)
+                return (
+                  <th key={c.id} className="text-left px-4 py-2.5 min-w-[140px]">
+                    {hasScores && rank >= 0 && (
+                      <span className="text-base leading-none mr-1">{MEDALS[rank] ?? `${rank + 1}°`}</span>
+                    )}
+                    <span className="text-xs font-bold text-slate-800 line-clamp-2">{c.title}</span>
+                    <span className="block text-[10px] text-slate-400 font-normal mt-0.5">
+                      {[c.neighborhood, c.city].filter(Boolean).join(', ') || 'Sin ubicación'}
+                    </span>
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
@@ -330,8 +446,7 @@ function ComparisonTable({ candidates }: { candidates: PropertyCandidate[] }) {
       </div>
 
       <p className="px-5 py-3 text-[10px] text-slate-400 border-t border-slate-50 leading-relaxed">
-        Un empate no se destaca, y un dato que cargó una sola propiedad tampoco: ganar por ser
-        la única con ese número no es ganar.
+        El ranking combina solo los criterios que activaste. Sin dato en un criterio activo = 0 puntos en esa dimensión.
       </p>
     </div>
   )
