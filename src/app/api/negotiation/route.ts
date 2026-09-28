@@ -360,6 +360,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ result })
   } catch (err) {
     log.error('negotiation.failed', err)
+    const msg = err instanceof Error ? err.message : ''
+    if (/openai: 429|rate limit/i.test(msg)) {
+      return NextResponse.json({ error: 'rate_limit', message: 'Demasiados pedidos seguidos. Esperá un minuto y reintentá.' }, { status: 429 })
+    }
+    if (/openai: 402|insufficient_quota|credit_balance|no credits/i.test(msg)) {
+      return NextResponse.json({ error: 'quota_exceeded', message: 'La cuenta de IA se quedó sin crédito. Contactá al soporte.' }, { status: 402 })
+    }
     return NextResponse.json({ error: 'ai_unavailable' }, { status: 503 })
   }
 }

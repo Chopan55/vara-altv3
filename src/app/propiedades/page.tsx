@@ -279,7 +279,12 @@ const WEIGHTS_KEY = 'vara_scoring_weights'
 function loadWeights(): ScoringWeight[] {
   try {
     const raw = localStorage.getItem(WEIGHTS_KEY)
-    if (raw) return JSON.parse(raw) as ScoringWeight[]
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.every(w => typeof w.criterion === 'string' && typeof w.weight === 'number')) {
+        return parsed as ScoringWeight[]
+      }
+    }
   } catch {}
   return DEFAULT_SCORING_WEIGHTS.map(w => ({ ...w }))
 }

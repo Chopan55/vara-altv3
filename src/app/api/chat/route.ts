@@ -152,6 +152,13 @@ export async function POST(req: NextRequest) {
 
   } catch (err) {
     console.error('[VARA Chat]', err)
+    const msg = err instanceof Error ? err.message : ''
+    if (/insufficient_quota|credit_balance|no credits/i.test(msg)) {
+      return NextResponse.json({ error: 'La cuenta de IA se quedó sin crédito. Contactá al soporte.' }, { status: 402 })
+    }
+    if (/rate limit|429/i.test(msg)) {
+      return NextResponse.json({ error: 'Demasiados pedidos seguidos. Esperá un minuto y reintentá.' }, { status: 429 })
+    }
     return NextResponse.json({ error: 'Error al procesar tu consulta. Intentá de nuevo.' }, { status: 500 })
   }
 }
