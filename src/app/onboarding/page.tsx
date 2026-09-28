@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowRight, Home, TrendingUp, CheckCircle, AlertCircle, Info, Link2, User,
@@ -136,7 +136,7 @@ function ScrapeStatusBadge({ status, portal, missing, errorMessage, data, photoC
   )
 }
 
-export default function OnboardingPage() {
+function OnboardingInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [step, setStep] = useState(1)
@@ -556,5 +556,13 @@ export default function OnboardingPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense>
+      <OnboardingInner />
+    </Suspense>
   )
 }

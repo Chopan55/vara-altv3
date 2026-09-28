@@ -222,7 +222,7 @@ function rawValue(c: PropertyCandidate, criterion: ScoringCriterion): number | n
     case 'rooms':    return c.rooms > 0 ? c.rooms : null
     case 'bedrooms': return c.bedrooms > 0 ? c.bedrooms : null
     case 'expenses': return c.expenses && c.expenses > 0 ? c.expenses : null
-    case 'age':      return typeof (c as Record<string, unknown>).ageYears === 'number' ? (c as Record<string, unknown>).ageYears as number : null
+    case 'age':      return typeof (c as unknown as Record<string, unknown>).ageYears === 'number' ? (c as unknown as Record<string, unknown>).ageYears as number : null
   }
 }
 
