@@ -15,14 +15,11 @@ import type { CandidateStatus, PropertyCandidate } from './model'
 import { canTransitionCandidate } from './model'
 import { log } from '@/lib/observability/logger'
 import {
-  IMPORTED_KEY,
   getUserProperties,
   type UserProperty,
 } from '@/lib/userProperties'
 
 const LIST_KEY = 'vara_candidates'
-/** Marca de que la propiedad única vieja ya pasó a la lista. */
-const ADOPTED_KEY = 'vara_candidates_adopted'
 
 function readList(): PropertyCandidate[] {
   if (typeof localStorage === 'undefined') return []
@@ -55,31 +52,27 @@ export function toCandidate(
 }
 
 /**
- * Trae lo que ya existía a la lista nueva, una sola vez por navegador.
- * No borra `vara_imported_property`: si algo sale mal, el dato sigue ahí.
+ * Sincroniza vara_imported_properties → vara_candidates en cada llamada.
+ * Usa sourceUrl como clave de deduplicación; propiedades sin URL usan id.
+ * Idempotente: correr dos veces no duplica nada.
  */
 function adoptLegacyProperty(): PropertyCandidate[] {
   const list = readList()
-  try {
-    if (localStorage.getItem(ADOPTED_KEY)) return list
-  } catch { return list }
 
-  const legacy = getUserProperties()
-  if (legacy.length === 0) return list
+  const imported = getUserProperties()
+  if (imported.length === 0) return list
 
-  let imported: number | undefined
-  try {
-    const raw = localStorage.getItem(IMPORTED_KEY)
-    const parsed = raw ? (JSON.parse(raw) as { importedAt?: number }) : null
-    imported = typeof parsed?.importedAt === 'number' ? parsed.importedAt : undefined
-  } catch {}
+  const existingUrls = new Set(list.map(c => c.sourceUrl).filter(Boolean))
+  const existingIds  = new Set(list.map(c => c.id))
 
-  const adopted = legacy.map(p =>
-    toCandidate(p, { id: localId(), addedAt: imported ?? Date.now() }),
+  const newOnes = imported.filter(p =>
+    p.sourceUrl ? !existingUrls.has(p.sourceUrl) : !existingIds.has(p.id),
   )
+  if (newOnes.length === 0) return list
+
+  const adopted = newOnes.map(p => toCandidate(p, { id: localId() }))
   const merged = [...list, ...adopted]
   writeList(merged)
-  try { localStorage.setItem(ADOPTED_KEY, '1') } catch {}
   return merged
 }
 
