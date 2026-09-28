@@ -213,10 +213,18 @@ export default function OnboardingPage() {
       // El borrador alimenta el dashboard; el usuario lo revisa y edita ahí.
       if (result.status !== 'error') {
         try {
-          localStorage.setItem('vara_imported_property', JSON.stringify({
+          const item = {
             url: propertyUrl, portal: result.portal, data: result.data,
             photos: result.photos?.slice(0, 6) ?? [], importedAt: Date.now(),
-          }))
+          }
+          // Lista nueva (deduplicada por URL)
+          const raw = localStorage.getItem('vara_imported_properties')
+          const list: unknown[] = raw ? JSON.parse(raw) : []
+          const filtered = list.filter((x: unknown) => (x as { url: string }).url !== propertyUrl)
+          filtered.push(item)
+          localStorage.setItem('vara_imported_properties', JSON.stringify(filtered))
+          // Clave legacy para compatibilidad con código que aún la lea.
+          localStorage.setItem('vara_imported_property', JSON.stringify(item))
         } catch {}
       }
     } catch {

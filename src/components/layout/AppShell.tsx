@@ -252,10 +252,10 @@ function AuthFooter({ collapsed, userName }: { collapsed: boolean; userName: str
     try {
       const keysToRemove = [
         'vara_operations', 'vara_operation_id', 'vara_ops_migrated',
-        'vara_imported_property', 'vara_candidates', 'vara_candidates_adopted',
+        'vara_imported_property', 'vara_imported_properties', 'vara_candidates', 'vara_candidates_adopted',
         'vara_user_name', 'vara_journey_type', 'vara_province',
         'vara_property_url', 'vara_onboarding_done', 'vara_dismissed_guidance',
-        'vara_country', 'vara_publish_requests', 'vara_publish_draft',
+        'vara_country', 'vara_publish_requests', 'vara_publish_draft', 'vara_scoring_weights',
       ]
       keysToRemove.forEach(k => localStorage.removeItem(k))
     } catch {}
