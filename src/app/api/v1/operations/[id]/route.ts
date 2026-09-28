@@ -40,7 +40,7 @@ export async function GET(
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
 
   const { data, error } = await supabase
-    .from('user_operations')
+    .from('operations')
     .select('id, title, type, status, province_code, property_value_usd, created_at, updated_at')
     .eq('id', id)
     .eq('user_id', user.id)

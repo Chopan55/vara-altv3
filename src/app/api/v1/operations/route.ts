@@ -36,7 +36,7 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
 
   const { data, error } = await supabase
-    .from('user_operations')
+    .from('operations')
     .select('id, title, type, status, province_code, created_at, updated_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })

@@ -42,7 +42,7 @@ export async function GET(req: Request) {
 
   try {
     const { data: op } = await supabase
-      .from('user_operations')
+      .from('operations')
       .select('*')
       .eq('id', operationId)
       .eq('user_id', user.id)
