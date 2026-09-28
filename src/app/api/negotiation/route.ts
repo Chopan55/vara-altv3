@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { log } from '@/lib/observability/logger'
 import type { CountryCode } from '@/types'

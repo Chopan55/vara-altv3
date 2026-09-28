@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import OpenAI, { toFile } from 'openai'
 import { NextRequest, NextResponse } from 'next/server'
 
