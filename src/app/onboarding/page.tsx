@@ -1,6 +1,6 @@
 'use client'
-import { useState, useMemo, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowRight, Home, TrendingUp, CheckCircle, AlertCircle, Info, Link2, User,
   Loader2, XCircle, ChevronDown, ChevronUp,
@@ -138,12 +138,40 @@ function ScrapeStatusBadge({ status, portal, missing, errorMessage, data, photoC
 
 export default function OnboardingPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [step, setStep] = useState(1)
   const [name, setName] = useState('')
   const [type, setType] = useState('')
   const [country, setCountry] = useState<CountryCode>('AR')
   const [province, setProvince] = useState('')
   const [propertyUrl, setPropertyUrl] = useState('')
+
+  // Pre-fill from hero interactive (home page)
+  useEffect(() => {
+    const intentParam = searchParams.get('intent') // BUY | SELL | FOUND
+    if (!intentParam) return
+
+    const typeMap: Record<string, string> = {
+      BUY: 'BUY_PROPERTY',
+      SELL: 'SELL_PROPERTY',
+      FOUND: 'BUY_PROPERTY',
+    }
+    const resolvedType = typeMap[intentParam] ?? ''
+    if (resolvedType) {
+      setType(resolvedType)
+      // Jump past name step — go straight to location
+      setStep(3)
+    }
+
+    try {
+      const heroUrl = localStorage.getItem('vara_hero_url')
+      if (heroUrl) {
+        setPropertyUrl(heroUrl)
+        localStorage.removeItem('vara_hero_url')
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [scrapeStatus, setScrapeStatus] = useState<ScrapeStatus>('idle')
   const [scrapeData, setScrapeData] = useState<ScrapeResult['data']>({})

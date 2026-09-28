@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { ArrowRight, Shield, Zap, TrendingUp, CheckCircle2, ChevronRight, Sparkles, Globe, FileText, BarChart3 } from 'lucide-react'
+import { Shield, Zap, TrendingUp, CheckCircle2, ChevronRight, Sparkles, Globe, FileText, BarChart3, ArrowRight } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
+import { HeroInteractive } from '@/components/home/HeroInteractive'
 
 const risks = [
   { label: 'Dominial', desc: 'Observación en cadena de titularidad', color: 'text-red-600', bg: 'bg-red-50', dot: 'bg-red-500', badge: 'ALTO' },
@@ -88,42 +89,30 @@ export default function LandingPage() {
       {/* Hero — two-column layout */}
       <section className="max-w-7xl mx-auto px-5 pt-16 pb-20 lg:pt-20 lg:pb-24">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          {/* Left: copy */}
+          {/* Left: interactive entry point */}
           <div>
-            <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-100 text-brand-700 text-[11px] font-bold px-3 py-1.5 rounded-full mb-6 uppercase tracking-widest">
+            <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-100 text-brand-700 text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 uppercase tracking-widest">
               <Globe size={10} /> Argentina · México · LATAM
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-[1.08] mb-5 tracking-tight text-balance text-slate-900">
+            <h1 className="text-4xl md:text-5xl font-black leading-[1.1] mb-3 tracking-tight text-balance text-slate-900">
               Comprá o vendé<br />
-              una propiedad<br />
               <span className="vara-gradient">sin sorpresas.</span>
             </h1>
-            <p className="text-lg text-slate-500 mb-8 leading-relaxed max-w-lg">
-              VARA organiza documentos, costos, riesgos, visitas, ofertas y negociación, y te indica qué hacer en cada paso de la compra o venta.
+            <p className="text-base text-slate-500 mb-7 leading-relaxed">
+              VARA te acompaña en cada paso: costos reales, riesgos detectados, documentos y negociación.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
-              <Link href="/onboarding" className="bg-brand-600 hover:bg-brand-500 text-white font-bold px-7 py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 text-base shadow-sm">
-                Empezar gratis <ArrowRight size={15} />
-              </Link>
-              <Link href="/dashboard" className="border border-slate-200 hover:border-slate-300 text-slate-700 font-semibold px-7 py-3.5 rounded-xl transition-colors text-base flex items-center justify-center gap-2">
-                Ver demo →
-              </Link>
-            </div>
-            <p className="text-xs text-slate-400">Sin registro · Empezá en 2 minutos</p>
+            <HeroInteractive />
 
-            {/* Pills */}
-            <div className="flex flex-wrap gap-2 mt-8">
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-lg px-3 py-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand-500" />
-                <span className="text-xs font-semibold text-slate-700">Comprando</span>
-                <span className="text-xs text-slate-400">costos · riesgos · negociación</span>
-              </div>
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-lg px-3 py-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span className="text-xs font-semibold text-slate-700">Vendiendo</span>
-                <span className="text-xs text-slate-400">publicación · ofertas · checklist</span>
-              </div>
+            <div className="mt-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-100" />
+              <span className="text-xs text-slate-300 font-medium">o</span>
+              <div className="h-px flex-1 bg-slate-100" />
+            </div>
+            <div className="mt-3 text-center">
+              <Link href="/dashboard" className="text-sm text-slate-400 hover:text-brand-600 transition-colors font-medium">
+                Ver demo sin registrarme →
+              </Link>
             </div>
           </div>
 
