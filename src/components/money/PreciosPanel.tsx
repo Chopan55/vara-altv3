@@ -71,15 +71,7 @@ export function PreciosPanel() {
         )}
       </div>
 
-      <MarketComparison
-        price={mine?.price}
-        surface={mine?.surface}
-        currency={mine?.currency === 'ARS' ? 'ARS' : 'USD'}
-        neighborhood={mine?.neighborhood}
-        city={mine?.city}
-        province={mine?.province}
-        propertyType={mine?.type === 'APARTMENT' ? 'departamento' : 'casa'}
-      />
+      <MarketComparison />
 
       <div className="bg-slate-50 rounded-2xl px-4 py-3.5">
         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">
