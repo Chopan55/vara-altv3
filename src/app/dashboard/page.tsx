@@ -197,6 +197,18 @@ function EmptyState({ userName, propertyUrl }: { userName: string; propertyUrl: 
   )
 }
 
+/** USD/m² de referencia por provincia (rango estimado, datos históricos 2024-2025). */
+const PRICE_REFERENCE: Record<string, { min: number; max: number; label: string }> = {
+  'CABA':          { min: 1800, max: 2600, label: 'CABA' },
+  'Buenos Aires':  { min: 900,  max: 1700, label: 'GBA / Prov. Bs. As.' },
+  'Córdoba':       { min: 800,  max: 1400, label: 'Córdoba' },
+  'Santa Fe':      { min: 700,  max: 1200, label: 'Santa Fe' },
+  'Mendoza':       { min: 700,  max: 1100, label: 'Mendoza' },
+}
+function priceRef(province: string) {
+  return PRICE_REFERENCE[province] ?? { min: 600, max: 1100, label: province || 'Tu zona' }
+}
+
 /** Días estimados desde hoy para cada paso de una venta típica en Argentina. */
 const ESTIMATED_DAYS: Record<string, number> = {
   docs: 7, price: 3, photos: 10, publish: 14,
@@ -218,6 +230,7 @@ function SellerDashboard({ userName, province, operationId }: { userName: string
   const [tasks, setTasks] = useState<SellerTaskState[]>([])
   const [loaded, setLoaded] = useState(false)
   const [editingDateId, setEditingDateId] = useState<string | null>(null)
+  const [m2Input, setM2Input] = useState('')
 
   useEffect(() => {
     let alive = true
@@ -397,35 +410,69 @@ function SellerDashboard({ userName, province, operationId }: { userName: string
         </div>
 
         {/* PRICING INTELLIGENCE */}
-        <div className="bg-white rounded-2xl shadow-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center">
-                <BarChart2 size={15} className="text-slate-400" />
+        {(() => {
+          const ref = priceRef(province)
+          const m2n = parseFloat(m2Input)
+          const hasM2 = !isNaN(m2n) && m2n > 0
+          const estMin = hasM2 ? Math.round(m2n * ref.min / 1000) * 1000 : null
+          const estMax = hasM2 ? Math.round(m2n * ref.max / 1000) * 1000 : null
+          return (
+            <div className="bg-white rounded-2xl shadow-card p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center">
+                  <BarChart2 size={15} className="text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800 text-sm">Inteligencia de precio</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">{ref.label} · Referencia histórica 2024–2025</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-slate-800 text-sm">Inteligencia de precio</h3>
-                <p className="text-xs text-slate-400 mt-0.5">{province} · Referencia de mercado</p>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-amber-50 rounded-xl p-3">
+                  <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wide mb-0.5">Mínimo mercado</p>
+                  <p className="text-lg font-extrabold text-slate-900">USD {ref.min.toLocaleString('es-AR')}</p>
+                  <p className="text-[10px] text-slate-400">por m²</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-0.5">Máximo mercado</p>
+                  <p className="text-lg font-extrabold text-slate-900">USD {ref.max.toLocaleString('es-AR')}</p>
+                  <p className="text-[10px] text-slate-400">por m²</p>
+                </div>
               </div>
+              <div className="mb-3">
+                <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
+                  ¿Cuántos m² tiene tu propiedad?
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={m2Input}
+                    onChange={e => setM2Input(e.target.value)}
+                    placeholder="Ej: 75"
+                    className="flex-1 border-2 border-slate-100 focus:border-brand-400 rounded-xl px-3 py-2.5 text-sm text-slate-700 outline-none"
+                  />
+                  <div className="flex items-center px-3 bg-slate-50 rounded-xl border-2 border-slate-100 text-xs text-slate-400 font-medium">
+                    m²
+                  </div>
+                </div>
+              </div>
+              {hasM2 && estMin && estMax && (
+                <div className="bg-brand-50 border border-brand-100 rounded-xl p-3 mb-3">
+                  <p className="text-[10px] font-bold text-brand-600 uppercase tracking-wide mb-0.5">[ESTIMADO] Rango de publicación</p>
+                  <p className="text-base font-extrabold text-slate-900">
+                    USD {estMin.toLocaleString('es-AR')} – {estMax.toLocaleString('es-AR')}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Basado en {m2Input} m² × referencia {ref.label}. Verificá con comparables reales.
+                  </p>
+                </div>
+              )}
+              <Link href="/asistente" className="flex items-center gap-2 text-xs font-semibold text-amber-600 hover:underline">
+                Analizar mi propiedad con IA → <ArrowRight size={12} />
+              </Link>
             </div>
-          </div>
-          <div className="bg-slate-50 rounded-xl p-4 mb-3 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-slate-400 mb-0.5">Rango estimado de publicación</p>
-              <p className="text-xl font-extrabold text-slate-900 text-sm text-slate-400">Pendiente de análisis</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-slate-400 mb-0.5">Zona</p>
-              <p className="text-sm font-bold text-slate-700">{province}</p>
-            </div>
-          </div>
-          <p className="text-xs text-slate-300">
-            Referencia estimada. Usá el Asistente VARA para un análisis más preciso de tu propiedad.
-          </p>
-          <Link href="/asistente" className="mt-3 flex items-center gap-2 text-xs font-semibold text-amber-600 hover:underline">
-            Analizar mi propiedad con IA <ArrowRight size={12} />
-          </Link>
-        </div>
+          )
+        })()}
 
         {/* SELLER COSTS */}
         <div className="bg-white rounded-2xl shadow-card p-5">
