@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { tryCreateClient } from '@/lib/supabase/client'
 import type { NegotiationContext, NegotiationMode, NegotiationResponse } from '@/app/api/negotiation/route'
 
 const LS_KEY    = 'vara_neg_ctx_v1'
@@ -67,7 +67,7 @@ function ctxToRow(ctx: NegotiationContext) {
 
 export function useNegotiationStore() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = createClient() as any
+  const supabase = tryCreateClient() as any
 
   const [userId, setUserId]           = useState<string | null>(null)
   const [negotiations, setNegotiations] = useState<Negotiation[]>([])
