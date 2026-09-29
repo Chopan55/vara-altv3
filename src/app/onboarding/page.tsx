@@ -175,14 +175,6 @@ function OnboardingInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Trigger background scrape once propertyUrl state is set
-  useEffect(() => {
-    if (autoScrapeRef.current && propertyUrl.trim()) {
-      autoScrapeRef.current = false
-      handleScrape()
-    }
-  }, [propertyUrl, handleScrape])
-
   const [scrapeStatus, setScrapeStatus] = useState<ScrapeStatus>('idle')
   const [scrapeData, setScrapeData] = useState<ScrapeResult['data']>({})
   const [scrapePortal, setScrapePortal] = useState<string | null>(null)
@@ -271,6 +263,14 @@ function OnboardingInner() {
       setScrapeError('Error de conexión. El link quedó guardado — completá los datos desde el dashboard.')
     }
   }, [propertyUrl])
+
+  // Trigger background scrape once propertyUrl state is set from hero
+  useEffect(() => {
+    if (autoScrapeRef.current && propertyUrl.trim()) {
+      autoScrapeRef.current = false
+      handleScrape()
+    }
+  }, [propertyUrl, handleScrape])
 
   async function handleStart() {
     saveToStorage({ name, type, province, propertyUrl })
