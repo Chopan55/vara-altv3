@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/Progress'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { generateChecklist } from '@/lib/regulations'
 import type { ProvinceCode } from '@/data/regulations/types'
+import { priceRef } from '@/lib/market/priceReference'
 import { formatPrice } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
@@ -197,17 +198,6 @@ function EmptyState({ userName, propertyUrl }: { userName: string; propertyUrl: 
   )
 }
 
-/** USD/m² de referencia por provincia (rango estimado, datos históricos 2024-2025). */
-const PRICE_REFERENCE: Record<string, { min: number; max: number; label: string }> = {
-  'CABA':          { min: 1800, max: 2600, label: 'CABA' },
-  'Buenos Aires':  { min: 900,  max: 1700, label: 'GBA / Prov. Bs. As.' },
-  'Córdoba':       { min: 800,  max: 1400, label: 'Córdoba' },
-  'Santa Fe':      { min: 700,  max: 1200, label: 'Santa Fe' },
-  'Mendoza':       { min: 700,  max: 1100, label: 'Mendoza' },
-}
-function priceRef(province: string) {
-  return PRICE_REFERENCE[province] ?? { min: 600, max: 1100, label: province || 'Tu zona' }
-}
 
 /** Días estimados desde hoy para cada paso de una venta típica en Argentina. */
 const ESTIMATED_DAYS: Record<string, number> = {

@@ -1,11 +1,12 @@
 'use client'
 import { use, useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, Bed, Bath, Square, Upload, Sparkles, ChevronRight, TrendingUp, AlertCircle, Clock, DollarSign, Zap } from 'lucide-react'
+import { ArrowLeft, MapPin, Bed, Bath, Square, Upload, Sparkles, ChevronRight, TrendingUp, AlertCircle, Clock, DollarSign, Zap, TrendingDown, Minus } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { formatPrice, cn } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
 import { loadUserPropertyById, type UserProperty } from '@/lib/userProperties'
+import { analyzePricePosition, priceRef } from '@/lib/market/priceReference'
 
 const categoryIcon: Record<string, string> = { PINTURA: '🎨', ILUMINACION: '💡', PISOS: '🪵', COCINA: '🍳', BAÑO: '🚿', MOBILIARIO: '🛋️', JARDÍN: '🌿', EXTERIOR: '🏠' }
 
@@ -205,6 +206,114 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
         </div>
+
+        {/* Property Intelligence — precio vs mercado */}
+        {(() => {
+          const pricePerM2 = property.surface > 0 ? Math.round(property.price / property.surface) : 0
+          const province = property.province ?? ''
+          const { position, ref, delta } = analyzePricePosition(pricePerM2, province)
+          const marketRef = priceRef(province)
+
+          const cfg = {
+            BELOW: {
+              bg: 'bg-emerald-50 border-emerald-100',
+              icon: TrendingDown,
+              iconColor: 'text-emerald-600',
+              label: 'Por debajo del mercado',
+              labelColor: 'text-emerald-700',
+              detail: `USD ${pricePerM2.toLocaleString('es-AR')}/m² es ${Math.abs(delta ?? 0)}% menos que la media de ${ref.label}. Es una oportunidad.`,
+              negotiation: 'Precio ya competitivo — margen de negociación limitado (~2–5%).',
+            },
+            AT: {
+              bg: 'bg-slate-50 border-slate-200',
+              icon: Minus,
+              iconColor: 'text-slate-500',
+              label: 'En línea con el mercado',
+              labelColor: 'text-slate-700',
+              detail: `USD ${pricePerM2.toLocaleString('es-AR')}/m² está dentro del rango de referencia para ${ref.label}.`,
+              negotiation: 'Precio razonable — podés intentar negociar 3–8% sin romper el trato.',
+            },
+            ABOVE: {
+              bg: 'bg-rose-50 border-rose-100',
+              icon: TrendingUp,
+              iconColor: 'text-rose-600',
+              label: 'Por encima del mercado',
+              labelColor: 'text-rose-700',
+              detail: `USD ${pricePerM2.toLocaleString('es-AR')}/m² es ${Math.abs(delta ?? 0)}% más que la media de ${ref.label}. Negociá.`,
+              negotiation: 'Margen de negociación estimado: 8–15% sobre precio de lista.',
+            },
+            UNKNOWN: {
+              bg: 'bg-slate-50 border-slate-200',
+              icon: Minus,
+              iconColor: 'text-slate-400',
+              label: 'Sin datos suficientes',
+              labelColor: 'text-slate-500',
+              detail: 'Cargá el precio y la superficie para ver el análisis de mercado.',
+              negotiation: '',
+            },
+          }[position]
+
+          const Icon = cfg.icon
+
+          return (
+            <div className={cn('bg-white rounded-2xl p-4 shadow-sm border', cfg.bg)}>
+              <div className="flex items-start gap-3 mb-3">
+                <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0', cfg.bg)}>
+                  <Icon size={15} className={cfg.iconColor} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className={cn('text-sm font-bold', cfg.labelColor)}>{cfg.label}</p>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">[ESTIMADO]</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{cfg.detail}</p>
+                </div>
+              </div>
+
+              {position !== 'UNKNOWN' && (
+                <>
+                  {/* Barra visual de posición */}
+                  <div className="mb-3">
+                    <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                      <span>USD {marketRef.min.toLocaleString('es-AR')}/m²</span>
+                      <span className="font-semibold text-slate-600">Referencia {ref.label}</span>
+                      <span>USD {marketRef.max.toLocaleString('es-AR')}/m²</span>
+                    </div>
+                    <div className="relative h-2 bg-slate-100 rounded-full overflow-visible">
+                      <div className="absolute inset-y-0 left-[10%] right-[10%] bg-emerald-100 rounded-full" />
+                      {pricePerM2 > 0 && (() => {
+                        const pct = Math.min(100, Math.max(0,
+                          ((pricePerM2 - marketRef.min * 0.7) / (marketRef.max * 1.4 - marketRef.min * 0.7)) * 100
+                        ))
+                        return (
+                          <div
+                            className={cn('absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-white shadow',
+                              position === 'BELOW' ? 'bg-emerald-500' : position === 'ABOVE' ? 'bg-rose-500' : 'bg-slate-500'
+                            )}
+                            style={{ left: `calc(${pct}% - 6px)` }}
+                          />
+                        )
+                      })()}
+                    </div>
+                    <p className="text-center text-xs font-bold text-slate-700 mt-1.5">
+                      Tu propiedad: USD {pricePerM2.toLocaleString('es-AR')}/m²
+                    </p>
+                  </div>
+
+                  {/* Negociación */}
+                  {cfg.negotiation && (
+                    <div className="bg-white/70 rounded-xl px-3 py-2.5 flex items-start gap-2">
+                      <Zap size={11} className="text-brand-500 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        <span className="font-semibold">Negociación: </span>{cfg.negotiation}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Visualizá el potencial */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
