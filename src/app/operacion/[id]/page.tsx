@@ -100,10 +100,8 @@ export default function OperacionPage() {
   const searchParams = useSearchParams()
   const TAB_IDS = ['tareas','riesgos','documentos','ofertas','actividad','costos','timeline','participantes','diseno'] as const
   const requested = searchParams.get('tab')
-  // ?tab=riesgos sigue existiendo como link, pero ahora abre la pestaña fusionada.
-  const rawTab = requested === 'riesgos' ? 'documentos' : requested
-  const initialTab: Tab = (TAB_IDS as readonly string[]).includes(rawTab ?? '')
-    ? (rawTab as Tab)
+  const initialTab: Tab = (TAB_IDS as readonly string[]).includes(requested ?? '')
+    ? (requested as Tab)
     : 'tareas'
   const operationId = typeof params.id === 'string' ? params.id : 'txn-001'
   const { operation, notFound } = useOperation(operationId)
@@ -150,7 +148,8 @@ export default function OperacionPage() {
   // el documento a otra.
   const tabs: { id: Tab; label: string; icon: React.ElementType; badge?: number }[] = [
     { id: 'tareas', label: 'Tareas', icon: CheckCircle2 },
-    { id: 'documentos', label: 'Documentos y riesgos', icon: FileText, badge: highRisks > 0 ? highRisks : undefined },
+    { id: 'riesgos', label: 'Riesgos', icon: ShieldAlert, badge: highRisks > 0 ? highRisks : undefined },
+    { id: 'documentos', label: 'Documentos', icon: FileText },
     { id: 'ofertas', label: 'Ofertas', icon: Handshake },
     { id: 'costos', label: 'Costos', icon: DollarSign },
     { id: 'actividad', label: 'Qué pasó', icon: History },
@@ -381,7 +380,34 @@ export default function OperacionPage() {
           </div>
         )}
 
-        {/* Documentos a la izquierda, riesgos a la derecha: se leen juntos. */}
+        {activeTab === 'riesgos' && (
+          <div className="space-y-4">
+            {/* Resumen de severidad */}
+            {riskCount > 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className={cn('rounded-2xl p-4 text-center', highRisks > 0 ? 'bg-rose-50 border border-rose-100' : 'bg-slate-50')}>
+                  <p className="text-2xl font-extrabold text-rose-600">{highRisks}</p>
+                  <p className="text-xs font-semibold text-rose-500 mt-0.5">Alto</p>
+                </div>
+                <div className={cn('rounded-2xl p-4 text-center', (txn.risks?.filter(r => r.severity === 'MEDIUM').length ?? 0) > 0 ? 'bg-amber-50 border border-amber-100' : 'bg-slate-50')}>
+                  <p className="text-2xl font-extrabold text-amber-600">{txn.risks?.filter(r => r.severity === 'MEDIUM').length ?? 0}</p>
+                  <p className="text-xs font-semibold text-amber-500 mt-0.5">Medio</p>
+                </div>
+                <div className="bg-slate-50 rounded-2xl p-4 text-center">
+                  <p className="text-2xl font-extrabold text-slate-600">{txn.risks?.filter(r => r.severity === 'LOW').length ?? 0}</p>
+                  <p className="text-xs font-semibold text-slate-400 mt-0.5">Bajo</p>
+                </div>
+              </div>
+            )}
+            <OperationRisks
+              operationId={operationId}
+              propertyPrice={txn.property?.price}
+              provinceName={txn.province}
+            />
+          </div>
+        )}
+
+        {/* Documentos */}
         <div className={cn(
           'gap-4 items-start',
           activeTab === 'documentos' ? 'grid grid-cols-1 lg:grid-cols-2' : ''
