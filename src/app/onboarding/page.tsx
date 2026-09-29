@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo, useCallback, useEffect, Suspense } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowRight, Home, TrendingUp, CheckCircle, AlertCircle, Info, Link2, User,
@@ -168,10 +168,20 @@ function OnboardingInner() {
       if (heroUrl) {
         setPropertyUrl(heroUrl)
         localStorage.removeItem('vara_hero_url')
+        // Auto-scrape in background while user selects location
+        if (intentParam !== 'SELL') autoScrapeRef.current = true
       }
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Trigger background scrape once propertyUrl state is set
+  useEffect(() => {
+    if (autoScrapeRef.current && propertyUrl.trim()) {
+      autoScrapeRef.current = false
+      handleScrape()
+    }
+  }, [propertyUrl, handleScrape])
 
   const [scrapeStatus, setScrapeStatus] = useState<ScrapeStatus>('idle')
   const [scrapeData, setScrapeData] = useState<ScrapeResult['data']>({})
@@ -181,6 +191,7 @@ function OnboardingInner() {
   const [scrapePhotos, setScrapePhotos] = useState<string[]>([])
   const [pasteText, setPasteText] = useState('')
   const [showDetails, setShowDetails] = useState(false)
+  const autoScrapeRef = useRef(false)
 
   /*
    * generateChecklist() exige un precio, pero en el onboarding la persona
@@ -371,6 +382,12 @@ function OnboardingInner() {
               <p className="text-xs font-bold text-brand-500 uppercase tracking-widest mb-2">Paso 3</p>
               <h1 className="text-2xl font-extrabold text-slate-900 mb-1">¿Dónde es la operación?</h1>
               <p className="text-slate-400 text-sm">La normativa varía por país y región. Esto personaliza tu checklist.</p>
+              {scrapeStatus === 'loading' && (
+                <div className="flex items-center gap-2 mt-3 text-xs text-brand-500">
+                  <Loader2 size={12} className="animate-spin" />
+                  Analizando la propiedad mientras elegís…
+                </div>
+              )}
             </div>
 
             <div className="mb-5">
