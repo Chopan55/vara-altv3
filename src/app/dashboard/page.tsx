@@ -737,6 +737,8 @@ function RightRail({
   )
 }
 
+const RETURN_THRESHOLD_MS = 60 * 60 * 1000 // 1 hora
+
 export default function Dashboard() {
   const vara = useVaraState()
   const { operations, activeOperationId, getTransactionData, usingDemo, deleteOperation } = useOperations()
@@ -747,6 +749,17 @@ export default function Dashboard() {
   // como si fuera la del usuario (P0-1 de VARA_ALT_MASTER_AUDIT.md).
   const txn = activeTxnData
   const couldNotLoadOperation = operations.length > 0 && !activeTxnData
+
+  const [isReturning, setIsReturning] = useState(false)
+  const [returnDismissed, setReturnDismissed] = useState(false)
+  useEffect(() => {
+    try {
+      const last = Number(localStorage.getItem('vara_last_visit') ?? '0')
+      const now = Date.now()
+      if (last > 0 && now - last > RETURN_THRESHOLD_MS) setIsReturning(true)
+      localStorage.setItem('vara_last_visit', String(now))
+    } catch {}
+  }, [])
 
   const [importedProp, setImportedProp] = useState<UserProperty | null>(null)
   useEffect(() => {
@@ -784,11 +797,50 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[var(--background)]">
       <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6">
+        {/* RESUME EXPERIENCE — banner de retorno cuando el usuario vuelve tras >1h */}
+        {isReturning && !returnDismissed && !usingDemo && operations.length > 0 && (() => {
+          const op = operations[0]
+          const firstTxn = getTransactionData(op.id)
+          const action = primaryAction({ transaction: firstTxn ?? null })
+          const opTitle = op.title ?? (op.type === 'SELL' ? 'Tu venta' : 'Tu compra')
+          return (
+            <div className="rounded-2xl bg-slate-900 text-white p-4 flex items-start gap-3 mb-2">
+              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                <Sparkles size={16} className="text-brand-300" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">
+                  Bienvenido de vuelta{displayName ? `, ${displayName}` : ''}
+                </p>
+                <p className="text-sm font-bold text-white leading-snug">
+                  {opTitle}
+                  {action && action.id !== 'no_operation' ? ` — ${action.title}` : ''}
+                </p>
+                {action?.why && (
+                  <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{action.why}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {action && action.id !== 'no_operation' && (
+                  <Link href={action.cta.href}
+                    className="text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white px-3 py-2 rounded-xl transition-colors">
+                    {action.cta.label}
+                  </Link>
+                )}
+                <button onClick={() => setReturnDismissed(true)}
+                  className="text-slate-500 hover:text-slate-300 p-1 transition-colors" aria-label="Cerrar">
+                  ✕
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Saludo + promesa del producto, uno al lado del otro como en el diseño nuevo. */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              Hola{displayName ? `, ${displayName}` : ''} <span aria-hidden="true">👋</span>
+              {isReturning ? `Hola de nuevo${displayName ? `, ${displayName}` : ''}` : `Hola${displayName ? `, ${displayName}` : ''}`} <span aria-hidden="true">👋</span>
             </h1>
             <p className="text-sm text-slate-500 mt-1">Todo en un solo lugar. Avanzá con tranquilidad.</p>
           </div>
