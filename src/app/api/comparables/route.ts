@@ -74,7 +74,7 @@ export interface ComparablesResponse {
   message?: string
 }
 
-export async function POST(req: Request): Promise<NextResponse<ComparablesResponse>> {
+export async function POST(req: Request) {
   const auth = await requireAuth()
   if (auth.error) return auth.error
 
