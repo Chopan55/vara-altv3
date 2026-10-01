@@ -2,7 +2,7 @@
 create table if not exists negotiations (
   id            uuid default gen_random_uuid() primary key,
   user_id       uuid references auth.users(id) on delete cascade not null,
-  operation_id  uuid references user_operations(id) on delete set null,
+  operation_id  uuid references operations(id) on delete set null,
   title         text not null default 'Negociación',
   counterparty_role   text,
   counterparty_style  text,
