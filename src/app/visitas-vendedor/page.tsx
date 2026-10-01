@@ -4,7 +4,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Calendar, Clock, User, CheckCircle2, XCircle,
   Phone, MessageSquare, MapPin, ChevronDown, ChevronUp, Plus,
-  Sparkles, Loader2,
+  Sparkles, Loader2, Copy, ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { tryCreateClient } from '@/lib/supabase/client'
@@ -68,6 +68,15 @@ const MOCK_SOLICITUDES: SolicitudVisita[] = [
   },
 ]
 
+/** PIN determinístico de 6 dígitos derivado del ID de la visita. */
+function generatePin(id: string): string {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0
+  }
+  return String(hash % 1000000).padStart(6, '0')
+}
+
 const ESTADO_CONFIG: Record<SolicitudEstado, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   PENDIENTE:  { label: 'Pendiente',  color: 'text-amber-700',   bg: 'bg-amber-50',   icon: Clock },
   CONFIRMADA: { label: 'Confirmada', color: 'text-emerald-700', bg: 'bg-emerald-50', icon: CheckCircle2 },
@@ -87,6 +96,7 @@ export default function VisitasVendedorPage() {
   const [loaded, setLoaded] = useState(false)
   const [analyzing, setAnalyzing] = useState<Record<string, boolean>>({})
   const [analysis, setAnalysis] = useState<Record<string, string>>({})
+  const [pinCopied, setPinCopied] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     let alive = true
@@ -377,14 +387,55 @@ export default function VisitasVendedorPage() {
                         </div>
                       )}
 
-                      {s.estado === 'CONFIRMADA' && (
-                        <button
-                          onClick={() => updateEstado(s.id, 'REALIZADA')}
-                          className="w-full flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold py-2.5 rounded-xl transition-colors"
-                        >
-                          <CheckCircle2 size={13} /> Marcar como realizada
-                        </button>
-                      )}
+                      {s.estado === 'CONFIRMADA' && (() => {
+                        const pin = generatePin(s.id)
+                        const waText = encodeURIComponent(`Hola ${s.compradorNombre}, tu visita está confirmada. Tu PIN de verificación es: ${pin} — presentalo cuando llegues.`)
+                        const copyPin = () => {
+                          navigator.clipboard.writeText(pin).catch(() => {})
+                          setPinCopied(prev => ({ ...prev, [s.id]: true }))
+                          setTimeout(() => setPinCopied(prev => ({ ...prev, [s.id]: false })), 2000)
+                        }
+                        return (
+                          <>
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <ShieldCheck size={13} className="text-emerald-600" />
+                                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">PIN de verificación</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-2xl font-extrabold text-slate-900 tracking-widest font-mono">{pin}</span>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={copyPin}
+                                    className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-white border border-emerald-200 px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors"
+                                  >
+                                    {pinCopied[s.id] ? <CheckCircle2 size={11} /> : <Copy size={11} />}
+                                    {pinCopied[s.id] ? 'Copiado' : 'Copiar'}
+                                  </button>
+                                  {s.compradorTelefono && (
+                                    <a
+                                      href={`https://wa.me/${s.compradorTelefono.replace(/\D/g, '')}?text=${waText}`}
+                                      target="_blank" rel="noopener noreferrer"
+                                      className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-white border border-emerald-200 px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors"
+                                    >
+                                      <Phone size={11} /> Enviar por WhatsApp
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-[10px] text-emerald-600 mt-1.5 leading-relaxed">
+                                Compartí este PIN con el comprador. Pedíselo cuando llegue para confirmar que es quien dijo ser.
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => updateEstado(s.id, 'REALIZADA')}
+                              className="w-full flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold py-2.5 rounded-xl transition-colors"
+                            >
+                              <CheckCircle2 size={13} /> Marcar como realizada
+                            </button>
+                          </>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>
