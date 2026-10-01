@@ -19,9 +19,9 @@ const features = [
   {
     icon: BarChart3,
     badge: 'Motor Regulatorio',
-    title: 'Costos reales de escrituración, calculados desde la fuente',
-    body: 'VARA calcula sellos, honorarios e inscripción para las 24 provincias usando las fuentes legales vigentes. Cada número tiene jurisdicción, fuente y fecha de actualización.',
-    stat: '24', statLabel: 'provincias cubiertas',
+    title: 'Costos de escrituración con fuente, jurisdicción y nivel de confianza',
+    body: 'VARA calcula sellos, honorarios e inscripción para 24 provincias usando fuentes legales. Cada dato muestra su fuente, jurisdicción y nivel de confianza: verificado, parcial o estimado.',
+    stat: '24', statLabel: 'provincias con cobertura',
     cta: '/costos',
   },
   {
@@ -44,7 +44,7 @@ const features = [
 
 const steps = [
   { n: '01', title: 'Cargás tu operación', desc: 'Tipo, precio, provincia y si comprás o vendés.' },
-  { n: '02', title: 'VARA calcula y detecta', desc: 'Costos reales, riesgos por categoría y documentos requeridos.' },
+  { n: '02', title: 'VARA calcula y detecta', desc: 'Costos con fuente declarada, riesgos por categoría y documentos requeridos.' },
   { n: '03', title: 'Avanzás con claridad', desc: 'Cada paso tiene una acción concreta, sin ambigüedad.' },
 ]
 
@@ -99,7 +99,7 @@ export default function LandingPage() {
               <span className="vara-gradient">sin sorpresas.</span>
             </h1>
             <p className="text-base text-slate-500 mb-7 leading-relaxed">
-              VARA te acompaña en cada paso: costos reales, riesgos detectados, documentos y negociación.
+              VARA te acompaña en cada paso: costos con fuente declarada, riesgos detectados, documentos y negociación.
             </p>
 
             <HeroInteractive />

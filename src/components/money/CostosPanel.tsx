@@ -165,7 +165,7 @@ export function CostosPanel({ operationPropertyId }: CostosPanelProps = {}) {
           </p>
           <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2">
             <span className="text-xs opacity-50">Sellos {checklist.provinceName}:</span>
-            <span className="text-xs font-semibold text-brand-400">{formatPercent(costs.stampTaxBuyer.minAmount / propertyPrice * 2)} total</span>
+            <span className="text-xs font-semibold text-brand-400">{formatPercent(costs.stampTaxBuyer.minAmount / propertyPrice)} comprador</span>
           </div>
         </div>
 

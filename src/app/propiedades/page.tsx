@@ -241,10 +241,10 @@ function EmptyState({ onImport }: { onImport: () => void }) {
           className="flex items-center justify-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
           <Plus size={14} /> Sumar desde un link
         </button>
-        <Link href="/publicar"
+        <button onClick={onImport}
           className="flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
           <Pencil size={14} /> Cargar a mano
-        </Link>
+        </button>
       </div>
     </div>
   )

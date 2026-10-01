@@ -459,9 +459,11 @@ function OnboardingInner() {
                 <span className="font-semibold text-slate-800">{checklist.stages.length} etapas</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Costo estimado comprador</span>
+                <span className="text-slate-500">{isBuy ? 'Costo estimado comprador' : 'Costo estimado vendedor'}</span>
                 <span className={cn('font-semibold', checklist.dataConfidence !== 'VERIFIED' ? 'text-amber-600' : 'text-slate-800')}>
-                  {checklist.costs.totalBuyer.percentMin.toFixed(1)}–{checklist.costs.totalBuyer.percentMax.toFixed(1)}% del valor
+                  {isBuy
+                    ? `${checklist.costs.totalBuyer.percentMin.toFixed(1)}–${checklist.costs.totalBuyer.percentMax.toFixed(1)}% del valor`
+                    : `${checklist.costs.totalSeller.percentMin.toFixed(1)}–${checklist.costs.totalSeller.percentMax.toFixed(1)}% del valor`}
                   {checklist.dataConfidence !== 'VERIFIED' && ' (est.)'}
                 </span>
               </div>
