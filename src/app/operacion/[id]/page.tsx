@@ -20,6 +20,7 @@ import { OperationOffers } from '@/components/offers/OperationOffers'
 import { ActivityLedger } from '@/components/activity/ActivityLedger'
 import { OperationParticipants } from '@/components/participants/OperationParticipants'
 import { OperationRisks } from '@/components/risks/OperationRisks'
+import { VARAAssistant } from '@/components/assistant/VARAAssistant'
 import type { ProvinceCode } from '@/data/regulations/types'
 import type { Task, CountryCode } from '@/types'
 
@@ -650,6 +651,23 @@ export default function OperacionPage() {
           </div>
         )}
       </div>
+
+      <VARAAssistant
+        context={[
+          `Operación: ${txn.title}`,
+          `Tipo: ${txn.type}`,
+          `Estado: ${intel.status === 'BLOCKED' ? 'Bloqueada' : intel.status === 'ATTENTION' ? 'Requiere atención' : 'En curso'}`,
+          `Progreso: ${txn.progress}%`,
+          intel.nextTask ? `Próximo paso: ${intel.nextTask.title}` : '',
+          intel.blockedTasks.length > 0 ? `Tareas bloqueadas: ${intel.blockedTasks.map(t => t.title).join(', ')}` : '',
+          riskCount > 0 ? `Riesgos: ${riskCount} (${highRisks} alto${highRisks !== 1 ? 's' : ''})` : '',
+        ].filter(Boolean).join('\n')}
+        suggestions={[
+          intel.nextTask ? `¿Cómo hago "${intel.nextTask.title}"?` : '¿Cuál es mi próximo paso?',
+          highRisks > 0 ? `¿Cómo resuelvo los ${highRisks} riesgo${highRisks !== 1 ? 's' : ''} de alto impacto?` : '¿Qué riesgos debo tener en cuenta?',
+          `¿Cuánto me va a costar escriturar en ${txn.province}?`,
+        ]}
+      />
     </div>
   )
 }
