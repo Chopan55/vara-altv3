@@ -6,6 +6,8 @@ import {
   Phone, MessageSquare, MapPin, ChevronDown, ChevronUp, Plus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { tryCreateClient } from '@/lib/supabase/client'
+import type { VisitStatusDb } from '@/lib/supabase/types'
 
 type SolicitudEstado = 'PENDIENTE' | 'CONFIRMADA' | 'RECHAZADA' | 'REALIZADA'
 
@@ -77,15 +79,6 @@ function formatFecha(fecha: string) {
   return d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
-/** Arranca vacío: nunca mostramos compradores inventados como si fueran leads reales. */
-function loadSolicitudes(): SolicitudVisita[] {
-  try {
-    const saved = localStorage.getItem('vara_visit_requests')
-    if (saved) return JSON.parse(saved) as SolicitudVisita[]
-  } catch {}
-  return []
-}
-
 export default function VisitasVendedorPage() {
   const [solicitudes, setSolicitudes] = useState<SolicitudVisita[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -93,14 +86,43 @@ export default function VisitasVendedorPage() {
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    setSolicitudes(loadSolicitudes())
-    setLoaded(true)
+    let alive = true
+    const supabase = tryCreateClient()
+    if (!supabase) { setLoaded(true); return }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(supabase as any).auth.getUser().then(({ data }: any) => {
+      const userId: string | null = data?.user?.id ?? null
+      if (!userId) { setLoaded(true); return }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(supabase as any)
+        .from('visit_requests')
+        .select('id, buyer_name, buyer_phone, visit_date, visit_time, message, status, agent')
+        .eq('user_id', userId)
+        .order('visit_date', { ascending: false })
+        .then(({ data: rows }: { data: unknown[] | null }) => {
+          if (!alive) return
+          if (rows) {
+            setSolicitudes(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (rows as any[]).map(r => ({
+                id: r.id as string,
+                compradorNombre: r.buyer_name as string,
+                compradorTelefono: (r.buyer_phone ?? '') as string,
+                fecha: r.visit_date as string,
+                hora: (r.visit_time ?? '') as string,
+                mensaje: r.message as string | undefined,
+                estado: r.status as SolicitudEstado,
+                agente: r.agent as string | undefined,
+                isMockData: false as unknown as true,
+              }))
+            )
+          }
+          setLoaded(true)
+        })
+        .catch(() => setLoaded(true))
+    })
+    return () => { alive = false }
   }, [])
-
-  useEffect(() => {
-    if (!loaded) return
-    try { localStorage.setItem('vara_visit_requests', JSON.stringify(solicitudes)) } catch {}
-  }, [solicitudes, loaded])
 
   const showingExample = solicitudes.some(s => s.isMockData)
 
@@ -116,6 +138,11 @@ export default function VisitasVendedorPage() {
 
   const updateEstado = (id: string, estado: SolicitudEstado) => {
     setSolicitudes(prev => prev.map(s => s.id === id ? { ...s, estado } : s))
+    const supabase = tryCreateClient()
+    if (supabase) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      void (supabase as any).from('visit_requests').update({ status: estado as VisitStatusDb }).eq('id', id)
+    }
   }
 
   const proximas = solicitudes.filter(s => s.estado === 'PENDIENTE' || s.estado === 'CONFIRMADA')
