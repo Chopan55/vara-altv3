@@ -21,6 +21,7 @@ import { ActivityLedger } from '@/components/activity/ActivityLedger'
 import { OperationParticipants } from '@/components/participants/OperationParticipants'
 import { OperationRisks } from '@/components/risks/OperationRisks'
 import { VARAAssistant } from '@/components/assistant/VARAAssistant'
+import { OperationNegotiation } from '@/components/negotiation/OperationNegotiation'
 import type { ProvinceCode } from '@/data/regulations/types'
 import type { Task, CountryCode } from '@/types'
 
@@ -94,12 +95,12 @@ function TaskCard({ task }: { task: Task }) {
   )
 }
 
-type Tab = 'tareas' | 'documentos' | 'ofertas' | 'actividad' | 'costos' | 'timeline' | 'participantes' | 'riesgos' | 'diseno'
+type Tab = 'tareas' | 'documentos' | 'ofertas' | 'actividad' | 'costos' | 'timeline' | 'participantes' | 'riesgos' | 'diseno' | 'negociacion'
 
 export default function OperacionPage() {
   const params = useParams()
   const searchParams = useSearchParams()
-  const TAB_IDS = ['tareas','riesgos','documentos','ofertas','actividad','costos','timeline','participantes','diseno'] as const
+  const TAB_IDS = ['tareas','riesgos','documentos','ofertas','actividad','costos','timeline','participantes','diseno','negociacion'] as const
   const requested = searchParams.get('tab')
   const initialTab: Tab = (TAB_IDS as readonly string[]).includes(requested ?? '')
     ? (requested as Tab)
@@ -156,6 +157,7 @@ export default function OperacionPage() {
     { id: 'actividad', label: 'Qué pasó', icon: History },
     { id: 'timeline', label: 'Timeline', icon: Calendar },
     { id: 'participantes', label: 'Equipo', icon: User },
+    { id: 'negociacion', label: 'Negociación', icon: Handshake },
     { id: 'diseno', label: 'Diseño', icon: Sparkles },
   ]
 
@@ -629,6 +631,14 @@ export default function OperacionPage() {
         )}
 
         {activeTab === 'participantes' && <OperationParticipants operationId={operationId} country={country} />}
+
+        {activeTab === 'negociacion' && (
+          <OperationNegotiation
+            operationTitle={txn.title}
+            operationCity={txn.city}
+            country={country}
+          />
+        )}
 
         {activeTab === 'diseno' && (
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-6 text-center">
