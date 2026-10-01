@@ -42,6 +42,7 @@ function input(over: Partial<RiskInput> = {}): RiskInput {
   return {
     documents: [], offers: [], propertyPrice: 200_000,
     dataConfidence: 'VERIFIED', today: TODAY,
+    documentsLoaded: true,
     ...over,
   }
 }

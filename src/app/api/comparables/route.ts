@@ -5,6 +5,7 @@ import {
   type Comparable, type MeliItem,
 } from '@/lib/comparables/model'
 import { log } from '@/lib/observability/logger'
+import { requireAuth } from '@/lib/api/requireAuth'
 
 /**
  * Lee un aviso de MercadoLibre por su link.
@@ -74,6 +75,9 @@ export interface ComparablesResponse {
 }
 
 export async function POST(req: Request): Promise<NextResponse<ComparablesResponse>> {
+  const auth = await requireAuth()
+  if (auth.error) return auth.error
+
   let body: { url?: string }
   try {
     body = await req.json()

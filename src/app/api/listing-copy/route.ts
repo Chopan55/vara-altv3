@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import OpenAI from 'openai'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth } from '@/lib/api/requireAuth'
 
 export const maxDuration = 45
 
@@ -15,6 +16,9 @@ function clean(v: unknown, max = 80): string {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth()
+  if (auth.error) return auth.error
+
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ error: 'El servicio de IA no está configurado.' }, { status: 503 })
   }
