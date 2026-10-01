@@ -4,6 +4,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Calendar, Clock, User, CheckCircle2, XCircle,
   Phone, MessageSquare, MapPin, ChevronDown, ChevronUp, Plus,
+  Sparkles, Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { tryCreateClient } from '@/lib/supabase/client'
@@ -84,6 +85,8 @@ export default function VisitasVendedorPage() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [tab, setTab] = useState<'proximas' | 'historial'>('proximas')
   const [loaded, setLoaded] = useState(false)
+  const [analyzing, setAnalyzing] = useState<Record<string, boolean>>({})
+  const [analysis, setAnalysis] = useState<Record<string, string>>({})
 
   useEffect(() => {
     let alive = true
@@ -134,6 +137,30 @@ export default function VisitasVendedorPage() {
   const clearAll = () => {
     setSolicitudes([])
     setExpanded(null)
+  }
+
+  const analyzeMessage = async (id: string, mensaje: string) => {
+    if (analyzing[id]) return
+    setAnalyzing(prev => ({ ...prev, [id]: true }))
+    try {
+      const res = await fetch('/api/negotiation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'analyze',
+          message: mensaje,
+          context: { counterpartyRole: 'Comprador interesado' },
+          country: 'AR',
+        }),
+      })
+      const data = await res.json() as { suggestedReply?: string; analysis?: string; error?: string }
+      const text = data.analysis ?? data.suggestedReply ?? data.error ?? 'Sin análisis disponible.'
+      setAnalysis(prev => ({ ...prev, [id]: text }))
+    } catch {
+      setAnalysis(prev => ({ ...prev, [id]: 'No se pudo analizar. Revisá tu conexión.' }))
+    } finally {
+      setAnalyzing(prev => ({ ...prev, [id]: false }))
+    }
   }
 
   const updateEstado = (id: string, estado: SolicitudEstado) => {
@@ -300,19 +327,38 @@ export default function VisitasVendedorPage() {
                       )}
 
                       <div className="flex gap-2 flex-wrap">
-                        <a
-                          href={`tel:${s.compradorTelefono}`}
-                          className="flex items-center gap-1.5 bg-slate-100 text-slate-700 text-[11px] font-semibold px-3 py-2 rounded-xl hover:bg-slate-200 transition-colors"
-                        >
-                          <Phone size={11} /> {s.compradorTelefono}
-                        </a>
-                        <Link
-                          href="/asistente"
-                          className="flex items-center gap-1.5 bg-slate-100 text-slate-700 text-[11px] font-semibold px-3 py-2 rounded-xl hover:bg-slate-200 transition-colors"
-                        >
-                          <MessageSquare size={11} /> Consultar VARA
-                        </Link>
+                        {s.compradorTelefono && (
+                          <a
+                            href={`tel:${s.compradorTelefono}`}
+                            className="flex items-center gap-1.5 bg-slate-100 text-slate-700 text-[11px] font-semibold px-3 py-2 rounded-xl hover:bg-slate-200 transition-colors"
+                          >
+                            <Phone size={11} /> {s.compradorTelefono}
+                          </a>
+                        )}
+                        {s.mensaje && (
+                          <button
+                            onClick={() => analyzeMessage(s.id, s.mensaje!)}
+                            disabled={!!analyzing[s.id]}
+                            className="flex items-center gap-1.5 bg-brand-50 text-brand-700 text-[11px] font-semibold px-3 py-2 rounded-xl hover:bg-brand-100 disabled:opacity-60 transition-colors"
+                          >
+                            {analyzing[s.id]
+                              ? <Loader2 size={11} className="animate-spin" />
+                              : <Sparkles size={11} />
+                            }
+                            {analysis[s.id] ? 'Re-analizar' : 'Analizar con VARA'}
+                          </button>
+                        )}
                       </div>
+
+                      {analysis[s.id] && (
+                        <div className="bg-brand-50 rounded-xl p-3 border border-brand-100">
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <Sparkles size={11} className="text-brand-600" />
+                            <span className="text-[10px] font-bold text-brand-700 uppercase tracking-widest">Análisis VARA</span>
+                          </div>
+                          <p className="text-xs text-slate-700 leading-relaxed">{analysis[s.id]}</p>
+                        </div>
+                      )}
 
                       {s.estado === 'PENDIENTE' && (
                         <div className="flex gap-2 pt-1">
