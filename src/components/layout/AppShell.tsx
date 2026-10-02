@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, Menu, X, Inbox,
   LogIn, LogOut, BookOpen, Search, Plus, Sparkles,
   ShieldAlert, Users, Landmark, Tag, MapPin, CalendarCheck, Briefcase,
-  ClipboardCheck, Zap,
+  ClipboardCheck, Zap, BarChart2,
 } from 'lucide-react'
 import { tryCreateClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -29,18 +29,13 @@ interface NavItem {
   tag?: string
 }
 
-/**
- * El menú sigue el mapa del diseño de referencia, pero solo con destinos
- * que existen de verdad. "Búsqueda" y "Comparar" del mockup quedaron afuera
- * a propósito: no hay pantalla detrás, y un ítem que no lleva a ningún lado
- * hace perder más tiempo que el que ahorra.
- */
 function getBuyNav(operationId: string): NavItem[] {
   const opHref = operationId ? `/operacion/${operationId}` : '/dashboard'
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
     { href: '/acciones', icon: Zap, label: 'Acciones' },
     { href: '/propiedades', icon: Building2, label: 'Mis propiedades' },
+    { href: '/comparar', icon: BarChart2, label: 'Comparar' },
     { href: '/visitas', icon: ClipboardCheck, label: 'Checklist de visita' },
     { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', tag: 'Nuevo' },
     { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas' },
