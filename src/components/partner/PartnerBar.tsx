@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { LogOut } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { tryCreateClient } from '@/lib/supabase/client'
@@ -15,6 +15,7 @@ import { tryCreateClient } from '@/lib/supabase/client'
  */
 export function PartnerBar() {
   const router = useRouter()
+  const pathname = usePathname()
   const [email, setEmail] = useState<string | null>(null)
 
   useEffect(() => {
@@ -25,9 +26,12 @@ export function PartnerBar() {
 
   async function logout() {
     await tryCreateClient()?.auth.signOut()
-    router.push('/login')
+    router.push('/partner/entrar')
     router.refresh()
   }
+
+  // La pantalla de entrada ocupa todo: ahí la barra sobra.
+  if (pathname === '/partner/entrar') return null
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -51,7 +55,7 @@ export function PartnerBar() {
             </>
           ) : (
             <Link
-              href="/login"
+              href="/partner/entrar"
               className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-800"
             >
               Entrar

@@ -764,7 +764,7 @@ export default function PartnerOnboardingPage() {
           <p className="text-sm text-slate-500 mt-2">
             El alta de Visit Partner queda asociada a tu cuenta de VARA.
           </p>
-          <Link href="/login"
+          <Link href="/partner/entrar"
             className="inline-block mt-5 rounded-xl bg-brand-600 hover:bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors">
             Entrar o crear cuenta
           </Link>
