@@ -120,10 +120,13 @@ export function useGlobalNextBestAction() {
       if (blockedCount > 0) {
         alerts.push({ operationId: op.id, title: op.title, label: `${blockedCount} tarea${blockedCount > 1 ? 's' : ''} bloqueada${blockedCount > 1 ? 's' : ''}`, severity: 'HIGH' })
       } else if (pendingHighDocs > 0) {
-        alerts.push({ operationId: op.id, title: op.title, label: 'Documentación crítica pendiente', severity: 'HIGH' })
+        // Falta de escritura o planos es lo normal al empezar una compra: es una
+        // tarea pendiente, no una emergencia. El rojo se reserva para lo bloqueado.
+        alerts.push({ operationId: op.id, title: op.title, label: 'Documentación crítica pendiente', severity: 'MEDIUM' })
       }
     }
 
-    return alerts.sort((a, b) => (a.severity === 'HIGH' ? -1 : 1) - (b.severity === 'HIGH' ? -1 : 1))
+    const rank = { HIGH: 0, MEDIUM: 1 } as const
+    return alerts.sort((a, b) => rank[a.severity] - rank[b.severity])
   }, [operations, getTransactionData])
 }
