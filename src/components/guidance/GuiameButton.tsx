@@ -1,40 +1,68 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Sparkles, BookOpen, X } from 'lucide-react'
-import { usePathname } from 'next/navigation'
+import { Sparkles, BookOpen, ListChecks } from 'lucide-react'
 import { useGuidance } from '@/hooks/useGuidance'
 import { useTour } from '@/hooks/useTour'
 import { GuidancePanel } from './GuidancePanel'
 import { TourOverlay } from './TourOverlay'
 
-const ROUTE_TOURS: Record<string, string> = {
-  '/dashboard': 'tour_bienvenida',
-  '/operacion': 'tour_operacion',
-  '/costos':    'tour_costos',
-}
+/**
+ * Guíame vive en dos piezas a propósito:
+ *
+ *  - `GuiameTrigger`: el botón. Va en la barra superior, donde no choca con el
+ *    botón flotante del chat (antes los dos estaban pegados en el mismo rincón).
+ *  - `GuiameButton`: el menú, el panel y el tour. Se montan en la raíz de la
+ *    pantalla y no dentro de la barra, porque la barra tiene desenfoque de fondo
+ *    y eso rompe el `position: fixed` de todo lo que lleve adentro.
+ *
+ * El estado de "menú abierto" lo maneja quien las monta.
+ */
 
-function resolveRouteToTour(pathname: string): string {
-  for (const [prefix, tourId] of Object.entries(ROUTE_TOURS)) {
-    if (pathname === prefix || pathname.startsWith(prefix + '/')) return tourId
-  }
-  return 'tour_bienvenida'
-}
-
-export function GuiameButton() {
-  const [panelOpen, setPanelOpen] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const pathname = usePathname()
+export function GuiameTrigger({ expanded, onClick }: { expanded: boolean; onClick: () => void }) {
   const { allSteps } = useGuidance()
-  const { activeTour, stepIndex, isActive, startTour, next, prev, close, isCompleted } = useTour()
-
   const count = allSteps.length
-  const tourId = resolveRouteToTour(pathname)
 
-  function handleStartTour() {
-    setMenuOpen(false)
-    startTour(tourId)
-  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-haspopup="menu"
+      aria-expanded={expanded}
+      className="relative inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-white shadow-sm transition-[filter,transform] hover:brightness-110 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1357ec]"
+      style={{ background: 'linear-gradient(155deg, #0a45d6 0%, #1357ec 55%, #2a6df5 100%)' }}
+    >
+      <Sparkles size={15} aria-hidden="true" />
+      <span className="hidden sm:inline">Guíame</span>
+      {count > 0 && (
+        <span
+          className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/25 px-1 text-[11px] font-bold"
+          aria-label={`${count} pendiente${count > 1 ? 's' : ''}`}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  )
+}
+
+interface GuiameHostProps {
+  menuOpen: boolean
+  onMenuOpenChange: (open: boolean) => void
+}
+
+export function GuiameButton({ menuOpen, onMenuOpenChange }: GuiameHostProps) {
+  const [panelOpen, setPanelOpen] = useState(false)
+  const { allSteps } = useGuidance()
+  const { activeTour, stepIndex, isActive, next, prev, close } = useTour()
+  const count = allSteps.length
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onMenuOpenChange(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen, onMenuOpenChange])
 
   return (
     <>
@@ -51,52 +79,48 @@ export function GuiameButton() {
       )}
 
       {menuOpen && !isActive && (
-        <div className="fixed bottom-20 right-6 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 p-3 w-52 space-y-1">
-          <div className="flex items-center justify-between px-1 pb-1">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">VARA Guía</p>
-            <button onClick={() => setMenuOpen(false)} className="text-slate-300 hover:text-slate-500">
-              <X size={13} />
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => onMenuOpenChange(false)} aria-hidden="true" />
+          <div
+            role="menu"
+            aria-label="Guíame"
+            className="fixed right-4 top-16 z-50 w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl lg:right-6"
+          >
+            {/* El tour de 5 pasos no cambiaba de pantalla y se veía una sola vez.
+                La guía real son las etapas del proceso, siempre disponibles. */}
+            <Link
+              role="menuitem"
+              href="/guia"
+              onClick={() => onMenuOpenChange(false)}
+              className="flex items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-slate-50"
+            >
+              <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <BookOpen size={15} aria-hidden="true" />
+              </span>
+              <span>
+                <span className="block text-sm font-semibold text-slate-900">Guía del proceso</span>
+                <span className="block text-xs text-slate-500">Qué significa cada paso</span>
+              </span>
+            </Link>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { onMenuOpenChange(false); setPanelOpen(true) }}
+              className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-slate-50"
+            >
+              <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <ListChecks size={15} aria-hidden="true" />
+              </span>
+              <span>
+                <span className="block text-sm font-semibold text-slate-900">Tu camino</span>
+                <span className="block text-xs text-slate-500">
+                  {count > 0 ? `${count} paso${count > 1 ? 's' : ''} pendiente${count > 1 ? 's' : ''}` : 'Todo en orden'}
+                </span>
+              </span>
             </button>
           </div>
-          {/* El tour de 5 pasos no cambiaba de pantalla y se veía una sola vez.
-              La guía real son las etapas del proceso, siempre disponibles. */}
-          <Link
-            href="/guia"
-            onClick={() => setMenuOpen(false)}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-50 transition-colors text-left"
-          >
-            <BookOpen size={14} className="text-brand-500 flex-shrink-0" />
-            <div>
-              <p className="text-xs font-semibold text-slate-800">Guía del proceso</p>
-              <p className="text-[10px] text-slate-400">Qué significa cada paso</p>
-            </div>
-          </Link>
-          <button
-            onClick={() => { setMenuOpen(false); setPanelOpen(true) }}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-50 transition-colors text-left"
-          >
-            <Sparkles size={14} className="text-brand-500 flex-shrink-0" />
-            <div>
-              <p className="text-xs font-semibold text-slate-800">Próximos pasos</p>
-              {count > 0 && <p className="text-[10px] text-slate-400">{count} pendiente{count > 1 ? 's' : ''}</p>}
-            </div>
-          </button>
-        </div>
+        </>
       )}
-
-      <button
-        onClick={() => setMenuOpen(o => !o)}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-brand-600 text-white text-sm font-semibold shadow-lg hover:bg-brand-400 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
-        aria-label="Abrir guía VARA"
-      >
-        <Sparkles size={15} className="flex-shrink-0" />
-        <span>✦ Guiame</span>
-        {count > 0 && !isActive && (
-          <span className="ml-1 w-5 h-5 rounded-full bg-slate-900/30 text-[10px] font-bold flex items-center justify-center">
-            {count}
-          </span>
-        )}
-      </button>
 
       <GuidancePanel open={panelOpen} onClose={() => setPanelOpen(false)} />
     </>

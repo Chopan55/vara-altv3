@@ -2,7 +2,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2, Calculator, ShieldCheck, BookOpen, Sparkles, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2, Calculator, ShieldCheck, BookOpen, Sparkles, Eye, EyeOff, Briefcase } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
 
@@ -268,6 +268,24 @@ function LoginForm() {
           Probá sin cuenta
         </Link>
       </p>
+
+      {/* La puerta de los Visit Partners. Entran por acá y no desde adentro de la
+          cuenta de quien compra o vende: son otra cara del producto. */}
+      <div className="mt-6 border-t border-slate-100 pt-5">
+        <Link
+          href="/partner"
+          className="group flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 transition-colors hover:border-brand-300 hover:bg-brand-50/40"
+        >
+          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition-colors group-hover:bg-brand-100 group-hover:text-brand-700">
+            <Briefcase size={16} aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-slate-800">Soy Visit Partner</span>
+            <span className="block text-xs text-slate-500">Mostrás propiedades o acompañás visitas con VARA</span>
+          </span>
+          <ArrowRight size={15} className="flex-shrink-0 text-slate-300 transition-colors group-hover:text-brand-600" aria-hidden="true" />
+        </Link>
+      </div>
     </>
   )
 }
