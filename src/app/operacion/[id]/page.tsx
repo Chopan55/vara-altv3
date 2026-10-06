@@ -15,6 +15,7 @@ import { buildTransaction } from '@/lib/operationFromChecklist'
 import { cn, formatPrice, formatDate, getStatusLabel } from '@/lib/utils'
 import { generateChecklist } from '@/lib/regulations'
 import { primaryAction } from '@/lib/nba/engine'
+import { NextStepAgent } from '@/components/operation/NextStepAgent'
 import { OperationDocuments } from '@/components/documents/OperationDocuments'
 import { OperationOffers } from '@/components/offers/OperationOffers'
 import { ActivityLedger } from '@/components/activity/ActivityLedger'
@@ -291,40 +292,13 @@ export default function OperacionPage() {
         */}
       {nextAction && (
         <div className="max-w-4xl mx-auto px-4 pb-4">
-          <div className={cn(
-            'rounded-2xl border p-4',
-            nextAction.blocking ? 'border-red-200 bg-red-50' : 'border-brand-200 bg-brand-50'
-          )}>
-            <div className="flex items-start gap-3">
-              <div className={cn(
-                'w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0',
-                nextAction.blocking ? 'bg-red-100' : 'bg-brand-100'
-              )}>
-                <Zap size={16} className={nextAction.blocking ? 'text-red-600' : 'text-brand-700'} aria-hidden="true" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className={cn(
-                  'text-[10px] font-bold uppercase tracking-wide',
-                  nextAction.blocking ? 'text-red-600' : 'text-brand-700'
-                )}>
-                  {nextAction.blocking ? 'Bloquea la operación' : 'Tu próximo paso'}
-                </p>
-                <p className="font-bold text-slate-900 mt-0.5">{nextAction.title}</p>
-                <p className="text-sm text-slate-700 mt-1 leading-relaxed">{nextAction.why}</p>
-
-                {nextAction.evidence.length > 0 && (
-                  <ul className="mt-2.5 space-y-1">
-                    {nextAction.evidence.map(e => (
-                      <li key={e} className="flex items-start gap-1.5 text-[11px] text-slate-600">
-                        <span className="w-1 h-1 rounded-full bg-slate-400 flex-shrink-0 mt-1.5" aria-hidden="true" />
-                        {e}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          </div>
+          <NextStepAgent
+            key={nextAction.id}
+            action={nextAction}
+            operationId={operationId}
+            kind={txn.type === 'SELL_PROPERTY' ? 'SELL' : 'BUY'}
+            province={txn.province}
+          />
         </div>
       )}
 

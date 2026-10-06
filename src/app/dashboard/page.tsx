@@ -15,6 +15,7 @@ import { GuidanceBanner } from '@/components/guidance/GuidanceBanner'
 import { loadUserProperties, type UserProperty } from '@/lib/userProperties'
 import type { UserOperationSummary, Transaction } from '@/types'
 import { computeNextActions, primaryAction, CATEGORY_LABELS } from '@/lib/nba/engine'
+import { NextStepAgent } from '@/components/operation/NextStepAgent'
 import {
   fetchSellerTasks, toggleSellerTask, setSellerTaskDueDate,
   type SellerTaskState,
@@ -968,43 +969,15 @@ export default function Dashboard() {
         {(() => {
           const firstTxn = operations[0] ? getTransactionData(operations[0].id) : null
           const action = primaryAction({ transaction: firstTxn ?? null })
-          if (!action || action.id === 'no_operation') return null
+          if (!action || action.id === 'no_operation' || !operations[0]) return null
           return (
-            <div className={cn(
-              'rounded-2xl p-4 flex items-start gap-3',
-              action.blocking ? 'bg-red-50 border border-red-100' : 'bg-brand-50 border border-brand-100'
-            )}>
-              <div className={cn(
-                'w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0',
-                action.blocking ? 'bg-red-100' : 'bg-brand-100'
-              )}>
-                <Zap size={16} className={action.blocking ? 'text-red-600' : 'text-brand-600'} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={cn('text-[10px] font-bold uppercase tracking-widest mb-0.5', action.blocking ? 'text-red-400' : 'text-brand-400')}>
-                  {CATEGORY_LABELS[action.category]}
-                </p>
-                <p className={cn('text-sm font-bold leading-tight', action.blocking ? 'text-red-800' : 'text-slate-900')}>
-                  {action.title}
-                </p>
-                {action.why && (
-                  <p className={cn('text-xs mt-0.5 leading-relaxed', action.blocking ? 'text-red-600' : 'text-slate-500')}>
-                    {action.why}
-                  </p>
-                )}
-              </div>
-              <Link
-                href={action.cta.href}
-                className={cn(
-                  'flex-shrink-0 text-xs font-bold px-3 py-2 rounded-xl transition-colors',
-                  action.blocking
-                    ? 'bg-red-100 hover:bg-red-200 text-red-700'
-                    : 'bg-brand-100 hover:bg-brand-200 text-brand-700'
-                )}
-              >
-                {action.cta.label}
-              </Link>
-            </div>
+            <NextStepAgent
+              key={`${operations[0].id}-${action.id}`}
+              action={action}
+              operationId={operations[0].id}
+              kind={operations[0].type === 'SELL' ? 'SELL' : 'BUY'}
+              province={operations[0].province}
+            />
           )
         })()}
 
