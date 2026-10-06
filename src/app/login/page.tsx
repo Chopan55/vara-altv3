@@ -18,7 +18,11 @@ function translateError(raw: string): string {
   if (m.includes('user already registered')) return 'Ese mail ya está registrado. Probá iniciar sesión.'
   if (m.includes('password should be at least')) return 'La contraseña necesita al menos 6 caracteres.'
   if (m.includes('unable to validate email')) return 'Ese mail no parece válido.'
+  // El límite de mails de Supabase es por hora, no por minuto: decir "esperá un
+  // minuto" mandaba a reintentar justo lo que va a volver a fallar.
+  if (m.includes('email rate limit')) return 'Se alcanzó el límite de mails de confirmación por hora. Probá de nuevo más tarde.'
   if (m.includes('rate limit') || m.includes('too many')) return 'Demasiados intentos. Esperá un minuto.'
+  if (m.includes('error sending') && m.includes('email')) return 'No pudimos enviar el mail de confirmación. Es un problema del servicio de mail, no de tus datos.'
   return raw
 }
 
@@ -79,7 +83,7 @@ function LoginForm() {
         if (error) throw error
         setSentTo({ email: email.trim(), mode: 'reset' })
       } else if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
@@ -87,7 +91,32 @@ function LoginForm() {
             emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
           },
         })
+
+        // TEMPORAL: diagnóstico del registro. Sin el mail ni la clave. Quitar cuando
+        // el signup esté verificado en producción.
+        console.info('[signup]', {
+          error: error?.message ?? null,
+          userId: data?.user?.id ?? null,
+          confirmedAt: data?.user?.confirmed_at ?? null,
+          identities: data?.user?.identities?.length ?? null,
+          hasSession: Boolean(data?.session),
+        })
+
         if (error) throw error
+
+        // Con un mail que ya tiene cuenta, Supabase responde "éxito" sin mandar nada
+        // (para no revelar qué mails existen). Antes la pantalla decía "revisá tu mail".
+        if (data.user && data.user.identities?.length === 0) {
+          throw new Error('Ese mail ya tiene una cuenta. Entrá o recuperá tu contraseña.')
+        }
+
+        // Si el proyecto no exige confirmar el mail, el registro ya trae sesión.
+        if (data.session) {
+          router.push(next)
+          router.refresh()
+          return
+        }
+
         setSentTo({ email: email.trim(), mode: 'signup' })
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -121,7 +150,7 @@ function LoginForm() {
           </p>
         </div>
         <p className="text-xs text-slate-400">
-          ¿No te llegó? Mirá en spam, o{' '}
+          ¿No te llegó? Mirá en spam o promociones, o{' '}
           <button
             onClick={() => { setSentTo(null); switchTo(sentTo.mode) }}
             className="text-brand-600 font-semibold hover:underline"
