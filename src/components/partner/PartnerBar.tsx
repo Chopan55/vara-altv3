@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { LogOut } from 'lucide-react'
-import { VaraLogo } from '@/components/ui/VaraLogo'
+import { VaraVisitLogo } from '@/components/ui/VaraVisitLogo'
 import { tryCreateClient } from '@/lib/supabase/client'
 
 /**
@@ -36,10 +36,8 @@ export function PartnerBar() {
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3 lg:px-6">
-        <Link href="/partner" aria-label="Portal de Visit Partners" className="flex items-center gap-2.5">
-          <VaraLogo size={24} showText={false} />
-          <span className="text-sm font-semibold text-slate-900">Visit Partners</span>
-        </Link>
+        <VaraVisitLogo size={30} href="/partner" />
+        <span className="hidden rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-700 sm:inline">Partners</span>
 
         <div className="ml-auto flex items-center gap-3">
           {email ? (

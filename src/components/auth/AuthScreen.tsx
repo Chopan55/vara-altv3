@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2, Calculator, ShieldCheck, BookOpen, Sparkles, Eye, EyeOff, Briefcase, ClipboardCheck, KeyRound, MapPin } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
+import { VaraVisitLogo } from '@/components/ui/VaraVisitLogo'
 import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
 
 type Mode = 'login' | 'signup' | 'reset'
@@ -16,8 +17,17 @@ type Mode = 'login' | 'signup' | 'reset'
  */
 export type AuthAudience = 'client' | 'partner'
 
-const FIELD_CLASS =
-  'w-full pl-11 py-3.5 rounded-2xl border-2 border-slate-100 focus:border-brand-400 outline-none text-slate-800 text-sm placeholder:text-slate-300 transition-colors'
+/**
+ * VARA Visit tiene que verse como otra cosa que VARA: otro logo y otra paleta
+ * (verde azulado en lugar del índigo). Acá están las clases que cambian por público.
+ */
+const THEME = {
+  client: { btn: 'bg-brand-600 hover:bg-brand-700', link: 'text-brand-600', focus: 'focus:border-brand-400' },
+  partner: { btn: 'bg-teal-700 hover:bg-teal-800', link: 'text-teal-700', focus: 'focus:border-teal-500' },
+} as const
+
+const FIELD_BASE =
+  'w-full pl-11 py-3.5 rounded-2xl border-2 border-slate-100 outline-none text-slate-800 text-sm placeholder:text-slate-300 transition-colors'
 
 function translateError(raw: string): string {
   const m = raw.toLowerCase()
@@ -82,6 +92,8 @@ function LoginForm({ audience }: { audience: AuthAudience }) {
   const router = useRouter()
   const params = useSearchParams()
   const next = safeNext(params.get('next'), audience === 'partner' ? '/partner' : '/dashboard')
+  const th = THEME[audience]
+  const field = `${FIELD_BASE} ${th.focus}`
   const [mode, setMode] = useState<Mode>('login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -181,7 +193,7 @@ function LoginForm({ audience }: { audience: AuthAudience }) {
           ¿No te llegó? Mirá en spam o promociones, o{' '}
           <button
             onClick={() => { setSentTo(null); switchTo(sentTo.mode) }}
-            className="text-brand-600 font-semibold hover:underline"
+            className={`${th.link} font-semibold hover:underline`}
           >
             probá con otro mail
           </button>.
@@ -207,7 +219,7 @@ function LoginForm({ audience }: { audience: AuthAudience }) {
             <input
               id="name" type="text" value={name} onChange={e => setName(e.target.value)}
               placeholder="Tu nombre" autoComplete="name"
-              className={`${FIELD_CLASS} pr-4`}
+              className={`${field} pr-4`}
             />
           </div>
         )}
@@ -219,7 +231,7 @@ function LoginForm({ audience }: { audience: AuthAudience }) {
             id="email" type="email" value={email} onChange={e => setEmail(e.target.value)}
             placeholder="tu@mail.com" required autoComplete="email"
             autoFocus={mode !== 'signup'}
-            className={`${FIELD_CLASS} pr-4`}
+            className={`${field} pr-4`}
           />
         </div>
 
@@ -233,7 +245,7 @@ function LoginForm({ audience }: { audience: AuthAudience }) {
               placeholder={mode === 'signup' ? 'Contraseña (mín. 6 caracteres)' : 'Tu contraseña'}
               required minLength={6}
               autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-              className={`${FIELD_CLASS} pr-12`}
+              className={`${field} pr-12`}
             />
             <button
               type="button" onClick={() => setShowPassword(v => !v)}
@@ -256,7 +268,7 @@ function LoginForm({ audience }: { audience: AuthAudience }) {
 
         <button
           type="submit" disabled={loading}
-          className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-bold text-base py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors"
+          className={`w-full ${th.btn} disabled:opacity-50 text-white font-bold text-base py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors`}
         >
           {loading
             ? <><Loader2 size={18} aria-hidden="true" className="animate-spin" /> Un segundo…</>
@@ -274,7 +286,7 @@ function LoginForm({ audience }: { audience: AuthAudience }) {
 
       <p className="mt-5 text-center text-sm text-slate-400">
         {mode === 'reset' ? (
-          <button onClick={() => switchTo('login')} className="text-brand-600 font-semibold hover:underline">
+          <button onClick={() => switchTo('login')} className={`${th.link} font-semibold hover:underline`}>
             Volver a entrar
           </button>
         ) : (
@@ -282,7 +294,7 @@ function LoginForm({ audience }: { audience: AuthAudience }) {
             {mode === 'login' ? '¿Todavía no tenés cuenta?' : '¿Ya tenés cuenta?'}{' '}
             <button
               onClick={() => switchTo(mode === 'login' ? 'signup' : 'login')}
-              className="text-brand-600 font-semibold hover:underline"
+              className={`${th.link} font-semibold hover:underline`}
             >
               {mode === 'login' ? 'Creá una' : 'Entrá'}
             </button>
@@ -390,13 +402,16 @@ export function AuthScreen({ audience = 'client' }: { audience?: AuthAudience })
   return (
     <div className="min-h-screen bg-[var(--background)] lg:grid lg:grid-cols-2">
       {/* Panel de marca. En celular se esconde: ahí lo único que importa es el formulario. */}
-      <aside className="hidden lg:flex flex-col justify-between bg-brand-700 text-white p-10 xl:p-14">
-        <VaraLogo size={28} showText={false} />
+      <aside
+        className={`hidden lg:flex flex-col justify-between text-white p-10 xl:p-14 ${partner ? '' : 'bg-brand-700'}`}
+        style={partner ? { background: 'linear-gradient(160deg,#0b3f3c 0%,#115e59 55%,#0f766e 100%)' } : undefined}
+      >
+        {partner ? <VaraVisitLogo size={56} tone="light" /> : <VaraLogo size={28} showText={false} />}
 
         <div className="max-w-md">
           {partner && (
             <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
-              <Briefcase size={12} aria-hidden="true" /> Visit Partners
+              <Briefcase size={12} aria-hidden="true" /> Para Visit Partners
             </p>
           )}
           <h2 className="text-3xl font-extrabold leading-tight tracking-tight text-balance">
@@ -404,7 +419,7 @@ export function AuthScreen({ audience = 'client' }: { audience?: AuthAudience })
               ? 'Mostrá propiedades y acompañá visitas, con respaldo.'
               : 'Comprar o vender una propiedad en Argentina, sin ir a ciegas.'}
           </h2>
-          <p className="mt-3 text-brand-200 leading-relaxed">
+          <p className={`mt-3 leading-relaxed ${partner ? 'text-teal-100' : 'text-brand-200'}`}>
             {partner
               ? 'No sos agente inmobiliario ni participás de la negociación: sos quien hace la visita.'
               : 'VARA te acompaña desde la primera visita hasta la escritura.'}
@@ -418,14 +433,14 @@ export function AuthScreen({ audience = 'client' }: { audience?: AuthAudience })
                 </span>
                 <div>
                   <p className="font-semibold text-sm">{title}</p>
-                  <p className="text-[13px] text-brand-200 leading-relaxed mt-0.5">{detail}</p>
+                  <p className={`text-[13px] leading-relaxed mt-0.5 ${partner ? 'text-teal-100' : 'text-brand-200'}`}>{detail}</p>
                 </div>
               </li>
             ))}
           </ul>
         </div>
 
-        <p className="text-xs text-brand-300">
+        <p className={`text-xs ${partner ? 'text-teal-200' : 'text-brand-300'}`}>
           {partner
             ? 'El alta tiene 7 pasos y ninguno se saltea: subir documentos no alcanza para quedar habilitado.'
             : 'Tu cuenta guarda operaciones, documentos y fotos. Sin cuenta, todo vive solo en este navegador.'}
@@ -435,7 +450,7 @@ export function AuthScreen({ audience = 'client' }: { audience?: AuthAudience })
       <main className="flex flex-col justify-center px-6 py-12 lg:px-12">
         <div className="w-full max-w-sm mx-auto">
           <div className="mb-8 lg:hidden">
-            <VaraLogo size={26} />
+            {partner ? <VaraVisitLogo size={44} /> : <VaraLogo size={26} />}
           </div>
 
           {!isSupabaseConfigured ? (
