@@ -522,13 +522,18 @@ function Quiz({
   if (result) {
     const passed = result.score >= QUIZ_PASSING_SCORE
     return (
-      <Card title={passed ? 'Aprobaste' : 'No alcanzó'}>
+      <Card title={passed ? 'Aprobaste el examen' : 'No alcanzó'}>
         <p className="text-3xl font-extrabold text-slate-900">
           {Math.round(result.score * 100)}%
         </p>
         <p className="text-sm text-slate-500 mt-1">
           {result.correct} de {result.total} correctas · se necesita {Math.round(QUIZ_PASSING_SCORE * 100)}%
         </p>
+        {passed && (
+          <p className="text-sm text-slate-600 mt-3">
+            VARA revisa tu resultado y confirma tu certificación. El estado lo ves en esta pantalla.
+          </p>
+        )}
 
         {/* Las explicaciones se muestran siempre: el examen también enseña. */}
         {result.wrong.length > 0 && (
@@ -621,6 +626,11 @@ function TrainingStep({
         {certified && (
           <p className="mb-4 flex items-center gap-2 text-sm text-emerald-700 font-medium">
             <ShieldCheck size={15} aria-hidden="true" /> Certificación aprobada
+          </p>
+        )}
+        {!certified && training?.certificationStatus === 'QUIZ_PENDING' && (
+          <p className="mb-4 text-sm text-slate-600 font-medium">
+            Examen aprobado · VARA está confirmando tu certificación.
           </p>
         )}
 
