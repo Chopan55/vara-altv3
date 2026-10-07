@@ -21,6 +21,8 @@ const ALL_FLAGS = {
   publicApi: false,
   /** P3: UI y dominio personalizables para corredores o escribanías. */
   whiteLabel: false,
+  /** Lab (P2): VARA Alquiler Check en /alquileres/check. Aislado; apagado = la ruta da 404. */
+  rentalsCheck: false,
 } as const
 
 export type FlagName = keyof typeof ALL_FLAGS
