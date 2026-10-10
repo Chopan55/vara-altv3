@@ -17,7 +17,7 @@ import { useVaraState } from '@/hooks/useVaraState'
 import { GuiameButton, GuiameTrigger } from '@/components/guidance/GuiameButton'
 import { VaraAIFloat } from '@/components/ai/VaraAIFloat'
 
-const NO_SHELL = new Set(['/', '/onboarding', '/login', '/demo', '/labs', '/empezar'])
+const NO_SHELL = new Set(['/', '/onboarding', '/login', '/demo', '/labs', '/empezar', '/property-pack'])
 
 type JourneyType = 'BUY' | 'SELL'
 
@@ -58,6 +58,7 @@ function getSellNav(operationId: string): NavItem[] {
     { href: '/preparar-venta', icon: FileText, label: 'Preparar la venta', section: 'Preparar' },
     { href: '/precio-venta', icon: DollarSign, label: 'Precio de venta', section: 'Preparar' },
     { href: '/publicar', icon: Share2, label: 'Mi propiedad', section: 'Preparar' },
+    { href: '/property-pack', icon: FileText, label: 'Ficha para interesados', section: 'Preparar' },
     { href: '/ofertas', icon: Inbox, label: 'Ofertas y negociación', section: 'Interesados' },
     { href: '/visitas-vendedor', icon: Eye, label: 'Quién quiere visitar', section: 'Interesados' },
     { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', section: 'Interesados', tag: 'Nuevo' },
