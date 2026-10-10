@@ -56,6 +56,7 @@ function getSellNav(operationId: string): NavItem[] {
     { href: '/dashboard', icon: Home, label: 'Inicio' },
     { href: '/acciones', icon: Zap, label: 'Acciones' },
     { href: '/preparar-venta', icon: FileText, label: 'Preparar la venta', section: 'Preparar' },
+    { href: '/precio-venta', icon: DollarSign, label: 'Precio de venta', section: 'Preparar' },
     { href: '/publicar', icon: Share2, label: 'Mi propiedad', section: 'Preparar' },
     { href: '/ofertas', icon: Inbox, label: 'Ofertas y negociación', section: 'Interesados' },
     { href: '/visitas-vendedor', icon: Eye, label: 'Quién quiere visitar', section: 'Interesados' },
