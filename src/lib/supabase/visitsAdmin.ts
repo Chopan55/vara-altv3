@@ -101,9 +101,9 @@ export async function adminUpsertVerification(
 /**
  * Aprobación final: el partner pasa a ACTIVE.
  *
- * Se chequea contra el estado real, no contra lo que el admin cree. Si falta
- * identidad o certificación, no se activa — ni siquiera manualmente. Ese es
- * el punto de tener un proceso.
+ * El chequeo vive en la base (`admin_approve_partner`), contra el estado real.
+ * Antes corría acá, en el navegador del admin, y un update directo lo salteaba.
+ * La base tampoco deja activar a un partner nuevo por otra vía.
  */
 export async function adminApprovePartner(partnerId: string): Promise<
   { ok: true } | { ok: false; missing: string[] }
@@ -111,30 +111,33 @@ export async function adminApprovePartner(partnerId: string): Promise<
   const supabase = tryCreateClient()
   if (!supabase) return { ok: false, missing: ['Sin conexión a la base'] }
 
-  const { data: p } = await supabase.from('visit_partners').select('*')
-    .eq('id', partnerId).maybeSingle()
-  if (!p) return { ok: false, missing: ['No existe el partner'] }
+  const { data, error } = await supabase.rpc('admin_approve_partner', { p_partner_id: partnerId })
+  if (error || !data) return { ok: false, missing: ['No se pudo aprobar. Probá de nuevo.'] }
+  return data.ok ? { ok: true } : { ok: false, missing: data.missing ?? [] }
+}
 
-  const { data: v } = await supabase.from('partner_verifications').select('*')
-    .eq('partner_id', partnerId).maybeSingle()
+/**
+ * Certifica la capacitación del partner.
+ *
+ * Solo un admin puede: el partner no se certifica a sí mismo (la base lo
+ * rechaza). `visit_partners.certified` se actualiza solo, como espejo.
+ */
+export async function adminCertifyPartner(partnerId: string): Promise<boolean> {
+  const supabase = tryCreateClient()
+  if (!supabase) return false
+  const { error } = await supabase.from('partner_training').update({
+    certification_status: 'CERTIFIED',
+    certification_date: new Date().toISOString(),
+  }).eq('partner_id', partnerId)
+  return !error
+}
 
-  const missing: string[] = []
-  if (!p.verified_identity) missing.push('Identidad verificada')
-  if (!p.certified) missing.push('Capacitación aprobada')
-  if (v?.reference_check_status !== 'VERIFIED') missing.push('Referencias verificadas')
-  if (v?.interview_status !== 'VERIFIED') missing.push('Entrevista aprobada')
-  if ((v?.supervised_visits_completed ?? 0) < 3) missing.push('3 visitas supervisadas')
-
-  if (missing.length > 0) return { ok: false, missing }
-
-  await supabase.from('visit_partners')
-    .update({ status: 'ACTIVE', onboarding_status: 'APPROVED' })
-    .eq('id', partnerId)
-  await supabase.from('partner_verifications')
-    .update({ overall_status: 'APPROVED' })
-    .eq('partner_id', partnerId)
-  await supabase.rpc('recompute_partner_tier', { p_partner_id: partnerId })
-  return { ok: true }
+/** Después de un bloqueo por intentos, soporte genera un PIN nuevo. */
+export async function adminResetPin(bookingId: string): Promise<boolean> {
+  const supabase = tryCreateClient()
+  if (!supabase) return false
+  const { error } = await supabase.rpc('admin_reset_pin', { p_booking_id: bookingId })
+  return !error
 }
 
 export async function adminGetVerification(partnerId: string): Promise<PartnerVerification | null> {

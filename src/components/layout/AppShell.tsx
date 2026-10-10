@@ -173,13 +173,13 @@ function SidebarContent({
 
       <nav className="flex-1 space-y-0.5 px-3 overflow-y-auto no-scrollbar">
         {primaryNav.map(item => (
-          <NavLink key={item.href} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
+          <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
         ))}
 
         <div className="my-3 border-t border-slate-200 mx-2" />
 
         {SECONDARY_NAV.map(item => (
-          <NavLink key={item.href} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
+          <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
         ))}
       </nav>
 

@@ -278,7 +278,19 @@ export type Database = {
     /** Funciones RPC declaradas en las migraciones. Sin esto, `.rpc()` infiere `never`. */
     Functions: {
       next_visit_code_seq: { Args: Record<string, never>; Returns: number }
-      recompute_partner_tier: { Args: { p_partner_id: string }; Returns: undefined }
+      /** Solo el cliente dueño de la visita. El PIN ya no se puede leer con un select. */
+      get_booking_pin: { Args: { p_booking_id: string }; Returns: string | null }
+      /** Solo el partner asignado. El contador de intentos vive en la base. */
+      verify_visit_pin: {
+        Args: { p_booking_id: string; p_pin: string }
+        Returns: { ok: boolean; reason?: string; attemptsLeft?: number }
+      }
+      admin_reset_pin: { Args: { p_booking_id: string }; Returns: undefined }
+      admin_approve_partner: {
+        Args: { p_partner_id: string }
+        Returns: { ok: boolean; missing?: string[] }
+      }
+      reject_assignment: { Args: { p_booking_id: string; p_reason?: string }; Returns: undefined }
     }
     Enums: Record<never, never>
     CompositeTypes: Record<never, never>
