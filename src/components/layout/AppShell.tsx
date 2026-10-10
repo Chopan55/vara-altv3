@@ -36,6 +36,7 @@ function getBuyNav(operationId: string): NavItem[] {
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
     { href: '/acciones', icon: Zap, label: 'Acciones' },
+    { href: '/mi-busqueda', icon: ClipboardCheck, label: 'Mi búsqueda', section: 'Buscar' },
     { href: '/propiedades', icon: Building2, label: 'Mis propiedades', section: 'Buscar' },
     { href: '/comparar', icon: BarChart2, label: 'Comparar', section: 'Buscar' },
     { href: '/visitas', icon: ClipboardCheck, label: 'Checklist de visita', section: 'Visitar' },
