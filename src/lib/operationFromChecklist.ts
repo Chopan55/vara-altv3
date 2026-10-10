@@ -110,11 +110,17 @@ export function buildTransaction(op: StoredOperation, propertyPrice = 0): Transa
   const documents: Document[] = allTasks
     .flatMap(t => t.documentsRequired)
     .filter(name => (seen.has(name) ? false : (seen.add(name), true)))
-    .map((name, i) => ({
+    .map((name, i) => {
+      // Un documento cuenta como recibido cuando todas las tareas que lo piden están hechas.
+      const needing = allTasks.filter(t => t.documentsRequired.includes(name))
+      const received = needing.length > 0 && needing.every(t => t.status === 'DONE')
+      return { name, i, received }
+    })
+    .map(({ name, i, received }) => ({
       id: `doc-${i}`,
       name,
       category: inferDocCategory(name),
-      status: 'PENDING' as const,
+      status: (received ? 'RECEIVED' : 'PENDING') as 'RECEIVED' | 'PENDING',
       transactionId: op.id,
       version: 1,
     }))

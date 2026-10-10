@@ -11,7 +11,7 @@ import { mockTransaction } from '@/data/mock'
 import { useOperation } from '@/hooks/useOperation'
 import { useOperations } from '@/hooks/useOperations'
 import { getOperation } from '@/lib/userOperations'
-import { buildTransaction } from '@/lib/operationFromChecklist'
+import { buildTransaction, setTaskState } from '@/lib/operationFromChecklist'
 import { cn, formatPrice, formatDate, getStatusLabel } from '@/lib/utils'
 import { generateChecklist } from '@/lib/regulations'
 import { primaryAction } from '@/lib/nba/engine'
@@ -52,12 +52,23 @@ const taskStatusIcon = (status: string) => {
   return <div className="w-[18px] h-[18px] rounded-full border-2 border-slate-300 flex-shrink-0" />
 }
 
-function TaskCard({ task }: { task: Task }) {
+function TaskCard({ task, onToggle }: { task: Task; onToggle?: (task: Task) => void }) {
   const [open, setOpen] = useState(false)
   return (
     <div className={cn('rounded-xl border transition-all', task.status === 'DONE' ? 'bg-slate-50 border-slate-100' : 'bg-white border-slate-200')}>
-      <button className="w-full flex items-center gap-3 p-3.5 text-left" onClick={() => setOpen(o => !o)}>
-        {taskStatusIcon(task.status)}
+      <div className="flex items-center">
+      {onToggle && task.status !== 'BLOCKED' && (
+        <button
+          type="button"
+          onClick={() => onToggle(task)}
+          aria-label={task.status === 'DONE' ? 'Marcar como pendiente' : 'Marcar como hecha'}
+          className="pl-3.5 py-3.5 flex-shrink-0"
+        >
+          {taskStatusIcon(task.status)}
+        </button>
+      )}
+      <button className="flex-1 flex items-center gap-3 p-3.5 text-left" onClick={() => setOpen(o => !o)}>
+        {!(onToggle && task.status !== 'BLOCKED') && taskStatusIcon(task.status)}
         <div className="flex-1 min-w-0">
           <p className={cn('text-sm font-medium', task.status === 'DONE' ? 'text-slate-400 line-through' : 'text-slate-800')}>{task.title}</p>
           {task.responsibleRole && <p className="text-xs text-slate-400 mt-0.5">{task.responsibleRole}</p>}
@@ -65,6 +76,7 @@ function TaskCard({ task }: { task: Task }) {
         {task.warnings && task.warnings.length > 0 && <AlertCircle size={14} className="text-amber-500 flex-shrink-0" />}
         {open ? <ChevronUp size={14} className="text-slate-300 flex-shrink-0" /> : <ChevronDown size={14} className="text-slate-300 flex-shrink-0" />}
       </button>
+      </div>
       {open && (
         <div className="px-4 pb-4 space-y-3 border-t border-slate-100 pt-3">
           <div>
@@ -119,6 +131,14 @@ export default function OperacionPage() {
   // Todos los hooks deben declararse antes de cualquier return condicional (Rules of Hooks).
   // El sidebar linkea directo a una pestaña (?tab=documentos).
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
+  const [, setTaskTick] = useState(0)
+  // Solo las operaciones del usuario guardan el avance; las de demostración no se tocan.
+  const toggleTask = userOp
+    ? (t: Task) => {
+        setTaskState(userOp.id, t.id, t.status === 'DONE' ? 'TODO' : 'DONE')
+        setTaskTick(n => n + 1)
+      }
+    : undefined
   const [openStage, setOpenStage] = useState<string>('')
   useEffect(() => {
     if (txn && !openStage) setOpenStage(txn.currentStageId)
@@ -349,7 +369,7 @@ export default function OperacionPage() {
                 </button>
                 {openStage === stage.id && (
                   <div className="px-4 pb-4 space-y-2 border-t border-slate-50">
-                    {stage.tasks.map(task => <TaskCard key={task.id} task={task} />)}
+                    {stage.tasks.map(task => <TaskCard key={task.id} task={task} onToggle={toggleTask} />)}
                   </div>
                 )}
               </div>
