@@ -2,7 +2,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2, Calculator, ShieldCheck, BookOpen, Sparkles, Eye, EyeOff, Briefcase, ClipboardCheck, KeyRound, MapPin } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2, Calculator, ShieldCheck, Sparkles, Eye, EyeOff, Briefcase, ClipboardCheck, KeyRound, MapPin, Scale, Layers, Compass } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { VaraVisitLogo } from '@/components/ui/VaraVisitLogo'
 import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
@@ -345,26 +345,44 @@ function LoginForm({ audience }: { audience: AuthAudience }) {
  * Lo que se promete acá tiene que existir del otro lado del login.
  * Nada de "tasaciones automáticas" ni métricas: solo lo que la app hace hoy.
  */
+const CLIENT_HEADING = 'VARA empieza donde terminan los portales.'
+const CLIENT_SUB =
+  'Encontrar una propiedad ya es digital. Comprar o venderla todavía no. VARA no necesita que compres esa propiedad: necesita ayudarte a tomar una buena decisión.'
+const CLIENT_NOT =
+  'VARA no es un portal, ni un chatbot inmobiliario, ni una inmobiliaria digital: es una capa de inteligencia, coordinación y ejecución. Puede convivir con tu inmobiliaria.'
+const PARTNER_HEADING = 'Mostrá propiedades y acompañá visitas, con respaldo.'
+const PARTNER_SUB = 'No sos agente inmobiliario ni participás de la negociación: sos quien hace la visita.'
+
 const CLIENT_VALUE_PROPS = [
   {
+    icon: Compass,
+    title: 'Qué falta, qué riesgo hay y qué hacer ahora',
+    detail: 'Convierte información en acción con Next Best Action. Una buena recomendación puede ser “no avances”.',
+  },
+  {
+    icon: Scale,
+    title: 'Compará según tus prioridades',
+    detail: 'No existe la mejor propiedad: existe la mejor para vos. Sin un score opaco.',
+  },
+  {
     icon: Calculator,
-    title: 'Costos reales de tu provincia',
-    detail: 'Sellos, escribano e impuestos calculados con la normativa vigente, no con un promedio.',
+    title: 'Los costos reales, no solo el precio de publicación',
+    detail: 'Sellos, escribano e impuestos calculados con la normativa de tu provincia.',
   },
   {
     icon: ShieldCheck,
-    title: 'Riesgos antes de firmar',
-    detail: 'Te marcamos qué documento falta y por qué frena la operación.',
+    title: 'Documentos y riesgos en lenguaje humano',
+    detail: 'Sin reemplazar al escribano, al abogado ni a otros profesionales.',
   },
   {
-    icon: BookOpen,
-    title: 'Cada paso explicado',
-    detail: 'Seña, boleto, escritura: qué es, cuándo pasa y qué mirar.',
+    icon: Layers,
+    title: 'Toda la operación en un solo lugar',
+    detail: 'Hoy vive dispersa entre WhatsApp, mails, PDFs y portales. Acá queda ordenada, con qué pasó y qué sigue.',
   },
   {
     icon: Sparkles,
-    title: 'Tus fotos, mejoradas con IA',
-    detail: 'Cambiá pintura o ambientación sobre tu propia foto para mostrar el potencial.',
+    title: 'Vos decidís. VARA te da el control.',
+    detail: 'La IA explica y prepara; no inventa hechos ni decide por vos.',
   },
 ]
 
@@ -415,14 +433,10 @@ export function AuthScreen({ audience = 'client' }: { audience?: AuthAudience })
             </p>
           )}
           <h2 className="text-3xl font-extrabold leading-tight tracking-tight text-balance">
-            {partner
-              ? 'Mostrá propiedades y acompañá visitas, con respaldo.'
-              : 'Comprar o vender una propiedad en Argentina, sin ir a ciegas.'}
+            {partner ? PARTNER_HEADING : CLIENT_HEADING}
           </h2>
           <p className={`mt-3 leading-relaxed ${partner ? 'text-teal-100' : 'text-brand-200'}`}>
-            {partner
-              ? 'No sos agente inmobiliario ni participás de la negociación: sos quien hace la visita.'
-              : 'VARA te acompaña desde la primera visita hasta la escritura.'}
+            {partner ? PARTNER_SUB : CLIENT_SUB}
           </p>
 
           <ul className="mt-9 space-y-5">
@@ -438,12 +452,14 @@ export function AuthScreen({ audience = 'client' }: { audience?: AuthAudience })
               </li>
             ))}
           </ul>
+
+          {!partner && <p className="mt-7 text-[13px] leading-relaxed text-brand-200">{CLIENT_NOT}</p>}
         </div>
 
         <p className={`text-xs ${partner ? 'text-teal-200' : 'text-brand-300'}`}>
           {partner
             ? 'El alta tiene 7 pasos y ninguno se saltea: subir documentos no alcanza para quedar habilitado.'
-            : 'Tu cuenta guarda operaciones, documentos y fotos. Sin cuenta, todo vive solo en este navegador.'}
+            : 'Software cuando alcanza. Personas cuando agregan valor. Especialistas cuando hacen falta. Tu cuenta guarda operaciones, documentos y fotos; sin cuenta, todo vive solo en este navegador.'}
         </p>
       </aside>
 
@@ -471,6 +487,28 @@ export function AuthScreen({ audience = 'client' }: { audience?: AuthAudience })
               </Suspense>
             </div>
           )}
+
+          {/* En celular el panel de marca se esconde: este bloque cuenta lo mismo, debajo del formulario. */}
+          <section className="mt-10 lg:hidden" aria-label={partner ? 'Para Visit Partners' : 'Por qué VARA'}>
+            <h2 className="text-base font-extrabold text-slate-800 text-balance">{partner ? PARTNER_HEADING : CLIENT_HEADING}</h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{partner ? PARTNER_SUB : CLIENT_SUB}</p>
+            <ul className="mt-5 space-y-4">
+              {valueProps.map(({ icon: Icon, title, detail }) => (
+                <li key={title} className="flex gap-3">
+                  <span
+                    className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl ${partner ? 'bg-teal-50 text-teal-700' : 'bg-brand-50 text-brand-600'}`}
+                  >
+                    <Icon size={15} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">{title}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{detail}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {!partner && <p className="mt-5 text-xs leading-relaxed text-slate-400">{CLIENT_NOT}</p>}
+          </section>
         </div>
       </main>
     </div>

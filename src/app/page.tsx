@@ -71,10 +71,6 @@ export default function LandingPage() {
           <VaraLogo size={26} />
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-500">
             <Link href="/#como-funciona" className="hover:text-slate-900 transition-colors">Cómo funciona</Link>
-            <Link href="/vara-labs" className="flex items-center gap-1 hover:text-slate-900 transition-colors">
-              <Sparkles size={12} className="text-brand-500" /> Labs
-            </Link>
-            <Link href="/dashboard" className="hover:text-slate-900 transition-colors">Demo</Link>
             <Link href="/vara-visit" className="flex items-center gap-1.5 font-semibold text-teal-700 hover:text-teal-900 transition-colors">
               <span className="h-1.5 w-1.5 rounded-full bg-teal-600" aria-hidden="true" /> VARA Visit
             </Link>
@@ -110,17 +106,6 @@ export default function LandingPage() {
             </p>
 
             <HeroInteractive />
-
-            <div className="mt-5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-slate-100" />
-              <span className="text-xs text-slate-300 font-medium">o</span>
-              <div className="h-px flex-1 bg-slate-100" />
-            </div>
-            <div className="mt-3 text-center">
-              <Link href="/dashboard" className="text-sm text-slate-400 hover:text-brand-600 transition-colors font-medium">
-                Ver demo sin registrarme →
-              </Link>
-            </div>
           </div>
 
           {/* Right: product mockup — light UI */}
@@ -340,9 +325,6 @@ export default function LandingPage() {
               <Link href="/onboarding" className="bg-white text-brand-700 font-black px-8 py-3.5 rounded-xl transition-all hover:bg-brand-50 flex items-center justify-center gap-2 text-base shadow-sm">
                 Empezar mi operación <ArrowRight size={15} />
               </Link>
-              <Link href="/vara-labs" className="bg-white/10 hover:bg-white/20 text-white font-semibold px-8 py-3.5 rounded-xl border border-white/20 transition-colors flex items-center justify-center gap-2">
-                <Sparkles size={14} /> Ver VARA Labs
-              </Link>
             </div>
           </div>
         </div>
@@ -381,8 +363,6 @@ export default function LandingPage() {
           <VaraLogo size={22} />
           <p className="text-xs text-slate-400">© 2026 VARA · Plataforma inmobiliaria</p>
           <div className="flex items-center gap-5 text-xs text-slate-400">
-            <Link href="/vara-labs" className="hover:text-slate-700 transition-colors">Labs</Link>
-            <Link href="/dashboard" className="hover:text-slate-700 transition-colors">Explorar</Link>
             <Link href="/costos" className="hover:text-slate-700 transition-colors">Costos</Link>
             <Link href="/vara-visit" className="hover:text-slate-700 transition-colors">VARA Visit</Link>
             <Link href="/partner/entrar" className="hover:text-slate-700 transition-colors">Visit Partners</Link>
