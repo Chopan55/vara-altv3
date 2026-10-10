@@ -59,6 +59,7 @@ function getSellNav(operationId: string): NavItem[] {
     { href: '/precio-venta', icon: DollarSign, label: 'Precio de venta', section: 'Preparar' },
     { href: '/publicar', icon: Share2, label: 'Mi propiedad', section: 'Preparar' },
     { href: '/property-pack', icon: FileText, label: 'Ficha para interesados', section: 'Preparar' },
+    { href: '/video-presentacion', icon: Eye, label: 'Video de presentación', section: 'Preparar' },
     { href: '/ofertas', icon: Inbox, label: 'Ofertas y negociación', section: 'Interesados' },
     { href: '/visitas-vendedor', icon: Eye, label: 'Quién quiere visitar', section: 'Interesados' },
     { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', section: 'Interesados', tag: 'Nuevo' },
