@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
-import { requireAuth } from '@/lib/api/requireAuth'
+import { requireAiAccess } from '@/lib/api/aiAccess'
 
 export const maxDuration = 60
 
@@ -367,7 +367,7 @@ export async function POST(req: NextRequest) {
   }
 
   // La lectura con IA cuesta plata: solo para quien tiene sesión. Sin cuenta se lee la página igual, sin IA.
-  const canUseAI = !(await requireAuth()).error
+  const canUseAI = !(await requireAiAccess('text')).error
   const ai = (text: string, known: ScrapedData) => (canUseAI ? viaAI(text, known) : Promise.resolve(null))
 
   const portal = detectPortal(url)
