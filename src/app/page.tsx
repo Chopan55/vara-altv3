@@ -49,6 +49,18 @@ const steps = [
   { n: '03', title: 'Avanzás con claridad', desc: 'Cada paso tiene una acción concreta, sin ambigüedad.' },
 ]
 
+const differences = [
+  { title: 'Empieza donde terminan los portales.', detail: 'Encontrar una propiedad ya es digital; comprarla o venderla todavía no.' },
+  { title: 'Vos decidís. VARA te da el control.', detail: 'Una buena recomendación puede ser “no avances”.' },
+  { title: 'La mejor propiedad para vos.', detail: 'Comparás según tus prioridades reales, no con un score opaco.' },
+  { title: 'Qué falta, qué riesgo hay y qué hacer ahora.', detail: 'La información se convierte en acción con Next Best Action.' },
+  { title: 'Costos reales,', detail: 'no solo el precio de publicación.' },
+  { title: 'Toda la operación en un solo lugar.', detail: 'Hoy vive entre WhatsApp, mails, PDFs, portales y profesionales.' },
+  { title: 'Varias operaciones a la vez,', detail: 'sin mezclar documentos, costos, riesgos ni tareas; incluso relacionadas, como vender A para financiar la compra de B.' },
+  { title: 'Software cuando alcanza. Personas cuando agregan valor.', detail: 'VARA Visit suma la capa física: presencia y acompañamiento en terreno.' },
+  { title: 'La IA explica y prepara.', detail: 'No inventa hechos ni decide por vos.' },
+]
+
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-white text-slate-900">
@@ -108,7 +120,42 @@ export default function LandingPage() {
             <HeroInteractive />
           </div>
 
-          {/* Right: product mockup — light UI */}
+          {/* Right: lo que hace distinta a VARA */}
+          <div className="product-shadow rounded-2xl border border-slate-200/80 bg-white p-6 md:p-8">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-brand-600">Qué hace distinto a VARA</p>
+            <h2 className="mt-2 text-xl md:text-2xl font-black leading-tight text-slate-900 text-balance">
+              No es un portal. No es un chatbot. No es una inmobiliaria digital.
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+              Es la capa que falta entre encontrar una propiedad y cerrar la operación.
+            </p>
+            <ul className="mt-5 space-y-3.5">
+              {differences.map(d => (
+                <li key={d.title} className="flex gap-3">
+                  <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0 text-brand-600" aria-hidden="true" />
+                  <p className="text-sm leading-snug text-slate-600">
+                    <strong className="font-bold text-slate-900">{d.title}</strong> {d.detail}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-5 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-400">
+              Puede convivir con tu inmobiliaria: no necesita reemplazarla para generar valor.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Una hoja del dashboard, más grande y marcada como ejemplo */}
+      <section className="px-5 pb-20">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <p className="text-xs font-bold text-brand-600 uppercase tracking-widest mb-3">Tu operación</p>
+            <h2 className="text-2xl md:text-3xl font-black text-slate-900 text-balance">
+              Todo lo que importa de una compra o venta, en una sola hoja
+            </h2>
+          </div>
+          <div className="md:[zoom:1.25]">
           <div className="product-shadow rounded-2xl overflow-hidden border border-slate-200/80 bg-white">
             {/* App chrome */}
             <div className="bg-slate-50 border-b border-slate-200/80 px-4 py-2.5 flex items-center gap-3">
@@ -215,6 +262,8 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+          </div>
+          <p className="mt-6 text-center text-xs text-slate-400">Así se ve una operación en VARA. Datos de ejemplo.</p>
         </div>
       </section>
 
