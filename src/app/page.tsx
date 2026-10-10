@@ -3,6 +3,7 @@ import { Shield, Zap, TrendingUp, CheckCircle2, ChevronRight, Sparkles, Globe, F
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { VaraVisitLogo } from '@/components/ui/VaraVisitLogo'
 import { HeroInteractive } from '@/components/home/HeroInteractive'
+import { ContactForm } from '@/components/home/ContactForm'
 
 const risks = [
   { label: 'Dominial', desc: 'Observación en cadena de titularidad', color: 'text-red-600', bg: 'bg-red-50', dot: 'bg-red-500', badge: 'ALTO' },
@@ -61,6 +62,13 @@ const differences = [
   { title: 'La IA explica y prepara.', detail: 'No inventa hechos ni decide por vos.' },
 ]
 
+const story = [
+  { k: 'Analizar', t: 'Entendé una propiedad antes de avanzar.', d: 'Riesgos, costos reales, documentación y mercado, en lenguaje claro.', img: 'analizar' },
+  { k: 'Comparar', t: 'No compares a ojo. Compará con criterio.', d: 'Según tus prioridades reales, no con un score opaco.', img: 'comparar' },
+  { k: 'Negociar', t: 'Negociá con más contexto.', d: 'Preparás ofertas y contraofertas con análisis; la decisión final es tuya.', img: 'negociar' },
+  { k: 'Visit', t: 'Presencia física cuando la necesitás.', d: 'Un Visit Partner verificado muestra o acompaña la visita, con PIN, checklist y reporte.', img: 'visit' },
+]
+
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-white text-slate-900">
@@ -110,11 +118,14 @@ export default function LandingPage() {
               <Globe size={10} /> Argentina · México · LATAM
             </div>
             <h1 className="text-4xl md:text-5xl font-black leading-[1.1] mb-3 tracking-tight text-balance text-slate-900">
-              Comprá o vendé<br />
-              <span className="vara-gradient">sin sorpresas.</span>
+              Comprá y vendé<br />
+              <span className="vara-gradient">a tu manera.</span>
             </h1>
+            <p className="text-lg font-semibold text-slate-700 mb-2 leading-snug">
+              Más libertad para decidir. Más control para avanzar. Menos costos innecesarios.
+            </p>
             <p className="text-base text-slate-500 mb-7 leading-relaxed">
-              VARA te acompaña en cada paso: costos con fuente declarada, riesgos detectados, documentos y negociación.
+              VARA empieza donde terminan los portales: te acompaña a analizar, comparar, visitar, documentar, negociar y cerrar.
             </p>
 
             <HeroInteractive />
@@ -130,7 +141,7 @@ export default function LandingPage() {
               Es la capa que falta entre encontrar una propiedad y cerrar la operación.
             </p>
             <ul className="mt-5 space-y-3.5">
-              {differences.map(d => (
+              {differences.slice(0, 3).map(d => (
                 <li key={d.title} className="flex gap-3">
                   <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0 text-brand-600" aria-hidden="true" />
                   <p className="text-sm leading-snug text-slate-600">
@@ -143,6 +154,26 @@ export default function LandingPage() {
               Puede convivir con tu inmobiliaria: no necesita reemplazarla para generar valor.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* Qué hace VARA, con imágenes. Son ilustraciones, no capturas del producto. */}
+      <section className="px-5 pb-20">
+        <div className="max-w-6xl mx-auto space-y-16">
+          {story.map((s, i) => (
+            <div key={s.k} className={`grid md:grid-cols-2 gap-8 items-center ${i % 2 ? 'md:[&>div:first-child]:order-2' : ''}`}>
+              <div>
+                <p className="text-xs font-bold text-brand-600 uppercase tracking-widest mb-3">{s.k}</p>
+                <h2 className="text-2xl md:text-3xl font-black text-slate-900 text-balance">{s.t}</h2>
+                <p className="mt-3 text-slate-500 leading-relaxed">{s.d}</p>
+              </div>
+              <div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/marketing/${s.img}.webp`} alt={`Ilustración: ${s.t}`} loading="lazy" className="w-full rounded-2xl border border-slate-100 shadow-sm" />
+                <p className="mt-2 text-center text-[11px] text-slate-400">Ilustración de ejemplo, no es una captura del producto.</p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -403,6 +434,15 @@ export default function LandingPage() {
               Soy Visit Partner
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Hablar con una persona */}
+      <section id="contacto" className="px-5 pb-24">
+        <div className="max-w-xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 text-balance text-center">Hablá con una persona</h2>
+          <p className="mt-2 mb-6 text-center text-slate-500 text-sm">Contanos qué querés hacer y te respondemos por mail.</p>
+          <ContactForm />
         </div>
       </section>
 
