@@ -27,6 +27,8 @@ interface NavItem {
   label: string
   /** Etiqueta chica a la derecha, para señalar lo que recién se suma. */
   tag?: string
+  /** Encabezado del grupo: se muestra cuando cambia respecto del ítem anterior. */
+  section?: string
 }
 
 function getBuyNav(operationId: string): NavItem[] {
@@ -34,16 +36,16 @@ function getBuyNav(operationId: string): NavItem[] {
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
     { href: '/acciones', icon: Zap, label: 'Acciones' },
-    { href: '/propiedades', icon: Building2, label: 'Mis propiedades' },
-    { href: '/comparar', icon: BarChart2, label: 'Comparar' },
-    { href: '/visitas', icon: ClipboardCheck, label: 'Checklist de visita' },
-    { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', tag: 'Nuevo' },
-    { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas' },
-    { href: opHref, icon: FileText, label: 'Mi operación' },
-    { href: operationId ? `${opHref}?tab=documentos` : '/dashboard', icon: FileText, label: 'Documentos' },
-    { href: operationId ? `${opHref}?tab=riesgos` : '/dashboard', icon: ShieldAlert, label: 'Riesgos' },
-    { href: '/dinero', icon: DollarSign, label: 'Dinero' },
-    { href: '/profesionales', icon: Users, label: 'Profesionales' },
+    { href: '/propiedades', icon: Building2, label: 'Mis propiedades', section: 'Buscar' },
+    { href: '/comparar', icon: BarChart2, label: 'Comparar', section: 'Buscar' },
+    { href: '/visitas', icon: ClipboardCheck, label: 'Checklist de visita', section: 'Visitar' },
+    { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', section: 'Visitar', tag: 'Nuevo' },
+    { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas', section: 'Visitar' },
+    { href: opHref, icon: FileText, label: 'Mi operación', section: 'Mi operación' },
+    { href: operationId ? `${opHref}?tab=documentos` : '/dashboard', icon: FileText, label: 'Documentos', section: 'Mi operación' },
+    { href: operationId ? `${opHref}?tab=riesgos` : '/dashboard', icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
+    { href: '/dinero', icon: DollarSign, label: 'Dinero', section: 'Mi operación' },
+    { href: '/profesionales', icon: Users, label: 'Profesionales', section: 'Mi operación' },
   ]
 }
 
@@ -52,15 +54,15 @@ function getSellNav(operationId: string): NavItem[] {
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
     { href: '/acciones', icon: Zap, label: 'Acciones' },
-    { href: '/preparar-venta', icon: FileText, label: 'Preparar la venta' },
-    { href: '/publicar', icon: Share2, label: 'Mi propiedad' },
-    { href: '/ofertas', icon: Inbox, label: 'Ofertas y negociación' },
-    { href: '/visitas-vendedor', icon: Eye, label: 'Quién quiere visitar' },
-    { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', tag: 'Nuevo' },
-    { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas' },
-    { href: opHref, icon: FileText, label: 'Mi operación' },
-    { href: operationId ? `${opHref}?tab=documentos` : '/dashboard', icon: FileText, label: 'Documentos' },
-    { href: operationId ? `${opHref}?tab=riesgos` : '/dashboard', icon: ShieldAlert, label: 'Riesgos' },
+    { href: '/preparar-venta', icon: FileText, label: 'Preparar la venta', section: 'Preparar' },
+    { href: '/publicar', icon: Share2, label: 'Mi propiedad', section: 'Preparar' },
+    { href: '/ofertas', icon: Inbox, label: 'Ofertas y negociación', section: 'Interesados' },
+    { href: '/visitas-vendedor', icon: Eye, label: 'Quién quiere visitar', section: 'Interesados' },
+    { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', section: 'Interesados', tag: 'Nuevo' },
+    { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas', section: 'Interesados' },
+    { href: opHref, icon: FileText, label: 'Mi operación', section: 'Mi operación' },
+    { href: operationId ? `${opHref}?tab=documentos` : '/dashboard', icon: FileText, label: 'Documentos', section: 'Mi operación' },
+    { href: operationId ? `${opHref}?tab=riesgos` : '/dashboard', icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
     { href: '/dinero', icon: DollarSign, label: 'Dinero' },
     { href: '/profesionales', icon: Users, label: 'Profesionales' },
   ]
@@ -173,8 +175,13 @@ function SidebarContent({
       )}
 
       <nav className="flex-1 space-y-0.5 px-3 overflow-y-auto no-scrollbar">
-        {primaryNav.map(item => (
-          <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
+        {primaryNav.map((item, i) => (
+          <div key={`${item.href}|${item.label}`}>
+            {!collapsed && item.section && item.section !== primaryNav[i - 1]?.section && (
+              <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">{item.section}</p>
+            )}
+            <NavLink item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
+          </div>
         ))}
 
         <div className="my-3 border-t border-slate-200 mx-2" />
