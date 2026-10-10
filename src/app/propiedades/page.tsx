@@ -7,6 +7,7 @@ import {
   Heart, Eye, Trash2, RotateCcw, Columns3, StickyNote, Check, Sparkles,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
+import { DISCARD_REASONS, encodeDiscard, summarizeDiscards, type DiscardReason } from '@/lib/candidates/discard'
 import { formatPrice, formatSurface, getPropertyTypeLabel } from '@/lib/utils'
 import {
   CANDIDATE_STATUS_LABELS, buildComparison, missingForDecision, sortCandidates,
@@ -509,6 +510,9 @@ export default function PropiedadesPage() {
   const [selected, setSelected] = useState<string[]>([])
   const [comparing, setComparing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [discarding, setDiscarding] = useState<string | null>(null)
+  const [dReasons, setDReasons] = useState<DiscardReason[]>([])
+  const [dNote, setDNote] = useState('')
 
   const refresh = useCallback(async () => {
     setCandidates(sortCandidates(await loadCandidates()))
@@ -532,10 +536,18 @@ export default function PropiedadesPage() {
 
   const changeStatus = async (id: string, to: CandidateStatus) => {
     setError(null)
-    const reason = to === 'DISCARDED'
-      ? window.prompt('¿Por qué la descartás? (opcional — te va a servir para acordarte)') ?? undefined
-      : undefined
-    const r = await setCandidateStatus(id, to, { discardReason: reason || undefined })
+    if (to === 'DISCARDED') { setDReasons([]); setDNote(''); setDiscarding(id); return }
+    const r = await setCandidateStatus(id, to, {})
+    if (!r.ok) setError(r.reason ?? 'No pudimos guardar el cambio.')
+    await refresh()
+  }
+
+  const confirmDiscard = async () => {
+    if (!discarding) return
+    const id = discarding
+    setDiscarding(null)
+    const reason = encodeDiscard(dReasons, dNote)
+    const r = await setCandidateStatus(id, 'DISCARDED', { discardReason: reason || undefined })
     if (!r.ok) setError(r.reason ?? 'No pudimos guardar el cambio.')
     await refresh()
   }
@@ -644,6 +656,37 @@ export default function PropiedadesPage() {
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-6 text-center">
             <p className="text-sm text-slate-400">No hay propiedades en este estado.</p>
           </div>
+        )}
+
+        {discarding && (
+          <div role="dialog" aria-modal="true" aria-label="Por qué la descartás" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/40 p-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+              <h2 className="text-base font-bold text-slate-900">¿Qué no te cerró?</h2>
+              <p className="mt-1 text-xs text-slate-500">Opcional. VARA lo recuerda para mostrarte qué se repite en lo que descartás.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {DISCARD_REASONS.map(r => {
+                  const on = dReasons.includes(r)
+                  return (
+                    <button key={r} type="button" aria-pressed={on}
+                      onClick={() => setDReasons(cur => on ? cur.filter(x => x !== r) : [...cur, r])}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600'}`}>{r}</button>
+                  )
+                })}
+              </div>
+              <input value={dNote} onChange={e => setDNote(e.target.value)} placeholder="Algo más que quieras recordar (opcional)" className="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              <div className="mt-4 flex justify-end gap-2">
+                <button type="button" onClick={() => setDiscarding(null)} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-500">Cancelar</button>
+                <button type="button" onClick={confirmDiscard} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white">Descartar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {filter === 'DISCARDED' && summarizeDiscards(candidates).length > 0 && (
+          <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+            <span className="font-semibold">Lo que se repite en lo que descartás:</span>{' '}
+            {summarizeDiscards(candidates).map(d => `${d.reason} (${d.count})`).join(' · ')}.
+          </p>
         )}
 
         {visible.map(prop => {
