@@ -52,6 +52,7 @@ function getSellNav(operationId: string): NavItem[] {
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
     { href: '/acciones', icon: Zap, label: 'Acciones' },
+    { href: '/preparar-venta', icon: FileText, label: 'Preparar la venta' },
     { href: '/publicar', icon: Share2, label: 'Mi propiedad' },
     { href: '/ofertas', icon: Inbox, label: 'Ofertas y negociación' },
     { href: '/visitas-vendedor', icon: Eye, label: 'Quién quiere visitar' },
