@@ -21,6 +21,13 @@ const ALL_FLAGS = {
   publicApi: false,
   /** P3: UI y dominio personalizables para corredores o escribanías. */
   whiteLabel: false,
+  /** Encendidos por defecto: se apagan con NEXT_PUBLIC_FLAGS_OFF=nombre (rollback sin tocar código). */
+  /** Después del login, quien no tiene operaciones pasa por /empezar. */
+  conversationalEntry: true,
+  /** Menú lateral agrupado por etapa del recorrido. */
+  groupedMenu: true,
+  /** Herramientas nuevas de venta y compra (precio, ficha, video, interesados, mi búsqueda). */
+  journeyTools: true,
 } as const
 
 export type FlagName = keyof typeof ALL_FLAGS
@@ -30,8 +37,12 @@ function resolveFlags(): Readonly<Record<FlagName, boolean>> {
     .split(',')
     .map(s => s.trim())
     .filter(Boolean)
+  const off = (process.env.NEXT_PUBLIC_FLAGS_OFF ?? '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
   return Object.fromEntries(
-    (Object.keys(ALL_FLAGS) as FlagName[]).map(k => [k, enabled.includes(k) || ALL_FLAGS[k]])
+    (Object.keys(ALL_FLAGS) as FlagName[]).map(k => [k, (enabled.includes(k) || ALL_FLAGS[k]) && !off.includes(k)])
   ) as Record<FlagName, boolean>
 }
 

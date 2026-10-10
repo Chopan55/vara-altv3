@@ -13,6 +13,7 @@ import {
 import { tryCreateClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { VaraLogo } from '@/components/ui/VaraLogo'
+import { isEnabled } from '@/lib/flags'
 import { useVaraState } from '@/hooks/useVaraState'
 import { GuiameButton, GuiameTrigger } from '@/components/guidance/GuiameButton'
 import { VaraAIFloat } from '@/components/ai/VaraAIFloat'
@@ -72,6 +73,8 @@ function getSellNav(operationId: string): NavItem[] {
     { href: '/profesionales', icon: Users, label: 'Profesionales' },
   ]
 }
+
+const JOURNEY_TOOL_HREFS = new Set(['/mi-busqueda', '/preparar-venta', '/precio-venta', '/property-pack', '/video-presentacion', '/interesados'])
 
 const SECONDARY_NAV: NavItem[] = [
   { href: '/guia', icon: BookOpen, label: 'Guía' },
@@ -152,7 +155,11 @@ function SidebarContent({
   userName: string
   operationId: string
 }) {
-  const primaryNav = journey === 'SELL' ? getSellNav(operationId) : getBuyNav(operationId)
+  const allNav = journey === 'SELL' ? getSellNav(operationId) : getBuyNav(operationId)
+  // Interruptores de rollback: sin las herramientas nuevas o sin encabezados de grupo.
+  const primaryNav = allNav
+    .filter(i => isEnabled('journeyTools') || !JOURNEY_TOOL_HREFS.has(i.href))
+    .map(i => (isEnabled('groupedMenu') ? i : { ...i, section: undefined }))
   // useSearchParams obliga a un límite de Suspense; lo acotamos al menú
   // para no suspender el contenido de la página entera.
   const searchParams = useSearchParams()

@@ -63,8 +63,8 @@ export default function VideoPresentacionPage() {
         ) : (
           <>
             <section className="mt-6 grid gap-4 rounded-2xl border border-slate-100 bg-white p-5 sm:grid-cols-2">
-              <label className="text-sm font-medium text-slate-700">Título<input value={title} maxLength={60} onChange={e => setTitle(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label>
-              <label className="text-sm font-medium text-slate-700">Ubicación<input value={subtitle} maxLength={80} onChange={e => setSubtitle(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label>
+              <label className="text-sm font-medium text-slate-700">Título<input value={title} maxLength={60} onChange={e => setTitle(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-base sm:text-sm" /></label>
+              <label className="text-sm font-medium text-slate-700">Ubicación<input value={subtitle} maxLength={80} onChange={e => setSubtitle(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-base sm:text-sm" /></label>
               <p className="text-xs text-slate-500 sm:col-span-2">{photos.length} {photos.length === 1 ? 'foto' : 'fotos'} · {seconds} segundos. La foto de portada va primero.</p>
             </section>
 

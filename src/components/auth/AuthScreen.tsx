@@ -2,6 +2,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { isEnabled } from '@/lib/flags'
 import { Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2, Calculator, ShieldCheck, Sparkles, Eye, EyeOff, Briefcase, ClipboardCheck, KeyRound, MapPin, Scale, Layers, Compass } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { VaraVisitLogo } from '@/components/ui/VaraVisitLogo'
@@ -91,7 +92,7 @@ const TITLES: Titles = {
 function LoginForm({ audience }: { audience: AuthAudience }) {
   const router = useRouter()
   const params = useSearchParams()
-  const next = safeNext(params.get('next'), audience === 'partner' ? '/partner' : '/empezar')
+  const next = safeNext(params.get('next'), audience === 'partner' ? '/partner' : isEnabled('conversationalEntry') ? '/empezar' : '/dashboard')
   const th = THEME[audience]
   const field = `${FIELD_BASE} ${th.focus}`
   const [mode, setMode] = useState<Mode>('login')

@@ -1,6 +1,7 @@
 'use client'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { isEnabled } from '@/lib/flags'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { COUNTRIES, PROVINCES_BY_COUNTRY } from '@/lib/onboarding/options'
 import { PROPERTY_TYPES, destination, nextStep, operationTitle, question, type Answers, type Step } from '@/lib/onboarding/flow'
@@ -53,6 +54,7 @@ function Conversation() {
 
   // Quien ya tiene operaciones va directo a lo suyo; se puede forzar con ?nuevo=1.
   useEffect(() => {
+    if (!isEnabled('conversationalEntry')) { router.replace('/dashboard'); return }
     if (params.get('nuevo') !== '1' && hasRealOperations()) { router.replace('/dashboard'); return }
     const a = load()
     setAnswers(a)
@@ -131,7 +133,7 @@ function Conversation() {
             )}
             {step === 'city' && (
               <form className="flex gap-2" onSubmit={e => { e.preventDefault(); const c = city.trim(); answer({ city: c || undefined, cityDone: true }, c || 'Prefiero no decirlo todavía'); setCity('') }}>
-                <input value={city} onChange={e => setCity(e.target.value)} maxLength={60} placeholder="Ciudad, zona o barrio" aria-label="Ciudad, zona o barrio" className="w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm" />
+                <input value={city} onChange={e => setCity(e.target.value)} maxLength={60} placeholder="Ciudad, zona o barrio" aria-label="Ciudad, zona o barrio" className="w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-base sm:text-sm" />
                 <button type="submit" className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white">{city.trim() ? 'Seguir' : 'Saltear'}</button>
               </form>
             )}

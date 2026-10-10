@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { CRITERIA, EMPTY_PROFILE, IMPORTANCE, loadProfile, saveProfile, summarize, type BuyerProfile, type Importance } from '@/lib/buyerProfile'
 
-const field = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800'
+const field = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base sm:text-sm text-slate-800'
 const digits = (v: string) => v.replace(/[^\d]/g, '')
 
 export default function MiBusquedaPage() {

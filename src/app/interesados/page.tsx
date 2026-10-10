@@ -5,7 +5,7 @@ import { ArrowLeft, Trash2 } from 'lucide-react'
 import { loadOperations, type StoredOperation } from '@/lib/userOperations'
 import { LEAD_SOURCES, LEAD_STATUSES, addLead, leadCounts, loadLeads, removeLead, setLeadStatus, type Lead, type LeadStatus } from '@/lib/sellerLeads'
 
-const field = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800'
+const field = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base sm:text-sm text-slate-800'
 
 export default function InteresadosPage() {
   const [op, setOp] = useState<StoredOperation | null>(null)

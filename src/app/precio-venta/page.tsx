@@ -8,7 +8,7 @@ import { planPricing, readListing } from '@/lib/sellPricing'
 const KEY = 'vara_sellprice_'
 const usd = (n: number) => `USD ${n.toLocaleString('es-AR')}`
 const digits = (v: string) => v.replace(/[^\d]/g, '')
-const field = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800'
+const field = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base sm:text-sm text-slate-800'
 
 interface Saved { surface: string; desired: string; days: string; inquiries: string; visits: string; offers: string }
 const EMPTY: Saved = { surface: '', desired: '', days: '', inquiries: '', visits: '', offers: '' }
