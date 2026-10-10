@@ -28,7 +28,7 @@ describe('flujo de /empezar', () => {
   })
 
   it('lleva a la pantalla que corresponde', () => {
-    expect(destination({ intent: 'SELL', alreadyHas: true })).toBe('/publicar')
+    expect(destination({ intent: 'SELL', alreadyHas: true })).toBe('/revisar-publicacion')
     expect(destination({ intent: 'SELL', alreadyHas: false })).toBe('/preparar-venta')
     expect(destination({ intent: 'BUY', alreadyHas: true })).toBe('/propiedades')
     expect(destination({ intent: 'BUY', alreadyHas: false })).toBe('/mi-busqueda')

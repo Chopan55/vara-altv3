@@ -57,6 +57,7 @@ function getSellNav(operationId: string): NavItem[] {
     { href: '/dashboard', icon: Home, label: 'Inicio' },
     { href: '/acciones', icon: Zap, label: 'Acciones' },
     { href: '/preparar-venta', icon: FileText, label: 'Preparar la venta', section: 'Preparar' },
+    { href: '/revisar-publicacion', icon: Eye, label: 'Revisar mi publicación', section: 'Preparar' },
     { href: '/precio-venta', icon: DollarSign, label: 'Precio de venta', section: 'Preparar' },
     { href: '/publicar', icon: Share2, label: 'Mi propiedad', section: 'Preparar' },
     { href: '/property-pack', icon: FileText, label: 'Ficha para interesados', section: 'Preparar' },
@@ -75,7 +76,7 @@ function getSellNav(operationId: string): NavItem[] {
   ]
 }
 
-const JOURNEY_TOOL_HREFS = new Set(['/mi-busqueda', '/preparar-venta', '/precio-venta', '/property-pack', '/video-presentacion', '/interesados', '/fotos-venta'])
+const JOURNEY_TOOL_HREFS = new Set(['/mi-busqueda', '/preparar-venta', '/precio-venta', '/property-pack', '/video-presentacion', '/interesados', '/fotos-venta', '/revisar-publicacion'])
 
 const SECONDARY_NAV: NavItem[] = [
   { href: '/guia', icon: BookOpen, label: 'Guía' },

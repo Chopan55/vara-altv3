@@ -51,6 +51,6 @@ export function operationTitle(a: Answers): string {
 
 /** Pantalla a la que lleva el final de la conversación. */
 export function destination(a: Answers): string {
-  if (a.intent === 'SELL') return a.alreadyHas ? '/publicar' : '/preparar-venta'
+  if (a.intent === 'SELL') return a.alreadyHas ? '/revisar-publicacion' : '/preparar-venta'
   return a.alreadyHas ? '/propiedades' : '/mi-busqueda'
 }
