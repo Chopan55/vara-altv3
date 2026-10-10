@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { requireAuth } from '@/lib/api/requireAuth'
 
 export const maxDuration = 60
 
@@ -365,6 +366,10 @@ export async function POST(req: NextRequest) {
     } satisfies ScrapeResult, { status: 400 })
   }
 
+  // La lectura con IA cuesta plata: solo para quien tiene sesión. Sin cuenta se lee la página igual, sin IA.
+  const canUseAI = !(await requireAuth()).error
+  const ai = (text: string, known: ScrapedData) => (canUseAI ? viaAI(text, known) : Promise.resolve(null))
+
   const portal = detectPortal(url)
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 45000)
@@ -379,7 +384,7 @@ export async function POST(req: NextRequest) {
 
     // ── Atajo: el usuario pegó el texto del aviso (evita el muro anti-bot) ──
     if (pastedText.trim().length > 150) {
-      const aiData = await viaAI(pastedText, {})
+      const aiData = await ai(pastedText, {})
       clearTimeout(timer)
       const d = aiData ?? {}
       const missingFields = missingOf(d)
@@ -389,7 +394,9 @@ export async function POST(req: NextRequest) {
         url, portal, method: 'paste', data: d, photos: [], missingFields,
         ...(got === 0 ? {
           errorMessage: aiData === null
-            ? 'La lectura automática no está disponible (la cuenta de OpenAI no tiene crédito). Cargá los datos a mano.'
+            ? (canUseAI
+                ? 'La lectura automática no está disponible en este momento. Cargá los datos a mano.'
+                : 'La lectura automática del texto es para quienes tienen cuenta. Creá una (es gratis) o cargá los datos a mano.')
             : 'No encontramos datos de la propiedad en ese texto. Revisá que hayas copiado la publicación completa.',
         } : {}),
       } satisfies ScrapeResult)
@@ -448,7 +455,7 @@ export async function POST(req: NextRequest) {
     if (missingOf(data).length > 0) {
       const source = readerText ?? (html ? stripTags(html).slice(0, 16000) : '')
       if (source.length > 200) {
-        const aiData = await viaAI(source, data)
+        const aiData = await ai(source, data)
         if (aiData) {
           const before = missingOf(data).length
           data = aiData
