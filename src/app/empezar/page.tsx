@@ -3,16 +3,15 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { COUNTRIES, PROVINCES_BY_COUNTRY } from '@/lib/onboarding/options'
+import { PROPERTY_TYPES, destination, nextStep, operationTitle, question, type Answers, type Step } from '@/lib/onboarding/flow'
 import { resolveProvinceCode } from '@/lib/regulations'
 import { createOperationAnywhere, hasRealOperations } from '@/lib/userOperations'
 
-type Intent = 'BUY' | 'SELL'
-type Saved = { intent?: Intent; country?: string }
 type Bubble = { from: 'vara' | 'user'; text: string }
 
 const KEY = 'vara_empezar'
-const load = (): Saved => { try { return JSON.parse(localStorage.getItem(KEY) ?? '{}') as Saved } catch { return {} } }
-const save = (s: Saved) => { try { localStorage.setItem(KEY, JSON.stringify(s)) } catch {} }
+const load = (): Answers => { try { return JSON.parse(localStorage.getItem(KEY) ?? '{}') as Answers } catch { return {} } }
+const save = (a: Answers) => { try { localStorage.setItem(KEY, JSON.stringify(a)) } catch {} }
 
 const INTENTS = [
   { id: 'BUY', label: 'Quiero comprar', hint: 'Busco propiedades y quiero entender costos y riesgos' },
@@ -23,62 +22,79 @@ const INTENTS = [
 
 const GREETING = 'Hola. Para empezar, contame: ¿qué querés hacer?'
 
+/** Reconstruye la charla a partir de lo ya respondido, para retomar sin repetir preguntas. */
+function replay(a: Answers): Bubble[] {
+  if (!a.intent) return [{ from: 'vara', text: GREETING }]
+  const out: Bubble[] = [{ from: 'vara', text: GREETING }, { from: 'user', text: a.intent === 'BUY' ? 'Quiero comprar' : 'Quiero vender' }]
+  const asked: [Step, string | undefined][] = [
+    ['country', COUNTRIES.find(c => c.code === a.country)?.label],
+    ['province', a.province],
+    ['city', a.cityDone ? (a.city || 'Prefiero no decirlo todavía') : undefined],
+    ['type', a.propertyType],
+    ['already', a.alreadyHas === undefined ? undefined : a.alreadyHas ? 'Sí' : 'No'],
+  ]
+  for (const [step, answer] of asked) {
+    out.push({ from: 'vara', text: question(step, a) })
+    if (answer === undefined) return out
+    out.push({ from: 'user', text: answer })
+  }
+  return out
+}
+
 function Conversation() {
   const router = useRouter()
   const params = useSearchParams()
   const bottom = useRef<HTMLDivElement>(null)
-  const [saved, setSaved] = useState<Saved>({})
+  const [answers, setAnswers] = useState<Answers>({})
   const [bubbles, setBubbles] = useState<Bubble[]>([{ from: 'vara', text: GREETING }])
+  const [city, setCity] = useState('')
   const [ready, setReady] = useState(false)
   const [busy, setBusy] = useState(false)
 
   // Quien ya tiene operaciones va directo a lo suyo; se puede forzar con ?nuevo=1.
   useEffect(() => {
     if (params.get('nuevo') !== '1' && hasRealOperations()) { router.replace('/dashboard'); return }
-    const s = load()
-    setSaved(s)
-    if (s.intent) {
-      setBubbles([
-        { from: 'vara', text: GREETING },
-        { from: 'user', text: s.intent === 'BUY' ? 'Quiero comprar' : 'Quiero vender' },
-        { from: 'vara', text: s.country ? 'Retomamos donde lo dejaste. ¿En qué provincia o estado es?' : '¿En qué país es la operación?' },
-      ])
-    }
+    const a = load()
+    setAnswers(a)
+    setBubbles(replay(a))
     setReady(true)
   }, [router, params])
 
   useEffect(() => { bottom.current?.scrollIntoView({ block: 'end' }) }, [bubbles])
 
-  const say = (...b: Bubble[]) => setBubbles(prev => [...prev, ...b])
+  const step: Step | 'intent' = answers.intent ? nextStep(answers) : 'intent'
+
+  const finish = async (a: Answers) => {
+    if (busy || !a.intent || !a.country || !a.province) return
+    setBusy(true)
+    try { localStorage.setItem('vara_country', a.country) } catch {}
+    const op = await createOperationAnywhere({
+      type: a.intent,
+      province: a.province,
+      provinceCode: resolveProvinceCode(a.province, a.country as 'AR' | 'MX'),
+      city: a.city || undefined,
+      title: operationTitle(a),
+      country: a.country as 'AR' | 'MX',
+    })
+    try { localStorage.setItem('vara_operation_id', op.id); localStorage.removeItem(KEY) } catch {}
+    router.push(destination(a))
+  }
+
+  /** Guarda la respuesta, la muestra y hace la pregunta siguiente. */
+  const answer = (patch: Partial<Answers>, shown: string) => {
+    const next = { ...answers, ...patch }
+    save(next); setAnswers(next)
+    const upcoming = nextStep(next)
+    setBubbles(b => [...b, { from: 'user', text: shown }, { from: 'vara', text: question(upcoming, next) }])
+    if (upcoming === 'done') void finish(next)
+  }
 
   const pickIntent = (id: (typeof INTENTS)[number]['id'], label: string) => {
     if (id === 'FOUND') { router.push('/propiedades'); return }
     if (id === 'IN_PROGRESS') { router.push('/dashboard'); return }
-    save({ intent: id })
-    setSaved({ intent: id })
-    say({ from: 'user', text: label }, { from: 'vara', text: id === 'BUY' ? 'Perfecto, vamos a ordenar tu compra. ¿En qué país es?' : 'Perfecto, vamos a preparar tu venta. ¿En qué país está la propiedad?' })
-  }
-
-  const pickCountry = (code: string, label: string) => {
-    const s = { ...saved, country: code }
-    save(s); setSaved(s)
-    say({ from: 'user', text: label }, { from: 'vara', text: 'Bien. ¿En qué provincia o estado?' })
-  }
-
-  const pickProvince = async (province: string) => {
-    if (!saved.intent || !saved.country || busy) return
-    setBusy(true)
-    say({ from: 'user', text: province }, { from: 'vara', text: 'Con esto ya puedo empezar. Te armo el plan de tu operación…' })
-    try { localStorage.setItem('vara_country', saved.country) } catch {}
-    const op = await createOperationAnywhere({
-      type: saved.intent,
-      province,
-      provinceCode: resolveProvinceCode(province, saved.country as 'AR' | 'MX'),
-      title: saved.intent === 'SELL' ? 'Mi venta' : 'Mi compra',
-      country: saved.country as 'AR' | 'MX',
-    })
-    try { localStorage.setItem('vara_operation_id', op.id); localStorage.removeItem(KEY) } catch {}
-    router.push('/dashboard')
+    const next: Answers = { intent: id }
+    save(next); setAnswers(next)
+    setBubbles(b => [...b, { from: 'user', text: label }, { from: 'vara', text: question('country', next) }])
   }
 
   const chip = 'rounded-full border-2 border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-brand-400 hover:text-brand-700 disabled:opacity-50'
@@ -97,7 +113,7 @@ function Conversation() {
 
         {ready && (
           <div className="mt-5">
-            {!saved.intent && (
+            {step === 'intent' && (
               <div className="grid gap-3">
                 {INTENTS.map(o => (
                   <button key={o.id} type="button" onClick={() => pickIntent(o.id, o.label)} className="rounded-2xl border-2 border-slate-100 bg-white px-5 py-4 text-left hover:border-brand-300">
@@ -107,11 +123,26 @@ function Conversation() {
                 ))}
               </div>
             )}
-            {saved.intent && !saved.country && (
-              <div className="flex flex-wrap gap-2">{COUNTRIES.map(c => <button key={c.code} type="button" className={chip} onClick={() => pickCountry(c.code, c.label)}>{c.label}</button>)}</div>
+            {step === 'country' && (
+              <div className="flex flex-wrap gap-2">{COUNTRIES.map(c => <button key={c.code} type="button" className={chip} onClick={() => answer({ country: c.code }, c.label)}>{c.label}</button>)}</div>
             )}
-            {saved.intent && saved.country && (
-              <div className="flex flex-wrap gap-2">{(PROVINCES_BY_COUNTRY[saved.country] ?? []).map(p => <button key={p} type="button" disabled={busy} className={chip} onClick={() => pickProvince(p)}>{p}</button>)}</div>
+            {step === 'province' && (
+              <div className="flex flex-wrap gap-2">{(PROVINCES_BY_COUNTRY[answers.country ?? ''] ?? []).map(p => <button key={p} type="button" className={chip} onClick={() => answer({ province: p }, p)}>{p}</button>)}</div>
+            )}
+            {step === 'city' && (
+              <form className="flex gap-2" onSubmit={e => { e.preventDefault(); const c = city.trim(); answer({ city: c || undefined, cityDone: true }, c || 'Prefiero no decirlo todavía'); setCity('') }}>
+                <input value={city} onChange={e => setCity(e.target.value)} maxLength={60} placeholder="Ciudad, zona o barrio" aria-label="Ciudad, zona o barrio" className="w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm" />
+                <button type="submit" className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white">{city.trim() ? 'Seguir' : 'Saltear'}</button>
+              </form>
+            )}
+            {step === 'type' && (
+              <div className="flex flex-wrap gap-2">{PROPERTY_TYPES.map(t => <button key={t} type="button" className={chip} onClick={() => answer({ propertyType: t }, t)}>{t}</button>)}</div>
+            )}
+            {step === 'already' && (
+              <div className="flex gap-2">
+                <button type="button" className={chip} onClick={() => answer({ alreadyHas: true }, 'Sí')}>Sí</button>
+                <button type="button" className={chip} onClick={() => answer({ alreadyHas: false }, 'No')}>No</button>
+              </div>
             )}
           </div>
         )}
