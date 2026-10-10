@@ -17,7 +17,7 @@ import { useVaraState } from '@/hooks/useVaraState'
 import { GuiameButton, GuiameTrigger } from '@/components/guidance/GuiameButton'
 import { VaraAIFloat } from '@/components/ai/VaraAIFloat'
 
-const NO_SHELL = new Set(['/', '/onboarding', '/login', '/demo', '/labs'])
+const NO_SHELL = new Set(['/', '/onboarding', '/login', '/demo', '/labs', '/empezar'])
 
 type JourneyType = 'BUY' | 'SELL'
 

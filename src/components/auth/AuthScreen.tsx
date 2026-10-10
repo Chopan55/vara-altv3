@@ -91,7 +91,7 @@ const TITLES: Titles = {
 function LoginForm({ audience }: { audience: AuthAudience }) {
   const router = useRouter()
   const params = useSearchParams()
-  const next = safeNext(params.get('next'), audience === 'partner' ? '/partner' : '/dashboard')
+  const next = safeNext(params.get('next'), audience === 'partner' ? '/partner' : '/empezar')
   const th = THEME[audience]
   const field = `${FIELD_BASE} ${th.focus}`
   const [mode, setMode] = useState<Mode>('login')
