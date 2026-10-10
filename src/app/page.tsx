@@ -91,6 +91,8 @@ export default function LandingPage() {
           <VaraLogo size={26} />
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-500">
             <Link href="/#como-funciona" className="hover:text-slate-900 transition-colors">Cómo funciona</Link>
+            <Link href="/demo" className="hover:text-slate-900 transition-colors">Demo</Link>
+            <Link href="/labs" className="hover:text-slate-900 transition-colors">Labs</Link>
             <Link href="/vara-visit" className="flex items-center gap-1.5 font-semibold text-teal-700 hover:text-teal-900 transition-colors">
               <span className="h-1.5 w-1.5 rounded-full bg-teal-600" aria-hidden="true" /> VARA Visit
             </Link>
