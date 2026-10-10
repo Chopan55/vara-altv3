@@ -4,6 +4,7 @@ import { VaraLogo } from '@/components/ui/VaraLogo'
 import { VaraVisitLogo } from '@/components/ui/VaraVisitLogo'
 import { HeroInteractive } from '@/components/home/HeroInteractive'
 import { ContactForm } from '@/components/home/ContactForm'
+import { FaqAssistant } from '@/components/home/FaqAssistant'
 
 const risks = [
   { label: 'Dominial', desc: 'Observación en cadena de titularidad', color: 'text-red-600', bg: 'bg-red-50', dot: 'bg-red-500', badge: 'ALTO' },
@@ -91,6 +92,7 @@ export default function LandingPage() {
           <VaraLogo size={26} />
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-500">
             <Link href="/#como-funciona" className="hover:text-slate-900 transition-colors">Cómo funciona</Link>
+            <Link href="/planes" className="hover:text-slate-900 transition-colors">Planes</Link>
             <Link href="/demo" className="hover:text-slate-900 transition-colors">Demo</Link>
             <Link href="/labs" className="hover:text-slate-900 transition-colors">Labs</Link>
             <Link href="/vara-visit" className="flex items-center gap-1.5 font-semibold text-teal-700 hover:text-teal-900 transition-colors">
@@ -436,6 +438,15 @@ export default function LandingPage() {
               Soy Visit Partner
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Preguntas frecuentes: el asistente responde solo con textos escritos a mano */}
+      <section id="preguntas" className="px-5 pb-20">
+        <div className="max-w-xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 text-balance text-center">¿Tenés preguntas?</h2>
+          <p className="mt-2 mb-6 text-center text-slate-500 text-sm">Preguntale a VARA. Si no sabe la respuesta, te lo dice.</p>
+          <FaqAssistant />
         </div>
       </section>
 
