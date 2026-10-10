@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { EMPTY_PROFILE, loadProfile, saveProfile, summarize } from '@/lib/buyerProfile'
+import { EMPTY_PROFILE, loadProfile, profileToImportance, saveProfile, summarize } from '@/lib/buyerProfile'
 
 const store = new Map<string, string>()
 ;(globalThis as { localStorage?: Storage }).localStorage = {
@@ -28,5 +28,11 @@ describe('perfil del comprador', () => {
   it('un JSON roto no rompe la carga', () => {
     store.set('vara_buyer_profile', '{no')
     expect(loadProfile()).toEqual(EMPTY_PROFILE)
+  })
+
+  it('traduce al comparador solo lo que el comparador mide', () => {
+    expect(profileToImportance(EMPTY_PROFILE)).toEqual({})
+    const r = profileToImportance({ ...EMPTY_PROFILE, budget: '1', importance: { garage: 'IMPORTANT', garden: 'NICE', pool: 'MUST', quiet: 'MUST' } })
+    expect(r).toEqual({ price: 4, garage: 4, amenities: 5 })
   })
 })

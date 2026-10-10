@@ -61,3 +61,25 @@ export function summarize(p: BuyerProfile): string[] {
   }
   return out
 }
+
+const LEVEL: Record<Importance, 0 | 1 | 2 | 3 | 4 | 5> = { MUST: 5, DEALBREAKER: 5, IMPORTANT: 4, NICE: 2, IRRELEVANT: 0 }
+
+/**
+ * Traduce el perfil a la escala 0-5 del comparador, solo para criterios que el
+ * comparador mide de verdad. Lo que no mide (jardín, pileta, colegios, ruido…) no
+ * se traduce: sería aparentar un dato que no hay. Devuelve vacío si no hay señal.
+ */
+export function profileToImportance(p: BuyerProfile): Partial<Record<string, 0 | 1 | 2 | 3 | 4 | 5>> {
+  const out: Partial<Record<string, 0 | 1 | 2 | 3 | 4 | 5>> = {}
+  if (p.budget) out.price = 4
+  if (p.bedrooms) out.bedrooms = 4
+  if (p.surface) out.surface = 4
+  const map: [string, string][] = [['garage', 'garage'], ['condition', 'condition']]
+  for (const [crit, key] of map) {
+    const v = p.importance[crit]
+    if (v) out[key] = LEVEL[v]
+  }
+  const amen = ['garden', 'pool', 'security'].map(k => p.importance[k]).filter((v): v is Importance => !!v)
+  if (amen.length) out.amenities = Math.max(...amen.map(v => LEVEL[v])) as 0 | 1 | 2 | 3 | 4 | 5
+  return out
+}
