@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { frameAt, planTimeline, MAX_PHOTOS } from '@/lib/video/timeline'
+import { frameAt, motionAt, planTimeline, MAX_PHOTOS } from '@/lib/video/timeline'
 
 describe('línea de tiempo del video', () => {
   it('sin fotos no hay video', () => {
@@ -33,5 +33,17 @@ describe('línea de tiempo del video', () => {
   it('el zoom crece suavemente dentro de cada foto', () => {
     expect(frameAt(0, 2).zoom).toBeCloseTo(1)
     expect(frameAt(1.5, 2).zoom).toBeCloseTo(1.04)
+  })
+
+  it('la cámara rota entre acercar, alejar y paneos, y se acota el avance', () => {
+    expect(motionAt(0, 0).zoom).toBeCloseTo(1)
+    expect(motionAt(0, 1).zoom).toBeCloseTo(1.12)
+    expect(motionAt(1, 0).zoom).toBeCloseTo(1.12)
+    expect(motionAt(1, 1).zoom).toBeCloseTo(1)
+    expect(motionAt(2, 0).panX).toBe(-1)
+    expect(motionAt(2, 1).panX).toBe(1)
+    expect(motionAt(3, 0).panX).toBe(1)
+    expect(motionAt(4, 0.5).zoom).toBeCloseTo(motionAt(0, 0.5).zoom)
+    expect(motionAt(0, 5).zoom).toBeCloseTo(1.12)
   })
 })

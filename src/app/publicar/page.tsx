@@ -634,14 +634,14 @@ export default function PublicarPage() {
                   <span className="text-base">🎥</span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs font-bold text-slate-700">Video de presentación</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Armalo vos con tus fotos, sin costo. Si querés un recorrido filmado en la propiedad, se pide por VARA Visit.</p>
+                  <p className="text-xs font-bold text-slate-700">Recorrido en video</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Armalo vos con tus fotos, con movimiento de cámara y el nombre de cada ambiente. Sin costo. Si querés un recorrido filmado en la propiedad, se pide por VARA Visit.</p>
                   <Link href="/vara-visit" className="mt-1 inline-block text-[10px] font-semibold text-slate-500 hover:underline">
                     Pedir recorrido filmado
                   </Link>
                 </div>
                 <Link href="/video-presentacion" className="text-[10px] font-bold text-amber-600 hover:underline whitespace-nowrap">
-                  Armar video
+                  Armar recorrido
                 </Link>
               </div>
             </div>

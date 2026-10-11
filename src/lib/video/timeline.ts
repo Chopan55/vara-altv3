@@ -27,3 +27,20 @@ export function frameAt(t: number, count: number, secondsPerPhoto = SECONDS_PER_
   const zoom = 1 + 0.08 * (local / secondsPerPhoto)
   return { current, next: hasNext && mix > 0 ? current + 1 : null, mix, zoom }
 }
+
+export interface Motion { zoom: number; panX: number; panY: number }
+
+/**
+ * Movimiento de cámara de cada foto, para que se sienta un recorrido y no una
+ * presentación quieta. Rota entre cuatro: acercar, alejar y paneo a cada lado.
+ * `p` es el avance dentro de la foto (0 a 1); panX va de -1 (borde derecho) a 1 (borde izquierdo).
+ */
+export function motionAt(index: number, p: number): Motion {
+  const t = Math.min(Math.max(p, 0), 1)
+  switch (((index % 4) + 4) % 4) {
+    case 0: return { zoom: 1 + 0.12 * t, panX: 0, panY: 0 }
+    case 1: return { zoom: 1.12 - 0.12 * t, panX: 0, panY: 0 }
+    case 2: return { zoom: 1.12, panX: -1 + 2 * t, panY: 0 }
+    default: return { zoom: 1.12, panX: 1 - 2 * t, panY: 0 }
+  }
+}
