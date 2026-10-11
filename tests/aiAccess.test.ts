@@ -18,7 +18,7 @@ describe('acceso a IA', () => {
 
   it('el tope diario corta al llegar al límite y se renueva al día siguiente', () => {
     const store = new Map<string, number>()
-    const limits = { image: 2, text: 5 }
+    const limits = { image: 2, text: 5, video: 1 }
     const d1 = Date.parse('2026-10-11T12:00:00Z')
     expect(withinDailyCap('u1', 'image', d1, limits, store)).toBe(true)
     expect(withinDailyCap('u1', 'image', d1, limits, store)).toBe(true)

@@ -99,7 +99,8 @@ export default function VideoPresentacionPage() {
             </div>
             {progress !== null && <p className="mt-2 text-xs text-slate-500">Dejá esta pestaña abierta mientras se arma (dura lo mismo que el video).</p>}
             {videoUrl && <video src={videoUrl} controls className="mt-5 w-full rounded-2xl bg-black" />}
-            <p className="mt-6 text-xs text-slate-400">¿Querés un recorrido filmado en la propiedad por una persona? Se pide por <Link href="/vara-visit" className="underline">VARA Visit</Link>.</p>
+            <p className="mt-6 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">¿Querés clips con movimiento real generados por IA a partir de tus fotos? Probá el <Link href="/recorrido-ia" className="font-semibold underline">Recorrido con IA</Link> (en prueba, con costo por clip y solo para cuentas habilitadas).</p>
+            <p className="mt-3 text-xs text-slate-400">¿Querés un recorrido filmado en la propiedad por una persona? Se pide por <Link href="/vara-visit" className="underline">VARA Visit</Link>.</p>
           </>
         )}
       </div>

@@ -12,9 +12,10 @@ import { requireAuth, type AuthError, type AuthResult } from '@/lib/api/requireA
  * abuso evidente, no es contabilidad exacta. El tope real de gasto es el límite
  * mensual que se fija en el panel de OpenAI.
  */
-export type AiBucket = 'image' | 'text'
+export type AiBucket = 'image' | 'text' | 'video'
 
-export const DAILY_LIMITS: Record<AiBucket, number> = { image: 10, text: 100 }
+/** Video: cada clip cuesta plata real, por eso el tope es bajo. */
+export const DAILY_LIMITS: Record<AiBucket, number> = { image: 10, text: 100, video: 10 }
 
 export function parseAllowed(raw: string | undefined): string[] {
   return (raw ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
@@ -39,6 +40,16 @@ export function withinDailyCap(
   store.set(key, used + 1)
   for (const k of store.keys()) if (!k.startsWith(day)) store.delete(k)
   return true
+}
+
+/** Solo verifica sesión y email autorizado, sin contar contra el tope. Para consultar el estado de algo ya pedido. */
+export async function requireAiAllowed(): Promise<AuthResult | AuthError> {
+  const auth = await requireAuth()
+  if (auth.error) return auth
+  if (!isAiAllowed(auth.email)) {
+    return { error: NextResponse.json({ error: 'Esta función de IA está en prueba y todavía no está habilitada para tu cuenta.' }, { status: 403 }) }
+  }
+  return auth
 }
 
 export async function requireAiAccess(bucket: AiBucket): Promise<AuthResult | AuthError> {
