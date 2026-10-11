@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Clapperboard, Download } from 'lucide-react'
-import { loadPhotos } from '@/lib/photoStore'
+import { loadSellerPhotos } from '@/lib/sellerPhotos'
 import { MAX_PHOTOS, SECONDS_PER_PHOTO } from '@/lib/video/timeline'
 import { buildSlideshow, canRecordVideo } from '@/lib/video/slideshow'
 
@@ -24,8 +24,8 @@ export default function VideoPresentacionPage() {
       setTitle(d.title ?? '')
       setSubtitle([d.neighborhood, d.city].filter(Boolean).join(', '))
     } catch {}
-    loadPhotos()
-      .then(ps => setPhotos(ps.sort((a, b) => Number(b.isCover) - Number(a.isCover)).slice(0, MAX_PHOTOS).map(p => p.preview)))
+    loadSellerPhotos()
+      .then(ps => setPhotos(ps.slice(0, MAX_PHOTOS).map(p => p.url)))
       .catch(() => {})
   }, [])
 

@@ -38,6 +38,7 @@ export function humanError(status: number, serverMessage?: string): string {
 export async function photoToBase64(url: string, maxSide = 1280): Promise<{ base64: string; mimeType: string }> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const i = new Image()
+    i.crossOrigin = 'anonymous'
     i.onload = () => resolve(i)
     i.onerror = () => reject(new Error('No se pudo leer la foto.'))
     i.src = url

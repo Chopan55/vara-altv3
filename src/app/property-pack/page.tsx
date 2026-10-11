@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Printer } from 'lucide-react'
 import { loadOperations } from '@/lib/userOperations'
-import { loadPhotos } from '@/lib/photoStore'
+import { loadSellerPhotos } from '@/lib/sellerPhotos'
 import { readHave } from '@/lib/sellPrep'
 import { buildPack, type Pack, type PackSource } from '@/lib/propertyPack'
 
@@ -21,8 +21,8 @@ export default function PropertyPackPage() {
       const docs = sell ? readHave(sell.id) : []
       setPack(buildPack(src, docs))
       try {
-        const stored = (await loadPhotos()).sort((a, b) => Number(b.isCover) - Number(a.isCover)).slice(0, 4)
-        setPhotos(stored.map(p => p.preview))
+        const stored = (await loadSellerPhotos()).slice(0, 4)
+        setPhotos(stored.map(p => p.url))
       } catch {}
     })()
   }, [])

@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Sparkles } from 'lucide-react'
-import { loadPhotos } from '@/lib/photoStore'
+import { loadSellerPhotos } from '@/lib/sellerPhotos'
 import { GENERATED_LABEL, VISUALIZE_MODES, humanError, noticeFor, photoToBase64, type VisualizeMode } from '@/lib/photoVisualize'
 
 interface Rec { title: string; description: string; estimatedCostMin: number; estimatedCostMax: number; timeWeeks: number; impact: string }
@@ -20,7 +20,7 @@ export default function FotosVentaPage() {
   const [result, setResult] = useState<Result | null>(null)
 
   useEffect(() => {
-    loadPhotos().then(ps => setPhotos(ps.map(p => ({ id: p.id, preview: p.preview, label: p.label })))).catch(() => {}).finally(() => setLoaded(true))
+    loadSellerPhotos().then(ps => setPhotos(ps.map(p => ({ id: p.id, preview: p.url, label: p.label })))).catch(() => {}).finally(() => setLoaded(true))
   }, [])
 
   const current = photos.find(p => p.id === selected) ?? null
