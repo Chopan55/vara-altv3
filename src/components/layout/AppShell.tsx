@@ -80,6 +80,8 @@ function getSellNav(operationId: string): NavItem[] {
 const JOURNEY_TOOL_HREFS = new Set(['/mi-busqueda', '/preparar-venta', '/precio-venta', '/property-pack', '/video-presentacion', '/interesados', '/fotos-venta', '/revisar-publicacion', '/recorrido-ia'])
 
 const SECONDARY_NAV: NavItem[] = [
+  { href: '/video-presentacion', icon: Eye, label: 'Recorrido en video' },
+  { href: '/recorrido-ia', icon: Eye, label: 'Recorrido con IA', tag: 'Prueba' },
   { href: '/guia', icon: BookOpen, label: 'Guía' },
   { href: '/asistente', icon: MessageSquare, label: 'Asistente' },
   { href: '/vara-labs', icon: Sparkles, label: 'VARA Labs', tag: 'Labs' },
