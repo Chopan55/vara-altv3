@@ -152,6 +152,7 @@ function SidebarContent({
   pathname,
   userName,
   operationId,
+  onChangeJourney,
 }: {
   collapsed: boolean
   onClose?: () => void
@@ -159,6 +160,7 @@ function SidebarContent({
   pathname: string
   userName: string
   operationId: string
+  onChangeJourney: (j: JourneyType) => void
 }) {
   const allNav = journey === 'SELL' ? getSellNav(operationId) : getBuyNav(operationId)
   // Interruptores de rollback: sin las herramientas nuevas o sin encabezados de grupo.
@@ -186,9 +188,19 @@ function SidebarContent({
       </div>
 
       {!collapsed && (
-        <p className="px-5 mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-          {journey === 'SELL' ? 'Vendiendo' : 'Comprando'}
-        </p>
+        <div role="group" aria-label="Qué estás haciendo" className="mx-4 mb-2 flex rounded-xl bg-slate-100 p-0.5 text-[11px] font-semibold">
+          {(['BUY', 'SELL'] as const).map(j => (
+            <button
+              key={j}
+              type="button"
+              aria-pressed={journey === j}
+              onClick={() => onChangeJourney(j)}
+              className={cn('flex-1 rounded-[10px] px-2 py-1.5 transition-colors', journey === j ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700')}
+            >
+              {j === 'SELL' ? 'Vendiendo' : 'Comprando'}
+            </button>
+          ))}
+        </div>
       )}
 
       <nav className="flex-1 space-y-0.5 px-3 overflow-y-auto no-scrollbar">
@@ -393,6 +405,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [guiaMenuOpen, setGuiaMenuOpen] = useState(false)
 
   const journey: JourneyType = vara.journeyType === 'SELL_PROPERTY' ? 'SELL' : 'BUY'
+  const changeJourney = (j: JourneyType) => vara.setJourneyType(j === 'SELL' ? 'SELL_PROPERTY' : 'BUY_PROPERTY')
 
   useEffect(() => {
     setDrawerOpen(false)
@@ -427,6 +440,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             pathname={pathname}
             userName={vara.userName}
             operationId={vara.operationId}
+            onChangeJourney={changeJourney}
           />
         </Suspense>
 
@@ -460,6 +474,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             pathname={pathname}
             userName={vara.userName}
             operationId={vara.operationId}
+            onChangeJourney={changeJourney}
           />
         </Suspense>
       </aside>

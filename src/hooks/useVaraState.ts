@@ -17,6 +17,7 @@ export interface VaraStateActions {
   dismissGuidance: (id: string) => void
   resetGuidance: () => void
   setOperationId: (id: string) => void
+  setJourneyType: (type: string) => void
 }
 
 const DEFAULTS: VaraState = {
@@ -92,5 +93,10 @@ export function useVaraState(): VaraState & VaraStateActions {
     setState(s => ({ ...s, operationId: id }))
   }, [])
 
-  return { ...state, setPropertyUrl, dismissGuidance, resetGuidance, setOperationId }
+  const setJourneyType = useCallback((type: string) => {
+    try { localStorage.setItem('vara_journey_type', type) } catch {}
+    setState(s => ({ ...s, journeyType: type }))
+  }, [])
+
+  return { ...state, setPropertyUrl, dismissGuidance, resetGuidance, setOperationId, setJourneyType }
 }

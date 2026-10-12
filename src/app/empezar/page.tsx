@@ -78,7 +78,8 @@ function Conversation() {
       title: operationTitle(a),
       country: a.country as 'AR' | 'MX',
     })
-    try { localStorage.setItem('vara_operation_id', op.id); localStorage.removeItem(KEY) } catch {}
+    // El menú lee este valor para mostrar el recorrido de compra o de venta.
+    try { localStorage.setItem('vara_operation_id', op.id); localStorage.setItem('vara_journey_type', a.intent === 'SELL' ? 'SELL_PROPERTY' : 'BUY_PROPERTY'); localStorage.removeItem(KEY) } catch {}
     router.push(destination(a))
   }
 
