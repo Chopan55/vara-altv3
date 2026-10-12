@@ -14,3 +14,4 @@
 ## Hallazgos de auditoría (Fase 1)
 - P1 corregido: 12 llamadas a la API leían la respuesta sin protección; ante un timeout el usuario veía "Unexpected token… not valid JSON". Se creó `lib/api/client.ts` y se aplicó en Visual Intelligence y Redactar con IA. Quedan sitios con captura propia (chats) que ya muestran un mensaje amable.
 - Pendiente de revisar: coherencia Dashboard/NBA/Acciones/Documentos; estados vacíos; pérdida de contexto Candidate vs Transaction.
+- P1 corregido: el Dashboard mostraba a la vez la próxima acción del motor NBA (`nba/engine`) y el banner de `guidanceEngine`, que podían contradecirse. Ahora, si hay próxima acción de la operación, el banner no se muestra. Pendiente: unificar ambos motores en uno solo (Acciones, Guíame y Documentos).

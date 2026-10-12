@@ -981,8 +981,14 @@ export default function Dashboard() {
           )
         })()}
 
-        {/* GUIDANCE BANNER — NBA contextual */}
-        <GuidanceBanner />
+        {/* Una sola recomendación a la vista: si arriba ya se muestra la próxima acción de la operación,
+            el banner de guía (otro motor) no se suma, para que nunca se contradigan. */}
+        {(() => {
+          const firstTxn = operations[0] ? getTransactionData(operations[0].id) : null
+          const action = primaryAction({ transaction: firstTxn ?? null })
+          const nbaShown = Boolean(operations[0]) && Boolean(action) && action?.id !== 'no_operation'
+          return nbaShown ? null : <GuidanceBanner />
+        })()}
 
         {/* NOVEDADES — qué cambió desde la última visita (milestones de activity_events) */}
         {activeOperationId && <NovedadesWidget operationId={activeOperationId} />}
