@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { useOperations } from '@/hooks/useOperations'
 import { toggleSellerTask } from '@/lib/supabase/sellerTasks'
 import { loadPhotos, savePhoto, deletePhoto, updatePhotoMeta, setCoverPhoto } from '@/lib/photoStore'
+import { ApiError, apiErrorMessage, safeJson, userFacingError } from '@/lib/api/client'
 import {
   hasPhotoSession, uploadPhoto, listPhotos, deletePhotoRemote,
   updatePhotoRemote, setCoverRemote,
@@ -218,8 +219,8 @@ export default function PublicarPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, notes: form.description }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'No pudimos generar el texto.')
+      const data = await safeJson<{ title?: string; description?: string; highlights?: string[]; error?: string }>(res)
+      if (!res.ok) throw new ApiError(apiErrorMessage(res.status, data.error), res.status)
       setForm(prev => ({
         ...prev,
         title: data.title || prev.title,
@@ -227,7 +228,7 @@ export default function PublicarPage() {
       }))
       setHighlights(Array.isArray(data.highlights) ? data.highlights : [])
     } catch (e) {
-      setCopyError(e instanceof Error ? e.message : 'No pudimos generar el texto.')
+      setCopyError(userFacingError(e, 'No pudimos generar el texto. No se perdió nada: probá de nuevo.'))
     } finally {
       setCopyLoading(false)
     }

@@ -7,6 +7,7 @@ import { formatPrice, cn } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
 import { loadUserPropertyById, type UserProperty } from '@/lib/userProperties'
 import { analyzePricePosition, priceRef } from '@/lib/market/priceReference'
+import { ApiError, apiErrorMessage, safeJson, userFacingError } from '@/lib/api/client'
 
 const categoryIcon: Record<string, string> = { PINTURA: '🎨', ILUMINACION: '💡', PISOS: '🪵', COCINA: '🍳', BAÑO: '🚿', MOBILIARIO: '🛋️', JARDÍN: '🌿', EXTERIOR: '🏠' }
 
@@ -85,11 +86,11 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
           mode,
         }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setResult(data)
+      const data = await safeJson<TransformResult & { error?: string }>(res)
+      if (!res.ok || !data.recommendations) throw new ApiError(apiErrorMessage(res.status, data.error), res.status)
+      setResult(data as TransformResult)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error procesando la imagen')
+      setError(userFacingError(e, 'No pudimos procesar la imagen. No se perdió nada: probá de nuevo.'))
     } finally { setLoading(false) }
   }
 
