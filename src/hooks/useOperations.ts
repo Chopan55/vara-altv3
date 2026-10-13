@@ -7,7 +7,7 @@ import {
 import type { UserOperationSummary, OperationRelation, Transaction } from '@/types'
 import type { StoredOperation } from '@/lib/userOperations'
 import { useVaraState } from '@/hooks/useVaraState'
-import { deriveJourney, pickActiveOperation, type Journey } from '@/lib/journey'
+import { resolveOperationContext, type Journey } from '@/lib/journey'
 import { getOperations, toSummary, loadOperations, loadOperation, deleteOperationAnywhere } from '@/lib/userOperations'
 import { buildTransaction, clearTaskState } from '@/lib/operationFromChecklist'
 
@@ -75,10 +75,10 @@ export function useOperations(): OperationsState {
     const operations = own
     // Tratar string vacío igual que null/undefined (H14)
     const selectedId = vara.operationId || null
-    const journey = deriveJourney(vara.journeyType, operations, selectedId)
-    // La operación activa es siempre del recorrido actual: nunca una venta en modo compra.
-    const activeOperationId = pickActiveOperation(operations, selectedId, journey)?.id ?? null
-    const activeOperation = operations.find(op => op.id === activeOperationId) ?? null
+    // Una sola regla (lib/journey): la operación activa siempre existe en la lista y es del recorrido actual.
+    const { journey, activeOperationId, activeOperation } = resolveOperationContext(operations, {
+      journeyType: vara.journeyType, selectedId,
+    })
     const activeTransactionData = activeOperationId ? resolveTxn(activeOperationId) : null
 
     const buyOperations = operations.filter(op => op.type === 'BUY')
