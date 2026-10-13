@@ -19,3 +19,7 @@
 - P0 corregido: Precio de venta, Interesados, Preparar la venta y Ficha leían la venta con otra fuente y decían "no hay venta" aunque la hubiera. Ahora usan `useSellOperation` (misma fuente que el resto).
 - P1 corregido: menú sin entradas repetidas.
 - Pendiente del prompt de mejoras: P0.3 (placeholders USD 0 en operación), P0.4 (asistente "No autorizado"), P0.5 (operation.insert.failed y React #418), P0.6 (fotos vs planos/documentos), tabs de operación, Dinero por contexto, modal de sumar propiedad.
+
+## Prompt de mejoras P0/P1 (2026-10-12)
+Hecho: P0.1 modo/operación (lib/journey), P0.2 herramientas de venta (useSellOperation), P0.3 encabezado de operación sin USD 0 (dice qué falta y lleva a cargarlo), P0.4 asistente (errores como aviso recuperable, sin "No autorizado" guardado, contexto de compra/venta), P0.5 logger con causa real y hidratación (#418: historial del asistente y saludo del Dashboard tras montar), P0.6 fotos vs planos/documentos (isPublishable; ficha exige datos mínimos y revisión), P1.2 pestañas siguen a la URL, P1.3 Dinero con la misma regla, P1.7 menú sin repetidos.
+Pendiente: P1.1 onboarding con primera experiencia de valor, P1.4 mover Labs/PRUEBA fuera del core, P1.5 faltantes de comparación como tareas, P1.6 cargar propiedad manualmente o pegar texto sin link, causa raíz de `operation.insert.failed` (ahora el log mostrará código y mensaje de Supabase: hace falta verlo en producción), y pruebas de humo de rutas autenticadas.
