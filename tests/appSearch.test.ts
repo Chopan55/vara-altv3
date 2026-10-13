@@ -57,3 +57,20 @@ describe('consistencia del id de operación', () => {
     for (const h of hrefs) expect(h.startsWith('/operacion/op-123')).toBe(true)
   })
 })
+
+describe('varias operaciones', () => {
+  const ctx = {
+    journey: 'BUY' as const,
+    operationId: 'a1',
+    operations: [{ id: 'a1', title: 'Mi compra' }, { id: 'b2', title: 'Mi venta' }],
+  }
+  it('"documentos" ofrece uno por operación, cada uno hacia su propio id', () => {
+    const r = searchApp('documentos', ctx).filter(x => x.kind === 'function' && x.href.startsWith('/operacion/'))
+    expect(r.map(x => x.label)).toEqual(['Documentos de Mi compra', 'Documentos de Mi venta'])
+    expect(r.map(x => x.href)).toEqual(['/operacion/a1?tab=documentos', '/operacion/b2?tab=documentos'])
+  })
+  it('con una sola operación sigue siendo un único resultado', () => {
+    const r = searchApp('riesgos', { ...ctx, operations: [ctx.operations[0]] })
+    expect(r.filter(x => x.label.startsWith('Riesgos')).map(x => x.href)).toEqual(['/operacion/a1?tab=riesgos'])
+  })
+})

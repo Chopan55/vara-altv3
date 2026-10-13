@@ -10,7 +10,6 @@ import { Progress } from '@/components/ui/Progress'
 import { mockTransaction } from '@/data/mock'
 import { useOperation } from '@/hooks/useOperation'
 import { useOperations } from '@/hooks/useOperations'
-import { getOperation } from '@/lib/userOperations'
 import { buildTransaction, setTaskState } from '@/lib/operationFromChecklist'
 import { cn, formatPrice, formatDate, getStatusLabel } from '@/lib/utils'
 import { generateChecklist } from '@/lib/regulations'
@@ -124,8 +123,8 @@ export default function OperacionPage() {
   const crossRelations = relations.filter(r => r.fromOperationId === operationId || r.toOperationId === operationId)
   const isDemoOperation = ['txn-001', 'txn-002', 'txn-003'].includes(operationId)
   // Para operaciones reales del usuario (guardadas en localStorage), buildTransaction las arma.
-  // Primero la lista unificada (incluye las de la cuenta); el almacenamiento local queda de respaldo.
-  const userOp = !operation && !isDemoOperation ? (getStoredOperation(operationId) ?? getOperation(operationId)) : null
+  // Solo la lista unificada (local + cuenta): leer localStorage en el render desfasa servidor y cliente.
+  const userOp = !operation && !isDemoOperation ? getStoredOperation(operationId) : null
   const txn = operation ?? (userOp ? buildTransaction(userOp) : null) ?? (isDemoOperation ? mockTransaction : null)
   // El país guardado en el dispositivo se lee después de montar: leerlo en el render desfasa servidor y cliente (React #418).
   const [storedCountry, setStoredCountry] = useState<CountryCode>('AR')

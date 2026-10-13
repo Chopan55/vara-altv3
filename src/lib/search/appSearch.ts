@@ -6,22 +6,29 @@
 export type SearchKind = 'function' | 'guide' | 'assistant'
 export interface SearchResult { label: string; hint: string; href: string; kind: SearchKind }
 
-export interface SearchContext { journey: 'BUY' | 'SELL'; operationId?: string | null }
+export interface SearchContext {
+  journey: 'BUY' | 'SELL'
+  operationId?: string | null
+  /** Operaciones reales del usuario: con más de una, los resultados de operación salen uno por operación. */
+  operations?: { id: string; title: string }[]
+}
 
 interface Entry {
   label: string
   hint: string
   keywords: string[]
   mode: 'BUY' | 'SELL' | 'BOTH'
+  /** Pestaña de la operación a la que lleva; marca al resultado como propio de una operación. */
+  opTab?: { tab: string; base: string }
   href: (ctx: SearchContext) => string
 }
 
 const op = (ctx: SearchContext, tab?: string) => `/operacion/${ctx.operationId || 'inicio'}${tab ? `?tab=${tab}` : ''}`
 
 const ENTRIES: Entry[] = [
-  { label: 'Documentos de mi operación', hint: 'Lo que ya tenés y lo que falta', keywords: ['documento', 'documentos', 'papeles', 'escritura', 'plano', 'certificado'], mode: 'BOTH', href: c => op(c, 'documentos') },
+  { label: 'Documentos de mi operación', hint: 'Lo que ya tenés y lo que falta', keywords: ['documento', 'documentos', 'papeles', 'escritura', 'plano', 'certificado'], mode: 'BOTH', opTab: { tab: 'documentos', base: 'Documentos' }, href: c => op(c, 'documentos') },
   { label: 'Checklist documental de venta', hint: 'Papeles según tu provincia', keywords: ['documento', 'documentos', 'papeles', 'checklist', 'escritura'], mode: 'SELL', href: () => '/preparar-venta' },
-  { label: 'Riesgos de mi operación', hint: 'Qué conviene revisar antes de avanzar', keywords: ['riesgo', 'riesgos', 'problema', 'alerta'], mode: 'BOTH', href: c => op(c, 'riesgos') },
+  { label: 'Riesgos de mi operación', hint: 'Qué conviene revisar antes de avanzar', keywords: ['riesgo', 'riesgos', 'problema', 'alerta'], mode: 'BOTH', opTab: { tab: 'riesgos', base: 'Riesgos' }, href: c => op(c, 'riesgos') },
   { label: 'Costos de compra', hint: 'Sellos, escribano, inscripción', keywords: ['costo', 'costos', 'gastos', 'sellos', 'escribano', 'impuestos'], mode: 'BUY', href: () => '/dinero?tab=costos' },
   { label: 'Neto estimado de venta', hint: 'Cuánto te queda después de vender', keywords: ['costo', 'costos', 'gastos', 'neto', 'comision', 'impuestos', 'cuanto me queda'], mode: 'SELL', href: () => '/dinero?tab=costos' },
   { label: 'Financiamiento', hint: 'Cómo se puede pagar', keywords: ['financiamiento', 'credito', 'hipoteca', 'prestamo', 'uva'], mode: 'BUY', href: () => '/dinero?tab=financiamiento' },
@@ -64,7 +71,20 @@ export function searchApp(query: string, ctx: SearchContext): SearchResult[] {
     .sort((a, b) => b.score - a.score)
     .slice(0, 5)
 
-  const functions: SearchResult[] = scored.map(({ e }) => ({ label: e.label, hint: e.hint, href: e.href(ctx), kind: 'function' }))
+  const ops = ctx.operations ?? []
+  const functions: SearchResult[] = scored.flatMap(({ e }): SearchResult[] => {
+    // Con varias operaciones no se adivina cuál: un resultado por operación, con su nombre.
+    if (e.opTab && ops.length > 1) {
+      const repeated = (title: string) => ops.filter(o => o.title === title).length > 1
+      return ops.map((o, i) => ({
+        label: `${e.opTab!.base} de ${o.title}${repeated(o.title) ? ` (${i + 1})` : ''}`,
+        hint: e.hint,
+        href: `/operacion/${o.id}?tab=${e.opTab!.tab}`,
+        kind: 'function' as const,
+      }))
+    }
+    return [{ label: e.label, hint: e.hint, href: e.href(ctx), kind: 'function' }]
+  })
   return [
     ...functions,
     { label: `Buscar “${query.trim()}” en la Guía`, hint: 'Artículos y explicaciones', href: `/guia?q=${encodeURIComponent(query.trim())}`, kind: 'guide' },

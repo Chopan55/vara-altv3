@@ -84,10 +84,8 @@ const SECONDARY_NAV: NavItem[] = [
 ]
 
 /** Lo que todavía está en prueba, aparte del menú principal. */
-const EXPERIMENTAL_NAV: NavItem[] = [
-  { href: '/recorrido-ia', icon: Eye, label: 'Recorrido con IA', tag: 'Prueba' },
-  { href: '/vara-labs', icon: Sparkles, label: 'VARA Labs', tag: 'Labs' },
-]
+/** Labs va aparte del menú principal: lo que está en prueba no se mezcla con compra, venta y operación. */
+const LABS_NAV: NavItem = { href: '/vara-labs', icon: Sparkles, label: 'VARA Labs' }
 
 function isActive(pathname: string, search: string, href: string) {
   const [path, query] = href.split('?')
@@ -221,16 +219,9 @@ function SidebarContent({
           <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
         ))}
 
-        {!collapsed && (
-          <details className="mt-3 border-t border-slate-200 pt-2">
-            <summary className="cursor-pointer list-none px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 hover:text-slate-600">Experimental · puede cambiar</summary>
-            <div className="mt-1 space-y-0.5">
-              {EXPERIMENTAL_NAV.map(item => (
-                <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
-              ))}
-            </div>
-          </details>
-        )}
+        <div className="mt-3 border-t border-slate-200 pt-2">
+          <NavLink item={LABS_NAV} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
+        </div>
       </nav>
 
       {/* Acceso permanente al asistente: es el atajo cuando el usuario no sabe dónde mirar. */}
@@ -366,10 +357,10 @@ function TopBar({
   onToggleGuia: () => void
 }) {
   const router = useRouter()
-  const { activeOperationId } = useOperations()
+  const { activeOperationId, operations } = useOperations()
   const [q, setQ] = useState('')
   const [open, setOpen] = useState(false)
-  const results = searchApp(q, { journey, operationId: activeOperationId })
+  const results = searchApp(q, { journey, operationId: activeOperationId, operations: operations.map(o => ({ id: o.id, title: o.title })) })
 
   const go = (href: string) => { setOpen(false); setQ(''); router.push(href) }
   const submit = (e: React.FormEvent) => {
@@ -436,14 +427,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [guiaMenuOpen, setGuiaMenuOpen] = useState(false)
 
-  const { journey, activeOperationId } = useOperations()
+  const { journey, activeOperationId, operations: allOps } = useOperations()
   const changeJourney = (j: JourneyType) => vara.setJourneyType(journeyToStored(j))
 
   // Una pantalla de compra o de venta ajusta el modo a sí misma: menú, guía y contenido nunca se contradicen.
   useEffect(() => {
-    const forced = forcedJourney(pathname)
+    // Una pantalla de compra o de venta fija el modo; abrir una operación fija el de esa operación.
+    const opId = pathname.match(/^\/operacion\/([^/?]+)/)?.[1]
+    const opType = opId ? allOps.find(o => o.id === opId)?.type : undefined
+    const forced = forcedJourney(pathname) ?? opType ?? null
     if (vara.loaded && forced && forced !== journey) vara.setJourneyType(journeyToStored(forced))
-  }, [pathname, journey, vara.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname, journey, vara.loaded, allOps]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setDrawerOpen(false)
