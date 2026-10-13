@@ -28,6 +28,38 @@ import { useOperations } from '@/hooks/useOperations'
  * personas inventadas aparecían con "✓ Verificado" y 4.9 estrellas.
  */
 
+const HOW_OWNER = [
+  'Elegís "Mostrar mi propiedad" y completás zona, fecha y quién puede entrar.',
+  'VARA busca un Visit Partner verificado en tu zona.',
+  'Confirmás el precio final y la visita queda agendada.',
+  'El día de la visita, el partner llega y te pide el PIN. Sin PIN no empieza.',
+  'Muestra la propiedad siguiendo el checklist y las reglas que fijaste.',
+  'Recibís un reporte con hechos: quién fue, qué preguntaron y qué se observó.',
+]
+const HOW_BUYER = [
+  'Elegís "Acompañarme a una visita" y cargás la propiedad que vas a ver.',
+  'Marcás qué querés que revise: humedad, ruido, luz, documentación visible…',
+  'VARA asigna un Visit Partner verificado y confirmás el precio final.',
+  'Se encuentran en el punto acordado y la visita empieza con tu PIN.',
+  'El partner sigue el checklist y registra lo que ve, con fotos si están permitidas.',
+  'Recibís el reporte y los próximos pasos sugeridos.',
+]
+const PROTOCOL = [
+  { when: 'Antes', items: ['Identidad del partner verificada por VARA', 'La dirección exacta se comparte solo con el partner asignado', 'Ves el precio final antes de confirmar'] },
+  { when: 'Durante', items: ['La visita empieza solo con tu PIN', 'Si llega alguien no informado, el partner no abre y te avisa', 'El partner puede frenar la visita si hay una situación insegura', 'VARA registra inicio y cierre'] },
+  { when: 'Después', items: ['Reporte que separa hechos de opiniones', 'Soporte si algo salió mal', 'El partner no negocia ni cobra por fuera de VARA'] },
+]
+const SAMPLE_REPORT = [
+  ['Servicio', 'Acompañar una visita'],
+  ['Fecha y hora', 'Sábado 11:00 · 45 min'],
+  ['Inicio / cierre', '11:02 / 11:46 (con PIN)'],
+  ['Checklist', 'Humedad: manchas visibles en el baño · Ruido: calle con tránsito medio · Luz: buena a la mañana'],
+  ['Preguntas al corredor', 'Expensas del último mes · Antigüedad del edificio'],
+  ['Alertas', 'Ninguna'],
+  ['Resumen objetivo', 'Se visitaron 3 ambientes. Se tomaron 8 fotos permitidas.'],
+  ['Próximos pasos', 'Pedir expensas por escrito y consultar la causa de la humedad.'],
+]
+
 const GUARANTEES = [
   {
     icon: Shield,
@@ -62,12 +94,13 @@ export default function VaraVisitPage() {
     <div className="min-h-screen bg-[var(--background)]">
       <div className="max-w-3xl mx-auto px-4 lg:px-6 py-8">
         <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
-          Servicio adicional
+          Visitas seguras
         </p>
         <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-1.5">
-          VARA Visit
+          Visitas inmobiliarias con una persona verificada por VARA
         </h1>
         <p className="text-sm text-slate-600 mt-2 leading-relaxed max-w-xl">
+          Cobertura piloto: disponible por zonas, con coordinación manual inicial.
           Cuando hace falta que alguien esté presente, VARA manda a una persona verificada.
           {isSeller
             ? ' Muestra tu propiedad a los interesados y te deja un reporte.'
@@ -102,6 +135,26 @@ export default function VaraVisitPage() {
           ))}
         </div>
 
+        {/* Cómo funciona, en pasos simples, para cada camino. */}
+        <section className="mt-8">
+          <h2 className="text-sm font-bold text-slate-900">Cómo funciona</h2>
+          <div className="grid sm:grid-cols-2 gap-3 mt-3">
+            {[['Si querés mostrar tu propiedad', HOW_OWNER], ['Si querés que te acompañen', HOW_BUYER]].map(([title, steps]) => (
+              <div key={title as string} className="rounded-2xl bg-white border border-slate-200/70 p-4">
+                <p className="text-sm font-bold text-slate-900">{title as string}</p>
+                <ol className="mt-2.5 space-y-2">
+                  {(steps as string[]).map((t, i) => (
+                    <li key={t} className="flex gap-2.5 text-xs text-slate-600 leading-relaxed">
+                      <span className="w-5 h-5 rounded-full bg-brand-50 text-brand-700 text-[10px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                      {t}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Qué garantiza VARA. Va antes del precio a propósito. */}
         <section className="mt-8">
           <h2 className="text-sm font-bold text-slate-900">
@@ -125,6 +178,44 @@ export default function VaraVisitPage() {
           </div>
         </section>
 
+        {/* Protocolo VARA Visit: lo que pasa antes, durante y después. */}
+        <section className="mt-8">
+          <h2 className="text-sm font-bold text-slate-900">Protocolo VARA Visit</h2>
+          <div className="grid sm:grid-cols-3 gap-3 mt-3">
+            {PROTOCOL.map(p => (
+              <div key={p.when} className="rounded-2xl bg-white border border-slate-200/70 p-4">
+                <p className="text-sm font-bold text-slate-900">{p.when}</p>
+                <ul className="mt-2 space-y-1.5">
+                  {p.items.map(i => (
+                    <li key={i} className="flex gap-1.5 text-xs text-slate-600 leading-relaxed">
+                      <Check size={11} className="text-emerald-600 mt-0.5 flex-shrink-0" aria-hidden="true" />{i}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-slate-500 mt-2.5">
+            El partner no reemplaza a un escribano, arquitecto o inspector, no negocia por vos y no recibe llaves salvo un protocolo especial acordado.
+          </p>
+        </section>
+
+        {/* Ejemplo de reporte: ilustrativo, no es de una visita real. */}
+        <section className="mt-8">
+          <details className="rounded-2xl bg-white border border-slate-200/70 p-4">
+            <summary className="cursor-pointer text-sm font-bold text-slate-900">Ver ejemplo de reporte</summary>
+            <p className="text-[11px] text-slate-500 mt-2">Ejemplo ilustrativo; no corresponde a una visita real.</p>
+            <dl className="mt-3 divide-y divide-slate-100">
+              {SAMPLE_REPORT.map(([k, v]) => (
+                <div key={k} className="grid grid-cols-3 gap-2 py-2">
+                  <dt className="text-[11px] font-semibold text-slate-500">{k}</dt>
+                  <dd className="col-span-2 text-xs text-slate-700">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </details>
+        </section>
+
         {/* Precio: bandas reales del motor de precios, no números sueltos. */}
         <section className="mt-8">
           <h2 className="text-sm font-bold text-slate-900">Precio</h2>
@@ -145,8 +236,13 @@ export default function VaraVisitPage() {
             ))}
           </div>
           <p className="text-[11px] text-slate-500 mt-2.5">{CANCELLATION_POLICY.text}</p>
-          <p className="text-[11px] text-slate-400 mt-1">
-            El cobro lo coordina VARA a mano. Todavía no cobramos desde la plataforma.
+          <p className="text-[11px] text-slate-500 mt-1">
+            Durante la etapa piloto, VARA coordina el pago de forma manual. Siempre ves el
+            precio final antes de confirmar. Nunca pagues por fuera sin confirmación de VARA.
+          </p>
+          <p className="text-[11px] text-slate-500 mt-1">
+            El precio incluye al Visit Partner verificado, el registro de inicio y cierre, y el
+            reporte. No incluye informes de un escribano, arquitecto o inspector.
           </p>
         </section>
 
