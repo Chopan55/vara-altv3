@@ -8,6 +8,7 @@ import { useVaraState } from '@/hooks/useVaraState'
 import { useOperations } from '@/hooks/useOperations'
 import { loadUserPropertyById, type UserProperty } from '@/lib/userProperties'
 import { PropertyFactsEditor } from '@/components/properties/PropertyFactsEditor'
+import { ValuationCard } from '@/components/valuation/ValuationCard'
 import { ApiError, apiErrorMessage, safeJson, userFacingError } from '@/lib/api/client'
 
 const categoryIcon: Record<string, string> = { PINTURA: '🎨', ILUMINACION: '💡', PISOS: '🪵', COCINA: '🍳', BAÑO: '🚿', MOBILIARIO: '🛋️', JARDÍN: '🌿', EXTERIOR: '🏠' }
@@ -178,7 +179,7 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
             <Badge variant="brand" size="sm">{property.operationType === 'sale' ? 'Venta' : 'Alquiler'}</Badge>
           </div>
           <div className="grid grid-cols-3 gap-3 mb-3">
-            {[{ icon: Bed, val: property.bedrooms, label: 'dorm.' }, { icon: Bath, val: property.bathrooms, label: 'baños' }, { icon: Square, val: property.surface, label: 'm²' }].map(({ icon: Icon, val, label }) => (
+            {[{ icon: Bed, val: property.bedrooms, label: 'dorm.' }, { icon: Bath, val: property.bathrooms, label: 'baños' }, { icon: Square, val: property.coveredSurface || property.surface, label: property.coveredSurface ? 'm² cubiertos' : 'm²' }].map(({ icon: Icon, val, label }) => (
               <div key={label} className="text-center bg-slate-50 rounded-xl py-3">
                 <Icon size={16} className="mx-auto text-slate-400 mb-1" />
                 <p className={val ? 'font-bold text-slate-900 text-sm' : 'font-bold text-amber-600 text-sm'}>{val || '—'}</p>
@@ -212,16 +213,8 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
           </div>
         </div>
 
-        {/* Valor de referencia: se calcula con comparables reales, no con un rango fijo por provincia. */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h2 className="font-bold text-slate-900 text-sm">¿El precio publicado es razonable?</h2>
-          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-            Para decirlo con criterio, VARA tiene que compararla con propiedades parecidas (mismo barrio, tipo, dormitorios, estado y antigüedad), no con un precio por m² genérico. Sumá propiedades similares y las comparamos.
-          </p>
-          <Link href="/comparar" className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:border-slate-300">
-            Comparar con propiedades similares <ChevronRight size={12} aria-hidden="true" />
-          </Link>
-        </div>
+        {/* Valor de referencia: rango según comparables parecidos que cargó la persona (motor en lib/valuation). */}
+        <ValuationCard property={property} />
 
         {/* Visualizá el potencial */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
