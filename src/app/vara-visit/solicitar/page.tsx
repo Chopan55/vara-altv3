@@ -17,6 +17,7 @@ import {
   listActivePartners, createBooking, requestCoverage, hasSession,
 } from '@/lib/supabase/visits'
 import { loadUserProperties, type UserProperty } from '@/lib/userProperties'
+import { loadKnownLocation } from '@/lib/knownLocation'
 import { PartnerCard } from '@/components/visit/PartnerCard'
 import { useVaraState } from '@/hooks/useVaraState'
 import { journeyToStored } from '@/lib/journey'
@@ -167,6 +168,9 @@ function SolicitarInner() {
       if (list.length === 1) {
         setPropertyId(list[0].id)
         setLocationLabel(list[0].city || list[0].neighborhood || '')
+      } else {
+        // Sin una propiedad que lo defina, partimos de la ciudad o provincia que ya contó.
+        void loadKnownLocation().then(k => { if (k.label) setLocationLabel(prev => prev || k.label) })
       }
     })
   }, [])

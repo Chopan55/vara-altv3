@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { loadKnownLocation } from '@/lib/knownLocation'
 import { EMPTY_MANUAL, buildManualData, canSubmitManual, missingManual, type ManualForm } from '@/lib/manualProperty'
 
 const input = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base sm:text-sm text-slate-800'
@@ -7,6 +8,10 @@ const input = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2
 /** Formulario corto para sumar una propiedad sin link. Todo es opcional salvo un dato mínimo. */
 export function ManualPropertyForm({ onSubmit }: { onSubmit: (form: ManualForm) => void }) {
   const [f, setF] = useState<ManualForm>(EMPTY_MANUAL)
+  // La ciudad que ya contó llega precargada; puede cambiarla.
+  useEffect(() => {
+    void loadKnownLocation().then(k => { if (k.city) setF(prev => (prev.city ? prev : { ...prev, city: k.city })) })
+  }, [])
   const set = <K extends keyof ManualForm>(k: K, v: ManualForm[K]) => setF(prev => ({ ...prev, [k]: v }))
   const data = buildManualData(f)
   const missing = missingManual(data)
