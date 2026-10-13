@@ -45,3 +45,15 @@ describe('búsqueda global', () => {
     expect(r.map(x => x.kind)).toEqual(['guide', 'assistant'])
   })
 })
+
+describe('consistencia del id de operación', () => {
+  it('todos los destinos de operación usan el id activo recibido, nunca otro', () => {
+    const ctx = { journey: 'BUY' as const, operationId: 'op-123' }
+    const hrefs = ['documentos', 'riesgos', 'ofertas']
+      .flatMap(q => searchApp(q, ctx))
+      .map(r => r.href)
+      .filter(h => h.startsWith('/operacion/'))
+    expect(hrefs.length).toBeGreaterThan(0)
+    for (const h of hrefs) expect(h.startsWith('/operacion/op-123')).toBe(true)
+  })
+})

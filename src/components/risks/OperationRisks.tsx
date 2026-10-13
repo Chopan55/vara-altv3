@@ -91,7 +91,7 @@ export function OperationRisks({ operationId, propertyPrice, provinceName, dataC
     hasDocumentSession().then(async ok => {
       if (!alive) return
       setSession(ok)
-      if (ok) await load()
+      try { if (ok) await load() } catch { /* sin datos: se muestra el estado vacío, no una carga eterna */ }
       if (alive) setLoaded(true)
     })
     return () => { alive = false }

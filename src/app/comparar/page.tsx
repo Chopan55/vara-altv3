@@ -331,12 +331,13 @@ export default function CompararPage() {
             <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <BarChart2 size={20} className="text-slate-300" />
             </div>
-            <p className="text-sm font-semibold text-slate-800 mb-1">Sin propiedades guardadas</p>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto mb-4">
-              Importá propiedades desde un aviso de Zonaprop o Argenprop para compararlas.
+            <p className="text-sm font-semibold text-slate-800 mb-1">Todavía no agregaste propiedades para comparar</p>
+            <p className="text-xs text-slate-500 max-w-xs mx-auto mb-4">
+              Sumá hasta {MAX_COMPARE} propiedades (con el link del aviso o a mano) y las ves lado a lado:
+              precio, superficie, costo por m², zona, expensas y una recomendación según lo que te importa.
             </p>
             <Link href="/propiedades" className="inline-block text-xs font-bold bg-brand-600 text-white px-4 py-2 rounded-xl hover:bg-brand-700 transition-colors">
-              Ir a mis propiedades →
+              Agregar propiedad
             </Link>
           </div>
         )}

@@ -23,6 +23,8 @@ export interface OperationsState {
   relations: OperationRelation[]
   getRelatedOperations: (operationId: string) => UserOperationSummary[]
   getTransactionData: (operationId: string) => Transaction | null
+  /** Operación completa (local o de la cuenta) por id: una sola fuente para toda la app. */
+  getStoredOperation: (operationId: string) => StoredOperation | null
   /** true cuando no hay operaciones propias y se muestran las de demostración. */
   usingDemo: boolean
   loaded: boolean
@@ -90,6 +92,7 @@ export function useOperations(): OperationsState {
     }
 
     const getTransactionData = resolveTxn
+    const getStoredOperation = (id: string) => ownRaw.find(op => op.id === id) ?? null
 
     return {
       operations,
@@ -102,6 +105,7 @@ export function useOperations(): OperationsState {
       relations: mockOperationRelations,
       getRelatedOperations,
       getTransactionData,
+      getStoredOperation,
       usingDemo,
     }
   }, [vara.operationId, vara.journeyType, own, ownRaw])

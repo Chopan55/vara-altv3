@@ -120,13 +120,17 @@ export default function OperacionPage() {
     : 'tareas'
   const operationId = typeof params.id === 'string' ? params.id : 'txn-001'
   const { operation, notFound } = useOperation(operationId)
-  const { relations, getTransactionData, operations, activeOperation, journey, loaded: opsLoaded } = useOperations()
+  const { relations, getTransactionData, getStoredOperation, operations, activeOperation, journey, loaded: opsLoaded } = useOperations()
   const crossRelations = relations.filter(r => r.fromOperationId === operationId || r.toOperationId === operationId)
   const isDemoOperation = ['txn-001', 'txn-002', 'txn-003'].includes(operationId)
   // Para operaciones reales del usuario (guardadas en localStorage), buildTransaction las arma.
-  const userOp = !operation && !isDemoOperation ? getOperation(operationId) : null
+  // Primero la lista unificada (incluye las de la cuenta); el almacenamiento local queda de respaldo.
+  const userOp = !operation && !isDemoOperation ? (getStoredOperation(operationId) ?? getOperation(operationId)) : null
   const txn = operation ?? (userOp ? buildTransaction(userOp) : null) ?? (isDemoOperation ? mockTransaction : null)
-  const country: CountryCode = userOp?.country ?? (() => { try { return (localStorage.getItem('vara_country') as CountryCode) || 'AR' } catch { return 'AR' } })()
+  // El país guardado en el dispositivo se lee después de montar: leerlo en el render desfasa servidor y cliente (React #418).
+  const [storedCountry, setStoredCountry] = useState<CountryCode>('AR')
+  useEffect(() => { try { setStoredCountry((localStorage.getItem('vara_country') as CountryCode) || 'AR') } catch { /* sin acceso */ } }, [])
+  const country: CountryCode = userOp?.country ?? storedCountry
 
   // Todos los hooks deben declararse antes de cualquier return condicional (Rules of Hooks).
   // El sidebar linkea directo a una pestaña (?tab=documentos).
