@@ -20,7 +20,7 @@ import { journeyToStored } from '@/lib/journey'
 import { GuiameButton, GuiameTrigger } from '@/components/guidance/GuiameButton'
 import { VaraAIFloat } from '@/components/ai/VaraAIFloat'
 
-const NO_SHELL = new Set(['/', '/onboarding', '/login', '/demo', '/labs', '/empezar', '/property-pack'])
+const NO_SHELL = new Set(['/', '/onboarding', '/login', '/demo', '/labs', '/empezar', '/property-pack', '/planes'])
 
 type JourneyType = 'BUY' | 'SELL'
 
@@ -224,11 +224,16 @@ function SidebarContent({
           <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
         ))}
 
-        <div className="my-3 border-t border-slate-200 mx-2" />
-        {!collapsed && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Experimental</p>}
-        {EXPERIMENTAL_NAV.map(item => (
-          <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
-        ))}
+        {!collapsed && (
+          <details className="mt-3 border-t border-slate-200 pt-2">
+            <summary className="cursor-pointer list-none px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 hover:text-slate-600">Experimental · puede cambiar</summary>
+            <div className="mt-1 space-y-0.5">
+              {EXPERIMENTAL_NAV.map(item => (
+                <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
+              ))}
+            </div>
+          </details>
+        )}
       </nav>
 
       {/* Acceso permanente al asistente: es el atajo cuando el usuario no sabe dónde mirar. */}
@@ -472,6 +477,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <aside
+        aria-hidden={!drawerOpen}
+        inert={!drawerOpen}
         className={cn(
           'lg:hidden fixed left-0 top-0 bottom-0 z-50 w-[280px] bg-white border-r border-slate-200 transition-transform duration-200',
           drawerOpen ? 'translate-x-0' : '-translate-x-full'

@@ -71,7 +71,7 @@ export default function InteresadosPage() {
                 ))}
               </ul>
             )}
-            <p className="mt-6 text-xs text-slate-400">Lo que anotás queda guardado en este navegador. Usalo con respeto: son datos de personas.</p>
+            <p className="mt-6 text-xs text-slate-400">Por ahora esta lista se guarda solo en este dispositivo y no se sincroniza con tu cuenta. Usala con cuidado: son datos de personas.</p>
           </>
         )}
       </div>

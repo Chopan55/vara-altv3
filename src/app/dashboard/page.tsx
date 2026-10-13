@@ -271,6 +271,15 @@ function SellerDashboard({ userName, province, operationId }: { userName: string
   const done = tasks.filter(t => t.done).length
   const progress = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0
 
+  // Si no hay checklist remoto (operación sin sincronizar o sin filas), se usa el de venta del motor regulatorio.
+  // Nunca se muestra "0 de 0": o hay pasos reales, o se dice que todavía no hay checklist.
+  const { getTransactionData } = useOperations()
+  const fallbackTasks = tasks.length === 0 ? (getTransactionData(operationId)?.stages.flatMap(st => st.tasks) ?? []) : []
+  const stepsTotal = tasks.length > 0 ? tasks.length : fallbackTasks.length
+  const stepsDone = tasks.length > 0 ? done : fallbackTasks.filter(t => t.status === 'DONE').length
+  const stepsPct = stepsTotal > 0 ? Math.round((stepsDone / stepsTotal) * 100) : 0
+  const nextFallback = fallbackTasks.find(t => t.status !== 'DONE')
+
   const sellerCosts = [
     { label: 'Comisión inmobiliaria', value: '3–4% del precio' },
     { label: 'Honorarios escribano', value: '~1% del precio' },
@@ -311,16 +320,33 @@ function SellerDashboard({ userName, province, operationId }: { userName: string
                   No mide tiempo ni plata: mide cuántos pasos del proceso ya resolviste.
                 </InfoTip>
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">{done} de {tasks.length} pasos completados</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {stepsTotal > 0 ? `${stepsDone} de ${stepsTotal} pasos completados` : 'Todavía no hay checklist disponible. Empezá por preparar la venta.'}
+              </p>
             </div>
-            <span className="text-2xl font-extrabold text-slate-900">{progress}%</span>
+            {stepsTotal > 0 && <span className="text-2xl font-extrabold text-slate-900">{stepsPct}%</span>}
           </div>
-          <Progress value={progress} showLabel={false} />
+          {stepsTotal > 0 && <Progress value={stepsPct} showLabel={false} />}
         </div>
 
         {/* NEXT BEST ACTION */}
         {(() => {
           const next = tasks.find(t => !t.done)
+          if (!next && tasks.length === 0) {
+            return (
+              <div className="bg-amber-500 rounded-2xl p-5 text-slate-900">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp size={13} className="opacity-50" />
+                  <p className="text-xs font-bold opacity-50 uppercase tracking-widest">Próximo paso</p>
+                </div>
+                <h3 className="font-extrabold text-base mb-1 leading-tight">{nextFallback ? nextFallback.title : 'Empezá por preparar la venta'}</h3>
+                <p className="text-sm opacity-70 leading-relaxed mb-4">{nextFallback ? nextFallback.description : 'Juntá los papeles y definí el precio antes de publicar.'}</p>
+                <Link href={nextFallback ? `/operacion/${operationId}` : '/preparar-venta'} className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors">
+                  {nextFallback ? 'Ver el paso' : 'Preparar la venta'} <ArrowRight size={14} />
+                </Link>
+              </div>
+            )
+          }
           if (!next) return null
           return (
             <div className="bg-amber-500 rounded-2xl p-5 text-slate-900">
