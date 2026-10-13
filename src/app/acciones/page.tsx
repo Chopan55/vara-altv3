@@ -69,7 +69,9 @@ function useDateRows(
 }
 
 export default function AccionesPage() {
-  const { operations, getTransactionData, loaded } = useOperations()
+  const { operations: allOperations, getTransactionData, loaded, error, journey } = useOperations()
+  // Solo las operaciones del recorrido actual: en Comprando no se mezclan las tareas de una venta.
+  const operations = useMemo(() => allOperations.filter(o => o.type === journey), [allOperations, journey])
   const { rows: dateRows, dateLoaded } = useDateRows(operations, loaded)
 
   const rows = useMemo<ActionRow[]>(() => {
@@ -118,7 +120,30 @@ export default function AccionesPage() {
           </div>
         )}
 
-        {loaded && rows.length === 0 && (
+        {loaded && error && (
+          <p role="alert" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+            No pudimos actualizar tus operaciones desde tu cuenta. Mostramos lo que hay en este dispositivo; tus datos siguen guardados.
+          </p>
+        )}
+
+        {loaded && operations.length === 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-6">
+            <p className="text-sm font-semibold text-slate-800 mb-1">
+              {journey === 'SELL' ? 'Todavía no tenés una venta en marcha' : 'Todavía no tenés una compra en marcha'}
+            </p>
+            <p className="text-xs text-slate-500 mb-4">Estas son formas de empezar. Elegí la que te quede mejor:</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(journey === 'SELL'
+                ? [['/publicar', 'Cargar mi propiedad'], ['/preparar-venta', 'Preparar los documentos'], ['/precio-venta', 'Calcular el precio'], ['/asistente', 'Hablar con VARA']]
+                : [['/mi-busqueda', 'Contar qué busco'], ['/propiedades', 'Agregar una propiedad que estoy mirando'], ['/dinero', 'Calcular costos'], ['/asistente', 'Hablar con VARA']]
+              ).map(([href, label]) => (
+                <Link key={href} href={href} className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:border-brand-300">{label}</Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {loaded && operations.length > 0 && rows.length === 0 && (
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-8 text-center">
             <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <CheckCircle2 size={22} className="text-emerald-500" />

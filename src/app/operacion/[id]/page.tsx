@@ -120,7 +120,7 @@ export default function OperacionPage() {
     : 'tareas'
   const operationId = typeof params.id === 'string' ? params.id : 'txn-001'
   const { operation, notFound } = useOperation(operationId)
-  const { relations, getTransactionData } = useOperations()
+  const { relations, getTransactionData, operations, activeOperation, journey, loaded: opsLoaded } = useOperations()
   const crossRelations = relations.filter(r => r.fromOperationId === operationId || r.toOperationId === operationId)
   const isDemoOperation = ['txn-001', 'txn-002', 'txn-003'].includes(operationId)
   // Para operaciones reales del usuario (guardadas en localStorage), buildTransaction las arma.
@@ -164,15 +164,38 @@ export default function OperacionPage() {
   }, [txn?.currentStageId])
 
   if (!txn) {
+    // Estado puente: nunca una pantalla vacía sin explicación.
+    if (!opsLoaded) {
+      return (
+        <div className="min-h-screen bg-[var(--background)] flex items-center justify-center px-4">
+          <p className="text-sm text-slate-400" role="status">Cargando tu operación…</p>
+        </div>
+      )
+    }
+    const hasOps = operations.length > 0
+    const loadHref = journey === 'SELL' ? '/publicar' : '/propiedades'
+    const checklistHref = journey === 'SELL' ? '/preparar-venta' : '/guia?q=documentos'
     return (
       <div className="min-h-screen bg-[var(--background)] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <FileText size={24} className="text-slate-300" />
           </div>
-          <p className="font-semibold text-slate-700 mb-1">Operación vacía</p>
-          <p className="text-sm text-slate-400 mb-5">Esta operación no tiene datos cargados todavía. Completá los pasos del onboarding para comenzar.</p>
-          <Link href="/dashboard" className="text-brand-600 text-sm font-semibold hover:underline">← Volver al dashboard</Link>
+          <h1 className="font-semibold text-slate-800 mb-1">{hasOps ? 'No encontramos esa operación' : 'Todavía no creaste una operación'}</h1>
+          <p className="text-sm text-slate-500 mb-5">
+            {hasOps
+              ? 'Puede haberse eliminado o ser de otra cuenta. Tus operaciones siguen guardadas.'
+              : 'Primero cargá tu propiedad o preparemos la documentación. Cuando avances en serio con una propiedad, acá vas a ver sus documentos, riesgos y costos.'}
+          </p>
+          <div className="flex flex-col gap-2">
+            {hasOps && activeOperation ? (
+              <Link href={`/operacion/${activeOperation.id}`} className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white">Abrir mi operación</Link>
+            ) : (
+              <Link href={loadHref} className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white">Cargar propiedad</Link>
+            )}
+            <Link href={checklistHref} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">Ver checklist documental</Link>
+            <Link href="/dashboard" className="text-brand-600 text-sm font-semibold hover:underline">← Volver al inicio</Link>
+          </div>
         </div>
       </div>
     )
