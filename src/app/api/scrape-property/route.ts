@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+import { fromPortalSpecs } from '@/lib/scrape/portalSpecs'
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { requireAiAccess } from '@/lib/api/aiAccess'
@@ -432,6 +433,18 @@ export async function POST(req: NextRequest) {
       const ld = fromJsonLd(html)
       if (Object.keys(ld.data).length) { data = ld.data; method = 'json-ld' }
       photos = ld.photos
+
+      // La ficha técnica del portal es lo más confiable (sale del aviso mismo): va antes que las claves sueltas.
+      const specs = fromPortalSpecs(html)
+      data = merge(data, {
+        totalM2: specs.totalM2, coveredM2: specs.coveredM2, rooms: specs.rooms,
+        bedrooms: specs.bedrooms, bathrooms: specs.bathrooms,
+        features: [
+          ...(specs.garageSpots ? [`Cocheras: ${specs.garageSpots}`] : []),
+          ...(specs.ageYears !== undefined ? [`Antigüedad: ${specs.ageYears} años`] : []),
+        ],
+      })
+      if (Object.keys(data).length && method === 'none') method = 'meta'
 
       const meta = fromMeta(html)
       data = merge(data, meta.data)

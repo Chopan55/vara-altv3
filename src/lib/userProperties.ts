@@ -1,5 +1,6 @@
 import type { Property, PropertyType } from '@/types'
 import type { ScrapedData } from '@/app/api/scrape-property/route'
+import { applyOverrides } from '@/lib/propertyOverrides'
 
 /**
  * Propiedades REALES del usuario. Nunca devuelve mocks.
@@ -59,6 +60,16 @@ function missingOf(p: Partial<Property>): string[] {
   return out
 }
 
+/** "Antigüedad: 15 años" (de la ficha del portal) → 15. */
+function ageFromFeatures(features: unknown): number | undefined {
+  if (!Array.isArray(features)) return undefined
+  for (const f of features) {
+    const m = typeof f === 'string' ? f.match(/antig[uü]edad:?\s*(\d+)/i) : null
+    if (m) return Number(m[1])
+  }
+  return undefined
+}
+
 function fromImported(imp: ImportedProperty & { id?: string }): UserProperty {
   const d = imp.data ?? {}
   const base: Property = {
@@ -77,7 +88,8 @@ function fromImported(imp: ImportedProperty & { id?: string }): UserProperty {
     rooms: n(d.rooms),
     bedrooms: n(d.bedrooms),
     bathrooms: n(d.bathrooms),
-    garage: false,
+    garage: (Array.isArray(d.features) ? d.features : []).some(f => /cochera|garage/i.test(f)),
+    ageYears: ageFromFeatures(d.features),
     description: s(d.description),
     images: Array.isArray(imp.photos) ? imp.photos : [],
     features: Array.isArray(d.features) ? d.features : [],
@@ -163,12 +175,12 @@ export function getUserProperties(): UserProperty[] {
     out.push(fromImported(imp))
   }
 
-  return out
+  return out.map(applyOverrides)
 }
 
 export function getUserPropertyById(id: string): UserProperty | null {
   const legacy = getUserProperties().find(p => p.id === id)
-  if (legacy) return legacy
+  if (legacy) return legacy // getUserProperties ya aplica las correcciones
   // También buscar en el store de candidatos (IDs con formato cand_xxx) (H06)
   if (typeof localStorage === 'undefined') return null
   try {
@@ -197,7 +209,7 @@ export function getUserPropertyById(id: string): UserProperty | null {
       images: Array.isArray(candidate.images) ? candidate.images as string[] : [],
       features: [],
     }
-    return { ...base, source: 'imported', incompleteFields: missingOf(base) }
+    return applyOverrides({ ...base, source: 'imported' as const, incompleteFields: missingOf(base) })
   } catch { return null }
 }
 
@@ -271,7 +283,7 @@ export async function loadUserProperties(): Promise<UserProperty[]> {
     const { hasSession, fetchUserProperties } = await import('./supabase/properties')
     if (await hasSession()) {
       await migrateLocalToSupabase()
-      return await fetchUserProperties()
+      return (await fetchUserProperties()).map(applyOverrides)
     }
   } catch {
     // Si Supabase falla, no dejamos al usuario sin sus datos.
@@ -282,7 +294,10 @@ export async function loadUserProperties(): Promise<UserProperty[]> {
 export async function loadUserPropertyById(id: string): Promise<UserProperty | null> {
   try {
     const { hasSession, fetchUserPropertyById } = await import('./supabase/properties')
-    if (await hasSession()) return await fetchUserPropertyById(id)
+    if (await hasSession()) {
+      const remote = await fetchUserPropertyById(id)
+      return remote ? applyOverrides(remote) : null
+    }
   } catch {}
   return getUserPropertyById(id)
 }
