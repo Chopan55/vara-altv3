@@ -21,6 +21,13 @@ import {
   type Offer, type OfferStatus,
 } from '@/lib/offers/model'
 import { hasOfferSession, fetchAllOffers } from '@/lib/supabase/offers'
+import { useOperations } from '@/hooks/useOperations'
+
+/** Qué dice cada oferta según de qué lado de la operación está quien mira. */
+export function offerPartyLabel(party: 'BUYER' | 'SELLER', operationType: 'BUY' | 'SELL'): string {
+  if (operationType === 'SELL') return party === 'BUYER' ? 'Oferta del comprador' : 'Tu contraoferta'
+  return party === 'BUYER' ? 'Ofreciste vos' : 'Contraoferta del vendedor'
+}
 
 const TONE: Record<OfferStatus, string> = {
   DRAFT: 'bg-slate-50 text-slate-500 border-slate-200',
@@ -37,20 +44,25 @@ const TONE: Record<OfferStatus, string> = {
  * cuando ya hay algo verdadero que mirar.
  */
 export function RealOffersPanel({ onHasOffers }: { onHasOffers?: (has: boolean) => void }) {
-  const [offers, setOffers] = useState<Offer[]>([])
+  const [all, setAll] = useState<Offer[]>([])
   const [loaded, setLoaded] = useState(false)
+  const { operations, journey, loaded: opsLoaded } = useOperations()
+  // Solo las ofertas de operaciones del recorrido actual: en Vendiendo no se mezclan las que hiciste como comprador.
+  const typeById = new Map(operations.map(op => [op.id, op.type] as const))
+  const offers = all.filter(o => typeById.get(o.operationId) === journey)
 
   useEffect(() => {
     let alive = true
     hasOfferSession().then(async ok => {
       const list = ok ? sortOffers(await fetchAllOffers()) : []
       if (!alive) return
-      setOffers(list)
+      setAll(list)
       setLoaded(true)
-      onHasOffers?.(list.length > 0)
     })
     return () => { alive = false }
-  }, [onHasOffers])
+  }, [])
+
+  useEffect(() => { if (loaded && opsLoaded) onHasOffers?.(offers.length > 0) }, [loaded, opsLoaded, offers.length, onHasOffers])
 
   if (!loaded) {
     return (
@@ -92,7 +104,7 @@ export function RealOffersPanel({ onHasOffers }: { onHasOffers?: (has: boolean) 
                 {o.currency} {o.amount.toLocaleString('es-AR')}
               </p>
               <p className="text-[11px] text-slate-400">
-                {o.party === 'BUYER' ? 'Ofreciste vos' : 'Contraoferta del vendedor'}
+                {offerPartyLabel(o.party, typeById.get(o.operationId) ?? 'BUY')}
                 {o.validUntil && ` · vale hasta ${o.validUntil}`}
               </p>
             </div>

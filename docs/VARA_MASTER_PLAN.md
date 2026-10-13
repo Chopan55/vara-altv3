@@ -31,3 +31,4 @@ Pendiente: P1.1 onboarding con primera experiencia de valor, P1.4 mover Labs/PRU
 - Sesión: sin "Sin cuenta" ni "solo en este navegador" mientras se verifica.
 - P1: Dinero con títulos por rol, Interesados con copy honesto (solo en este dispositivo), Experimental colapsable, /planes sin menú de operación, alertas priorizadas por recorrido, menú móvil cerrado con `inert`.
 - Pendiente: Dashboard BUY/SELL con secciones separadas para multi-operación; revisar `/ofertas` y `/visitas-vendedor` contra la fuente única; pruebas de componentes con sesión simulada.
+- (2026-10-13) Dashboard con compra y venta separadas (las del recorrido actual primero, las del otro después); ofertas reales filtradas por recorrido con palabras según el lado (`offerPartyLabel`). `/visitas-vendedor` es solo del vendedor y no depende de la operación.

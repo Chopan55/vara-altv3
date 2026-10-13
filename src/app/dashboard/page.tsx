@@ -1053,8 +1053,11 @@ export default function Dashboard() {
                 </Link>
               </div>
             )}
-            <div className="grid grid-cols-1 gap-3">
-              {operations.map(op => (
+            {/* Compra y venta separadas: primero las del recorrido actual, después las del otro. */}
+            {(() => {
+              const mine = operations.filter(o => o.type === journey)
+              const other = operations.filter(o => o.type !== journey)
+              const card = (op: UserOperationSummary) => (
                 <OperationCard
                   key={op.id}
                   op={op}
@@ -1064,8 +1067,23 @@ export default function Dashboard() {
                   isDemo={usingDemo}
                   onDelete={deleteOperation}
                 />
-              ))}
-            </div>
+              )
+              return (
+                <>
+                  {operations.length > 0 && other.length > 0 && (
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{journey === 'SELL' ? 'Tus ventas' : 'Tus compras'}</p>
+                  )}
+                  <div className="grid grid-cols-1 gap-3">{mine.map(card)}</div>
+                  {other.length > 0 && (
+                    <div className="mt-5">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{journey === 'SELL' ? 'También tenés compras' : 'También tenés ventas'}</p>
+                      <p className="mb-2 text-[11px] text-slate-400">Para trabajar con ellas, cambiá a {journey === 'SELL' ? 'Comprando' : 'Vendiendo'} en el menú.</p>
+                      <div className="grid grid-cols-1 gap-3 opacity-80">{other.map(card)}</div>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
         )}
 
