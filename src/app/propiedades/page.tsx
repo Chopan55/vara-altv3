@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { ManualPropertyForm } from '@/components/properties/ManualPropertyForm'
+import { MissingDataFix } from '@/components/properties/MissingDataFix'
 import { manualToResult, type ManualForm } from '@/lib/manualProperty'
 import { apiErrorMessage, safeJson } from '@/lib/api/client'
 import { DISCARD_REASONS, encodeDiscard, summarizeDiscards, type DiscardReason } from '@/lib/candidates/discard'
@@ -778,13 +779,8 @@ export default function PropiedadesPage() {
                   )}
                 </div>
 
-                {missing.length > 0 && (
-                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 mb-3">
-                    <AlertCircle size={11} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-[10px] text-amber-700">
-                      Falta {missing.join(' y ')}. Sin eso no se puede comparar contra las otras.
-                    </p>
-                  </div>
+                {missing.length > 0 && !closed && (
+                  <MissingDataFix candidateId={prop.id} title={prop.title} missing={missing} onSaved={refresh} />
                 )}
 
                 <div className="bg-slate-50 rounded-xl px-3 py-2 mb-3">
