@@ -7,6 +7,9 @@ import {
   Heart, Eye, Trash2, RotateCcw, Columns3, StickyNote, Check, Sparkles,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
+import { ManualPropertyForm } from '@/components/properties/ManualPropertyForm'
+import { manualToResult, type ManualForm } from '@/lib/manualProperty'
+import { apiErrorMessage, safeJson } from '@/lib/api/client'
 import { DISCARD_REASONS, encodeDiscard, summarizeDiscards, type DiscardReason } from '@/lib/candidates/discard'
 import { formatPrice, formatSurface, getPropertyTypeLabel } from '@/lib/utils'
 import {
@@ -95,6 +98,14 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
   const [pasteText, setPasteText] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ScrapeResult | null>(null)
+  const [mode, setMode] = useState<'link' | 'manual'>('link')
+
+  const addManual = async (form: ManualForm) => {
+    const r = manualToResult(form)
+    setResult(r)
+    await saveImported(`manual:${Date.now()}`, r)
+    onImported()
+  }
 
   const run = useCallback(async (text?: string) => {
     if (!url.trim()) return
@@ -110,11 +121,12 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
         setResult({
           status: 'error', url, portal: null, method: 'none', data: {}, photos: [],
           missingFields: [],
-          errorMessage: res.status === 401 ? 'No autorizado. Cerrá sesión y volvé a entrar.' : 'El servidor devolvió un error. Probá de nuevo.',
+          errorMessage: apiErrorMessage(res.status),
         })
         return
       }
-      const data: ScrapeResult = await res.json()
+      const data = (await safeJson<ScrapeResult>(res)) as ScrapeResult
+      if (!data.status) { setResult({ status: 'error', url, portal: null, method: 'none', data: {}, photos: [], missingFields: [], errorMessage: apiErrorMessage(res.status) }); return }
       setResult(data)
       if (data.status !== 'error' && data.status !== 'blocked') {
         await saveImported(url, data)
@@ -137,12 +149,23 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100 sticky top-0 bg-white">
           <div>
             <p className="font-bold text-slate-900 text-sm">Sumar una propiedad</p>
-            <p className="text-xs text-slate-400 mt-0.5">Pegá el link de Zonaprop, Argenprop o MeLi</p>
+            <p className="text-xs text-slate-400 mt-0.5">Con el link de Zonaprop, Argenprop o MeLi, o cargándola a mano</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Cerrar"><X size={18} /></button>
         </div>
 
-        {ok ? (
+        {!ok && (
+          <div role="tablist" aria-label="Cómo sumar la propiedad" className="mx-5 mt-4 flex rounded-xl bg-slate-100 p-0.5 text-xs font-semibold">
+            {([['link', 'Con un link'], ['manual', 'Cargar a mano']] as const).map(([m, label]) => (
+              <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
+                className={`flex-1 rounded-[10px] px-3 py-2 transition-colors ${mode === m ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>{label}</button>
+            ))}
+          </div>
+        )}
+
+        {!ok && mode === 'manual' ? (
+          <ManualPropertyForm onSubmit={addManual} />
+        ) : ok ? (
           <div className="p-5 space-y-3">
             <div className="flex items-center gap-2">
               <CheckCircle2 size={20} className="text-emerald-500" />
