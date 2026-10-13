@@ -64,7 +64,6 @@ function getSellNav(operationId: string): NavItem[] {
     { href: '/publicar', icon: Share2, label: 'Mi propiedad', section: 'Preparar' },
     { href: '/property-pack', icon: FileText, label: 'Ficha para interesados', section: 'Preparar' },
     { href: '/fotos-venta', icon: Eye, label: 'Fotos: recomendaciones', section: 'Preparar' },
-    { href: '/recorrido-ia', icon: Eye, label: 'Recorrido con IA', tag: 'Prueba', section: 'Preparar' },
     { href: '/video-presentacion', icon: Eye, label: 'Recorrido en video', section: 'Preparar' },
     { href: '/interesados', icon: Users, label: 'Interesados', section: 'Interesados' },
     { href: '/ofertas', icon: Inbox, label: 'Ofertas y negociación', section: 'Interesados' },
@@ -83,9 +82,13 @@ const JOURNEY_TOOL_HREFS = new Set(['/mi-busqueda', '/preparar-venta', '/precio-
 
 const SECONDARY_NAV: NavItem[] = [
   { href: '/video-presentacion', icon: Eye, label: 'Recorrido en video' },
-  { href: '/recorrido-ia', icon: Eye, label: 'Recorrido con IA', tag: 'Prueba' },
   { href: '/guia', icon: BookOpen, label: 'Guía' },
   { href: '/asistente', icon: MessageSquare, label: 'Asistente' },
+]
+
+/** Lo que todavía está en prueba, aparte del menú principal. */
+const EXPERIMENTAL_NAV: NavItem[] = [
+  { href: '/recorrido-ia', icon: Eye, label: 'Recorrido con IA', tag: 'Prueba' },
   { href: '/vara-labs', icon: Sparkles, label: 'VARA Labs', tag: 'Labs' },
 ]
 
@@ -218,6 +221,12 @@ function SidebarContent({
         <div className="my-3 border-t border-slate-200 mx-2" />
 
         {SECONDARY_NAV.filter(item => !primaryNav.some(p => p.href === item.href)).map(item => (
+          <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
+        ))}
+
+        <div className="my-3 border-t border-slate-200 mx-2" />
+        {!collapsed && <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Experimental</p>}
+        {EXPERIMENTAL_NAV.map(item => (
           <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
         ))}
       </nav>
