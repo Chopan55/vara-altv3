@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Printer } from 'lucide-react'
-import { loadOperations } from '@/lib/userOperations'
+import { useSellOperation } from '@/hooks/useSellOperation'
 import { loadSellerPhotos } from '@/lib/sellerPhotos'
 import { readHave } from '@/lib/sellPrep'
 import { buildPack, type Pack, type PackSource } from '@/lib/propertyPack'
@@ -12,20 +12,21 @@ const DRAFT_KEY = 'vara_publish_draft'
 export default function PropertyPackPage() {
   const [pack, setPack] = useState<Pack | null>(null)
   const [photos, setPhotos] = useState<string[]>([])
+  const { op, loaded } = useSellOperation()
 
   useEffect(() => {
+    if (!loaded) return
     ;(async () => {
       let src: PackSource = {}
       try { src = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? '{}') as PackSource } catch {}
-      const sell = (await loadOperations()).find(o => o.type === 'SELL')
-      const docs = sell ? readHave(sell.id) : []
+      const docs = op ? readHave(op.id) : []
       setPack(buildPack(src, docs))
       try {
         const stored = (await loadSellerPhotos()).slice(0, 4)
         setPhotos(stored.map(p => p.url))
       } catch {}
     })()
-  }, [])
+  }, [loaded, op?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!pack) return null
 

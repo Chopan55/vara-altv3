@@ -2,24 +2,15 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, CheckCircle2, Circle } from 'lucide-react'
-import { loadOperations, type StoredOperation } from '@/lib/userOperations'
-import { readHave, sellDocuments, sellReadiness, toggleHave } from '@/lib/sellPrep'
+import { useSellOperation } from '@/hooks/useSellOperation'
+import { readHave, sellDocumentsFromTxn, sellReadiness, toggleHave } from '@/lib/sellPrep'
 
 export default function PrepararVentaPage() {
-  const [op, setOp] = useState<StoredOperation | null>(null)
+  const { op, loaded, getTransactionData } = useSellOperation()
   const [have, setHave] = useState<string[]>([])
-  const [loaded, setLoaded] = useState(false)
-
-  useEffect(() => {
-    loadOperations().then(ops => {
-      const sell = ops.find(o => o.type === 'SELL') ?? null
-      setOp(sell)
-      if (sell) setHave(readHave(sell.id))
-      setLoaded(true)
-    })
-  }, [])
-
-  const docs = op ? sellDocuments(op, have) : []
+  useEffect(() => { if (op) setHave(readHave(op.id)) }, [op?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const txn = op ? getTransactionData(op.id) : null
+  const docs = txn ? sellDocumentsFromTxn(txn, have) : []
   const r = sellReadiness(docs)
   const byCategory = docs.reduce<Record<string, typeof docs>>((acc, d) => { (acc[d.category] ??= []).push(d); return acc }, {})
 

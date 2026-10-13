@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
-import { loadOperations, type StoredOperation } from '@/lib/userOperations'
+import { useSellOperation } from '@/hooks/useSellOperation'
 import { planPricing, readListing } from '@/lib/sellPricing'
 
 const KEY = 'vara_sellprice_'
@@ -14,18 +14,13 @@ interface Saved { surface: string; desired: string; days: string; inquiries: str
 const EMPTY: Saved = { surface: '', desired: '', days: '', inquiries: '', visits: '', offers: '' }
 
 export default function PrecioVentaPage() {
-  const [op, setOp] = useState<StoredOperation | null>(null)
+  const { op, loaded } = useSellOperation()
   const [f, setF] = useState<Saved>(EMPTY)
-  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    loadOperations().then(ops => {
-      const sell = ops.find(o => o.type === 'SELL') ?? null
-      setOp(sell)
-      if (sell) { try { setF({ ...EMPTY, ...(JSON.parse(localStorage.getItem(KEY + sell.id) ?? '{}') as Partial<Saved>) }) } catch {} }
-      setLoaded(true)
-    })
-  }, [])
+    if (!op) return
+    try { setF({ ...EMPTY, ...(JSON.parse(localStorage.getItem(KEY + op.id) ?? '{}') as Partial<Saved>) }) } catch {}
+  }, [op?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (k: keyof Saved, v: string) => {
     const next = { ...f, [k]: digits(v) }

@@ -15,3 +15,7 @@
 - P1 corregido: 12 llamadas a la API leían la respuesta sin protección; ante un timeout el usuario veía "Unexpected token… not valid JSON". Se creó `lib/api/client.ts` y se aplicó en Visual Intelligence y Redactar con IA. Quedan sitios con captura propia (chats) que ya muestran un mensaje amable.
 - Pendiente de revisar: coherencia Dashboard/NBA/Acciones/Documentos; estados vacíos; pérdida de contexto Candidate vs Transaction.
 - P1 corregido: el Dashboard mostraba a la vez la próxima acción del motor NBA (`nba/engine`) y el banner de `guidanceEngine`, que podían contradecirse. Ahora, si hay próxima acción de la operación, el banner no se muestra. Pendiente: unificar ambos motores en uno solo (Acciones, Guíame y Documentos).
+- P0 corregido (2026-10-12): el modo comprar/vender y la operación activa eran estados independientes (menú en Comprando, guía con datos de una venta). Regla única en `lib/journey.ts` (`deriveJourney`, `pickActiveOperation`), usada por `useOperations`, menú, guía y Dashboard. La operación activa es siempre del recorrido actual.
+- P0 corregido: Precio de venta, Interesados, Preparar la venta y Ficha leían la venta con otra fuente y decían "no hay venta" aunque la hubiera. Ahora usan `useSellOperation` (misma fuente que el resto).
+- P1 corregido: menú sin entradas repetidas.
+- Pendiente del prompt de mejoras: P0.3 (placeholders USD 0 en operación), P0.4 (asistente "No autorizado"), P0.5 (operation.insert.failed y React #418), P0.6 (fotos vs planos/documentos), tabs de operación, Dinero por contexto, modal de sumar propiedad.

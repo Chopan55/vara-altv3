@@ -2,27 +2,19 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Trash2 } from 'lucide-react'
-import { loadOperations, type StoredOperation } from '@/lib/userOperations'
+import { useSellOperation } from '@/hooks/useSellOperation'
 import { LEAD_SOURCES, LEAD_STATUSES, addLead, leadCounts, loadLeads, removeLead, setLeadStatus, type Lead, type LeadStatus } from '@/lib/sellerLeads'
 
 const field = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base sm:text-sm text-slate-800'
 
 export default function InteresadosPage() {
-  const [op, setOp] = useState<StoredOperation | null>(null)
+  const { op, loaded } = useSellOperation()
   const [leads, setLeads] = useState<Lead[]>([])
-  const [loaded, setLoaded] = useState(false)
   const [name, setName] = useState('')
   const [source, setSource] = useState<string>(LEAD_SOURCES[0])
   const [note, setNote] = useState('')
 
-  useEffect(() => {
-    loadOperations().then(ops => {
-      const sell = ops.find(o => o.type === 'SELL') ?? null
-      setOp(sell)
-      if (sell) setLeads(loadLeads(sell.id))
-      setLoaded(true)
-    })
-  }, [])
+  useEffect(() => { if (op) setLeads(loadLeads(op.id)) }, [op?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const counts = leadCounts(leads)
 

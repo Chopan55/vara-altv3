@@ -826,7 +826,7 @@ const RETURN_THRESHOLD_MS = 60 * 60 * 1000 // 1 hora
 
 export default function Dashboard() {
   const vara = useVaraState()
-  const { operations, activeOperationId, getTransactionData, usingDemo, deleteOperation } = useOperations()
+  const { operations, activeOperation, activeOperationId, getTransactionData, usingDemo, deleteOperation } = useOperations()
   const globalAlerts = useGlobalNextBestAction()
   const activeTxnData = activeOperationId ? getTransactionData(activeOperationId) : null
   // Sin datos reales no se cae a `mockTransaction`: el panel de la operacion
@@ -884,7 +884,7 @@ export default function Dashboard() {
       <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6">
         {/* RESUME EXPERIENCE — banner de retorno cuando el usuario vuelve tras >1h */}
         {isReturning && !returnDismissed && !usingDemo && operations.length > 0 && (() => {
-          const op = operations[0]
+          const op = activeOperation ?? operations[0]
           const firstTxn = getTransactionData(op.id)
           const action = primaryAction({ transaction: firstTxn ?? null })
           const opTitle = op.title ?? (op.type === 'SELL' ? 'Tu venta' : 'Tu compra')
@@ -967,16 +967,16 @@ export default function Dashboard() {
 
         {/* RESUME EXPERIENCE — la acción más urgente del momento, bien visible */}
         {(() => {
-          const firstTxn = operations[0] ? getTransactionData(operations[0].id) : null
+          const firstTxn = activeOperation ? getTransactionData(activeOperation.id) : null
           const action = primaryAction({ transaction: firstTxn ?? null })
-          if (!action || action.id === 'no_operation' || !operations[0]) return null
+          if (!action || action.id === 'no_operation' || !activeOperation) return null
           return (
             <NextStepAgent
-              key={`${operations[0].id}-${action.id}`}
+              key={`${activeOperation.id}-${action.id}`}
               action={action}
-              operationId={operations[0].id}
-              kind={operations[0].type === 'SELL' ? 'SELL' : 'BUY'}
-              province={operations[0].province}
+              operationId={activeOperation.id}
+              kind={activeOperation.type === 'SELL' ? 'SELL' : 'BUY'}
+              province={activeOperation.province}
             />
           )
         })()}
@@ -984,9 +984,9 @@ export default function Dashboard() {
         {/* Una sola recomendación a la vista: si arriba ya se muestra la próxima acción de la operación,
             el banner de guía (otro motor) no se suma, para que nunca se contradigan. */}
         {(() => {
-          const firstTxn = operations[0] ? getTransactionData(operations[0].id) : null
+          const firstTxn = activeOperation ? getTransactionData(activeOperation.id) : null
           const action = primaryAction({ transaction: firstTxn ?? null })
-          const nbaShown = Boolean(operations[0]) && Boolean(action) && action?.id !== 'no_operation'
+          const nbaShown = Boolean(activeOperation) && Boolean(action) && action?.id !== 'no_operation'
           return nbaShown ? null : <GuidanceBanner />
         })()}
 

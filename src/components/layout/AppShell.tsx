@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { isEnabled } from '@/lib/flags'
 import { useVaraState } from '@/hooks/useVaraState'
+import { useOperations } from '@/hooks/useOperations'
+import { journeyToStored } from '@/lib/journey'
 import { GuiameButton, GuiameTrigger } from '@/components/guidance/GuiameButton'
 import { VaraAIFloat } from '@/components/ai/VaraAIFloat'
 
@@ -215,7 +217,7 @@ function SidebarContent({
 
         <div className="my-3 border-t border-slate-200 mx-2" />
 
-        {SECONDARY_NAV.map(item => (
+        {SECONDARY_NAV.filter(item => !primaryNav.some(p => p.href === item.href)).map(item => (
           <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
         ))}
       </nav>
@@ -404,8 +406,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [guiaMenuOpen, setGuiaMenuOpen] = useState(false)
 
-  const journey: JourneyType = vara.journeyType === 'SELL_PROPERTY' ? 'SELL' : 'BUY'
-  const changeJourney = (j: JourneyType) => vara.setJourneyType(j === 'SELL' ? 'SELL_PROPERTY' : 'BUY_PROPERTY')
+  const { journey } = useOperations()
+  const changeJourney = (j: JourneyType) => vara.setJourneyType(journeyToStored(j))
 
   useEffect(() => {
     setDrawerOpen(false)

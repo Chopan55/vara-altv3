@@ -7,11 +7,14 @@ import {
 import type { UserOperationSummary, OperationRelation, Transaction } from '@/types'
 import type { StoredOperation } from '@/lib/userOperations'
 import { useVaraState } from '@/hooks/useVaraState'
+import { deriveJourney, pickActiveOperation, type Journey } from '@/lib/journey'
 import { getOperations, toSummary, loadOperations, loadOperation, deleteOperationAnywhere } from '@/lib/userOperations'
 import { buildTransaction, clearTaskState } from '@/lib/operationFromChecklist'
 
 export interface OperationsState {
   operations: UserOperationSummary[]
+  /** Recorrido actual (compra o venta): una sola regla para menú, guía y Dashboard. */
+  journey: Journey
   activeOperationId: string | null
   activeOperation: UserOperationSummary | null
   activeTransactionData: Transaction | null
@@ -68,9 +71,9 @@ export function useOperations(): OperationsState {
     const operations = own
     // Tratar string vacío igual que null/undefined (H14)
     const selectedId = vara.operationId || null
-    const activeOperationId = selectedId && operations.some(op => op.id === selectedId)
-      ? selectedId
-      : operations[0]?.id ?? null
+    const journey = deriveJourney(vara.journeyType, operations, selectedId)
+    // La operación activa es siempre del recorrido actual: nunca una venta en modo compra.
+    const activeOperationId = pickActiveOperation(operations, selectedId, journey)?.id ?? null
     const activeOperation = operations.find(op => op.id === activeOperationId) ?? null
     const activeTransactionData = activeOperationId ? resolveTxn(activeOperationId) : null
 
@@ -88,6 +91,7 @@ export function useOperations(): OperationsState {
 
     return {
       operations,
+      journey,
       activeOperationId,
       activeOperation,
       activeTransactionData,
@@ -98,7 +102,7 @@ export function useOperations(): OperationsState {
       getTransactionData,
       usingDemo,
     }
-  }, [vara.operationId, own, ownRaw])
+  }, [vara.operationId, vara.journeyType, own, ownRaw])
 
   return { ...state, loaded, error, deleteOperation }
 }

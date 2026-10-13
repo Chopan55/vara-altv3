@@ -27,6 +27,12 @@ export function sellDocuments(op: StoredOperation, have: string[]): SellDoc[] {
   return buildTransaction(op).documents.map(d => ({ name: d.name, category: d.category, have: owned.has(d.name) }))
 }
 
+/** Igual que sellDocuments, pero desde la operación ya resuelta por la app (misma fuente que el resto). */
+export function sellDocumentsFromTxn(txn: { documents: { name: string; category: string }[] }, have: string[]): SellDoc[] {
+  const owned = new Set(have)
+  return txn.documents.map(d => ({ name: d.name, category: d.category, have: owned.has(d.name) }))
+}
+
 export function sellReadiness(docs: SellDoc[]): { have: number; total: number; percent: number } {
   const have = docs.filter(d => d.have).length
   return { have, total: docs.length, percent: docs.length ? Math.round((have / docs.length) * 100) : 0 }
