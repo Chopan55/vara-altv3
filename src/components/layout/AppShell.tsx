@@ -17,6 +17,7 @@ import { isEnabled } from '@/lib/flags'
 import { useVaraState } from '@/hooks/useVaraState'
 import { useOperations } from '@/hooks/useOperations'
 import { journeyToStored } from '@/lib/journey'
+import { forcedJourney } from '@/lib/routeContext'
 import { GuiameButton, GuiameTrigger } from '@/components/guidance/GuiameButton'
 import { VaraAIFloat } from '@/components/ai/VaraAIFloat'
 
@@ -35,7 +36,7 @@ interface NavItem {
 }
 
 function getBuyNav(operationId: string): NavItem[] {
-  const opHref = operationId ? `/operacion/${operationId}` : '/dashboard'
+  const opHref = operationId ? `/operacion/${operationId}` : '/operacion/inicio'
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
     { href: '/acciones', icon: Zap, label: 'Acciones' },
@@ -46,15 +47,15 @@ function getBuyNav(operationId: string): NavItem[] {
     { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', section: 'Visitar', tag: 'Nuevo' },
     { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas', section: 'Visitar' },
     { href: opHref, icon: FileText, label: 'Mi operación', section: 'Mi operación' },
-    { href: operationId ? `${opHref}?tab=documentos` : '/dashboard', icon: FileText, label: 'Documentos', section: 'Mi operación' },
-    { href: operationId ? `${opHref}?tab=riesgos` : '/dashboard', icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
+    { href: operationId ? `${opHref}?tab=documentos` : '/operacion/inicio', icon: FileText, label: 'Documentos', section: 'Mi operación' },
+    { href: operationId ? `${opHref}?tab=riesgos` : '/operacion/inicio', icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
     { href: '/dinero', icon: DollarSign, label: 'Dinero', section: 'Mi operación' },
     { href: '/profesionales', icon: Users, label: 'Profesionales', section: 'Mi operación' },
   ]
 }
 
 function getSellNav(operationId: string): NavItem[] {
-  const opHref = operationId ? `/operacion/${operationId}` : '/dashboard'
+  const opHref = operationId ? `/operacion/${operationId}` : '/operacion/inicio'
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
     { href: '/acciones', icon: Zap, label: 'Acciones' },
@@ -71,8 +72,8 @@ function getSellNav(operationId: string): NavItem[] {
     { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', section: 'Interesados', tag: 'Nuevo' },
     { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas', section: 'Interesados' },
     { href: opHref, icon: FileText, label: 'Mi operación', section: 'Mi operación' },
-    { href: operationId ? `${opHref}?tab=documentos` : '/dashboard', icon: FileText, label: 'Documentos', section: 'Mi operación' },
-    { href: operationId ? `${opHref}?tab=riesgos` : '/dashboard', icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
+    { href: operationId ? `${opHref}?tab=documentos` : '/operacion/inicio', icon: FileText, label: 'Documentos', section: 'Mi operación' },
+    { href: operationId ? `${opHref}?tab=riesgos` : '/operacion/inicio', icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
     { href: '/dinero', icon: DollarSign, label: 'Dinero' },
     { href: '/profesionales', icon: Users, label: 'Profesionales' },
   ]
@@ -420,8 +421,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [guiaMenuOpen, setGuiaMenuOpen] = useState(false)
 
-  const { journey } = useOperations()
+  const { journey, activeOperationId } = useOperations()
   const changeJourney = (j: JourneyType) => vara.setJourneyType(journeyToStored(j))
+
+  // Una pantalla de compra o de venta ajusta el modo a sí misma: menú, guía y contenido nunca se contradicen.
+  useEffect(() => {
+    const forced = forcedJourney(pathname)
+    if (vara.loaded && forced && forced !== journey) vara.setJourneyType(journeyToStored(forced))
+  }, [pathname, journey, vara.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setDrawerOpen(false)
@@ -455,7 +462,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             journey={journey}
             pathname={pathname}
             userName={vara.userName}
-            operationId={vara.operationId}
+            operationId={activeOperationId ?? ''}
             onChangeJourney={changeJourney}
           />
         </Suspense>
@@ -491,7 +498,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             journey={journey}
             pathname={pathname}
             userName={vara.userName}
-            operationId={vara.operationId}
+            operationId={activeOperationId ?? ''}
             onChangeJourney={changeJourney}
           />
         </Suspense>

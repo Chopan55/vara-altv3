@@ -43,7 +43,9 @@ export function useOperations(): OperationsState {
     const local = getOperations()
     setOwn(local.map(toSummary))
     setOwnRaw(local)
-    loadOperations()
+    // Con tiempo máximo: si la base no responde, se sigue con lo que hay en este dispositivo en vez de cargar para siempre.
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+    Promise.race([loadOperations(), timeout])
       .then(ops => { setOwn(ops.map(toSummary)); setOwnRaw(ops) })
       .catch(() => { setError(true) })
       .finally(() => setLoaded(true))
