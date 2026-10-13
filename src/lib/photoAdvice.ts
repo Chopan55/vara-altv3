@@ -14,6 +14,15 @@ export const ESSENTIAL_ROOMS = ['Frente', 'Living', 'Cocina', 'Dormitorio princi
 
 export const UNLABELED = 'Sin etiquetar'
 
+/** Imágenes internas: nunca se muestran en una ficha, un video ni un aviso. */
+export const PRIVATE_LABELS = ['Plano', 'Documento (privado)'] as const
+const PRIVATE_RE = /plano|documento|escritura|dni|c[eé]dula|partida|contrato|certificado/i
+
+/** Una foto es publicable salvo que su etiqueta indique un plano o un documento. */
+export function isPublishable(label: string): boolean {
+  return !PRIVATE_RE.test(label || '')
+}
+
 /** Ordena como un recorrido: de la calle hacia adentro y después lo exterior. Lo no reconocido queda al final, en su orden. */
 export function tourOrder<T extends { label: string }>(photos: T[]): T[] {
   const rank = (l: string) => {
@@ -38,8 +47,10 @@ export interface Advice { id: string; severity: Severity; text: string }
 
 const ORDER: Record<Severity, number> = { high: 0, medium: 1, info: 2 }
 
-export function advisePhotos(photos: PhotoInfo[]): Advice[] {
+export function advisePhotos(all: PhotoInfo[]): Advice[] {
   const out: Advice[] = []
+  // Los planos y documentos no cuentan como fotos de la propiedad.
+  const photos = all.filter(p => isPublishable(p.label))
   const n = photos.length
   if (n === 0) return out
 

@@ -28,7 +28,7 @@ export default function RecorridoIAPage() {
   const urls = useRef<string[]>([])
 
   useEffect(() => {
-    loadSellerPhotos().then(ps => {
+    loadSellerPhotos({ onlyPublishable: true }).then(ps => {
       const ordered = tourOrder(ps)
       setPhotos(ordered)
       // Por defecto, hasta 3 fotos con ambiente nombrado: alcanza para probar y cuesta poco.

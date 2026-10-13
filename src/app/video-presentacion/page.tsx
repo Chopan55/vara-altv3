@@ -28,7 +28,7 @@ export default function VideoPresentacionPage() {
       setTitle(d.title ?? '')
       setSubtitle([d.neighborhood, d.city].filter(Boolean).join(', '))
     } catch {}
-    loadSellerPhotos().then(setPhotos).catch(() => {}).finally(() => setLoaded(true))
+    loadSellerPhotos({ onlyPublishable: true }).then(setPhotos).catch(() => {}).finally(() => setLoaded(true))
   }, [])
 
   useEffect(() => () => { if (videoUrl) URL.revokeObjectURL(videoUrl) }, [videoUrl])

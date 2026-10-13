@@ -28,6 +28,8 @@ const ROOM_LABELS = [
   'Frente', 'Living', 'Comedor', 'Cocina', 'Dormitorio principal',
   'Dormitorio 2', 'Dormitorio 3', 'Baño', 'Jardín', 'Pileta',
   'Quincho', 'Garage / Cochera', 'Entrada', 'Otro',
+  // Internas: nunca se muestran en la ficha, el video ni el aviso.
+  'Plano', 'Documento (privado)',
 ]
 
 const FOTO_TIPS = [

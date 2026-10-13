@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { advisePhotos, tourOrder, type PhotoInfo } from '@/lib/photoAdvice'
+import { advisePhotos, isPublishable, tourOrder, type PhotoInfo } from '@/lib/photoAdvice'
 
 const ph = (id: string, label: string, extra: Partial<PhotoInfo> = {}): PhotoInfo => ({ id, label, width: 1600, height: 1000, brightness: 130, ...extra })
 
@@ -46,5 +46,20 @@ describe('recomendaciones de fotos', () => {
     const a = advisePhotos([ph('1', 'Living', { brightness: 250 })])
     const sev = a.map(x => x.severity)
     expect(sev).toEqual([...sev].sort((x, y) => ['high', 'medium', 'info'].indexOf(x) - ['high', 'medium', 'info'].indexOf(y)))
+  })
+})
+
+describe('fotos publicables', () => {
+  it('planos y documentos nunca son publicables', () => {
+    expect(isPublishable('Plano')).toBe(false)
+    expect(isPublishable('Documento (privado)')).toBe(false)
+    expect(isPublishable('Escritura')).toBe(false)
+    expect(isPublishable('Living')).toBe(true)
+    expect(isPublishable('Sin etiquetar')).toBe(true)
+  })
+
+  it('los planos no cuentan como fotos de la propiedad en las recomendaciones', () => {
+    const a = advisePhotos([ph('1', 'Plano'), ph('2', 'Plano'), ph('3', 'Documento (privado)')])
+    expect(a).toEqual([])
   })
 })
