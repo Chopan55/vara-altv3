@@ -203,14 +203,27 @@ export default function OperacionPage() {
           <div className="flex items-start justify-between mb-3">
             <div>
               <h1 className="font-bold text-slate-900 text-lg">{txn.title}</h1>
-              <p className="text-sm text-slate-400 flex items-center gap-1 mt-0.5"><MapPin size={11} />{txn.city}, {txn.province}</p>
-              {txn.property && (
-                <Link href="/propiedades" className="inline-flex items-center gap-1 text-xs text-brand-600 font-medium mt-1 hover:underline">
-                  <MapPin size={10} />{txn.property.address} · {txn.property.surface}m² · {formatPrice(txn.property.price, txn.property.currency)} →
+              <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                {txn.type === 'SELL_PROPERTY' ? 'Venta' : 'Compra'}
+                {(() => { const stage = txn.stages.find(st => st.id === txn.currentStageId); return stage ? ` · Etapa: ${stage.label}` : '' })()}
+              </p>
+              <p className="text-sm text-slate-400 flex items-center gap-1 mt-0.5"><MapPin size={11} />{[txn.city, txn.province].filter(Boolean).join(', ') || 'Falta la ubicación'}</p>
+              {txn.property ? (
+                <Link href="/propiedades" className="inline-flex flex-wrap items-center gap-1 text-xs text-brand-600 font-medium mt-1 hover:underline">
+                  <MapPin size={10} />
+                  {[
+                    txn.property.address || 'Falta la dirección',
+                    txn.property.surface ? `${txn.property.surface}m²` : 'Falta la superficie',
+                    txn.property.price ? formatPrice(txn.property.price, txn.property.currency) : 'Falta el precio',
+                  ].join(' · ')} →
+                </Link>
+              ) : (
+                <Link href={txn.type === 'SELL_PROPERTY' ? '/publicar' : '/propiedades'} className="inline-block text-xs text-amber-700 font-medium mt-1 hover:underline">
+                  Falta cargar la propiedad (dirección, superficie y precio) →
                 </Link>
               )}
             </div>
-            <Badge variant="brand">{txn.progress}%</Badge>
+            <Badge variant="brand">{txn.progress > 0 ? `${txn.progress}%` : 'Sin avances todavía'}</Badge>
           </div>
           <Progress value={txn.progress} />
         </div>
@@ -247,7 +260,9 @@ export default function OperacionPage() {
             )}
             <div className="flex items-center gap-1 text-xs text-slate-500 ml-auto">
               <DollarSign size={11} />
-              {formatPrice(intel.totalMin)} – {formatPrice(intel.totalMax)}
+              {intel.totalMin > 0 || intel.totalMax > 0
+                ? `${formatPrice(intel.totalMin)} – ${formatPrice(intel.totalMax)}`
+                : 'Los costos se estiman cuando cargues el precio'}
             </div>
           </div>
           {/* NBA row */}

@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { ArrowLeft, Send, Bot, User, ChevronDown, ChevronUp, Sparkles, Handshake } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
+import { useOperations } from '@/hooks/useOperations'
+import { apiErrorMessage, safeJson } from '@/lib/api/client'
 
 const BUYER_FAQS = [
   '¿Qué documentos le pido al vendedor?',
@@ -27,28 +29,43 @@ interface Message {
 
 export default function AsistentePage() {
   const vara = useVaraState()
+  const { journey, activeOperation } = useOperations()
+  const nowTime = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 
   const welcomeMsg = (() => {
-    const name = vara.loaded ? vara.userName.split(' ')[0] : 'Francisco'
-    const journey = vara.journeyType === 'SELL_PROPERTY' ? 'venta' : 'compra'
-    return `¡Hola, ${name}! Soy el Asistente VARA, especializado en operaciones inmobiliarias argentinas.\n\nPuedo ayudarte con tu operación de ${journey}: costos, documentación, plazos, negociación, riesgos legales, y cualquier duda del proceso. ¿Qué querés saber?`
+    const name = vara.loaded ? vara.userName.split(' ')[0] : ''
+    const kind = journey === 'SELL' ? 'venta' : 'compra'
+    return `${name ? `¡Hola, ${name}!` : '¡Hola!'} Soy el Asistente VARA, especializado en operaciones inmobiliarias argentinas.
+
+Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, negociación, riesgos legales, y cualquier duda del proceso. ¿Qué querés saber?`
   })()
 
-  const [messages, setMessages] = useState<Message[]>(() => {
-    try {
-      const saved = sessionStorage.getItem('vara_chat_history')
-      if (saved) return JSON.parse(saved) as Message[]
-    } catch {}
-    return [{ role: 'assistant', content: welcomeMsg, time: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) }]
-  })
+  // El historial y la hora se leen después de montar: en el servidor no existen y,
+  // si se calculan durante el render, el HTML no coincide y React falla (#418).
+  const [messages, setMessages] = useState<Message[]>([])
+  const [ready, setReady] = useState(false)
+  const [chatError, setChatError] = useState<{ auth: boolean; text: string } | null>(null)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [showFaqs, setShowFaqs] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (ready || !vara.loaded) return
+    let restored: Message[] = []
+    try {
+      const saved = sessionStorage.getItem('vara_chat_history')
+      // Se descartan errores técnicos que quedaron guardados como si fueran respuestas.
+      if (saved) restored = (JSON.parse(saved) as Message[]).filter(m => !/^(No autorizado|Error al procesar|No pude conectarme)/i.test(m.content.trim()))
+    } catch {}
+    setMessages(restored.length > 0 ? restored : [{ role: 'assistant', content: welcomeMsg, time: nowTime() }])
+    setReady(true)
+  }, [vara.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!ready) return
     try { sessionStorage.setItem('vara_chat_history', JSON.stringify(messages)) } catch {}
-  }, [messages])
+  }, [messages, ready])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -57,7 +74,8 @@ export default function AsistentePage() {
   async function sendMessage(text?: string) {
     const msg = text ?? input.trim()
     if (!msg || loading) return
-    const time = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+    const time = nowTime()
+    setChatError(null)
     const newUserMsg: Message = { role: 'user', content: msg, time }
     const updatedMessages = [...messages, newUserMsg]
     setMessages(updatedMessages)
@@ -65,7 +83,7 @@ export default function AsistentePage() {
     setLoading(true)
 
     const context = vara.loaded
-      ? `Usuario: ${vara.userName} · Journey: ${vara.journeyType} · Provincia: ${vara.province}`
+      ? `Usuario: ${vara.userName} · Recorrido: ${journey === 'SELL' ? 'venta' : 'compra'}${activeOperation ? ` · Operación: ${activeOperation.title}` : ''} · Provincia: ${activeOperation?.province || vara.province}`
       : undefined
 
     try {
@@ -77,19 +95,19 @@ export default function AsistentePage() {
           context,
         }),
       })
-      const data = await res.json()
-      const reply = data.reply ?? data.error ?? 'Error al procesar tu consulta.'
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: reply,
-        time: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-      }])
+      const data = await safeJson<{ reply?: string; error?: string }>(res)
+      if (!res.ok || !data.reply) {
+        // Un error no es una respuesta del asistente: se avisa aparte y el mensaje vuelve al campo para reintentar.
+        setMessages(messages)
+        setInput(msg)
+        setChatError({ auth: res.status === 401, text: res.status === 401 ? 'Tu sesión venció. Ingresá de nuevo para seguir conversando.' : apiErrorMessage(res.status, data.error) })
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.reply as string, time: nowTime() }])
+      }
     } catch {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'No pude conectarme al servidor. Verificá tu conexión e intentá de nuevo.',
-        time: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-      }])
+      setMessages(messages)
+      setInput(msg)
+      setChatError({ auth: false, text: 'No pudimos conectarnos. Revisá tu conexión y probá de nuevo: tu mensaje sigue en el campo.' })
     } finally {
       setLoading(false)
     }
@@ -198,6 +216,15 @@ export default function AsistentePage() {
                   <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                   <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
+              </div>
+            </div>
+          )}
+          {chatError && (
+            <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <p>{chatError.text}</p>
+              <div className="mt-2 flex gap-3 text-xs font-semibold">
+                {chatError.auth && <Link href="/login?next=/asistente" className="underline">Ingresar de nuevo</Link>}
+                <button type="button" onClick={() => sendMessage()} className="underline">Reintentar</button>
               </div>
             </div>
           )}

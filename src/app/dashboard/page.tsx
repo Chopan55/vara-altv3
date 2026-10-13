@@ -110,6 +110,13 @@ function computeIntelligence(txn: Transaction) {
   return { blockedTasks, pendingDocs, currentStage, nextTask, risks, totalBuyerMin, totalBuyerMax, propertyPrice, operationStatus, checklist }
 }
 
+/** El saludo depende de la hora local: se resuelve después de montar, no durante el render. */
+function useGreeting() {
+  const [g, setG] = useState('Hola')
+  useEffect(() => { setG(greeting()) }, [])
+  return g
+}
+
 function greeting() {
   const h = new Date().getHours()
   if (h < 12) return 'Buenos días'
@@ -118,11 +125,12 @@ function greeting() {
 }
 
 function EmptyState({ userName, propertyUrl }: { userName: string; propertyUrl: string }) {
+  const hello = useGreeting()
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="px-4 lg:px-6 pt-8 pb-3">
         <div className="max-w-2xl mx-auto">
-          <p className="text-sm text-slate-400 mb-0.5">{greeting()}, {userName.split(' ')[0]}</p>
+          <p className="text-sm text-slate-400 mb-0.5">{hello}, {userName.split(' ')[0]}</p>
           <h1 className="text-xl font-bold text-slate-900">Bienvenido a VARA</h1>
         </div>
       </header>
@@ -218,6 +226,7 @@ function fmtDueDate(iso: string): string {
 }
 
 function SellerDashboard({ userName, province, operationId }: { userName: string; province: string; operationId: string }) {
+  const hello = useGreeting()
   const [tasks, setTasks] = useState<SellerTaskState[]>([])
   const [loaded, setLoaded] = useState(false)
   const [editingDateId, setEditingDateId] = useState<string | null>(null)
@@ -281,7 +290,7 @@ function SellerDashboard({ userName, province, operationId }: { userName: string
     <div className="min-h-screen bg-slate-50">
       <header className="px-4 lg:px-6 pt-8 pb-3">
         <div className="max-w-2xl mx-auto">
-          <p className="text-sm text-slate-400 mb-0.5">{greeting()}, {userName.split(' ')[0]}</p>
+          <p className="text-sm text-slate-400 mb-0.5">{hello}, {userName.split(' ')[0]}</p>
           <h1 className="text-xl font-bold text-slate-900">Tu operación de venta</h1>
           <p className="text-sm text-slate-400 mt-0.5 flex items-center gap-1">
             <MapPin size={11} /> {province}
