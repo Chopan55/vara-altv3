@@ -43,7 +43,7 @@ const TONE: Record<OfferStatus, string> = {
  * Avisa si hay ofertas reales, para que la pantalla no ofrezca el ejemplo
  * cuando ya hay algo verdadero que mirar.
  */
-export function RealOffersPanel({ onHasOffers }: { onHasOffers?: (has: boolean) => void }) {
+export function RealOffersPanel({ onHasOffers, onLoaded }: { onHasOffers?: (has: boolean) => void; onLoaded?: () => void }) {
   const [all, setAll] = useState<Offer[]>([])
   const [loaded, setLoaded] = useState(false)
   const { operations, journey, loaded: opsLoaded } = useOperations()
@@ -62,7 +62,9 @@ export function RealOffersPanel({ onHasOffers }: { onHasOffers?: (has: boolean) 
     return () => { alive = false }
   }, [])
 
-  useEffect(() => { if (loaded && opsLoaded) onHasOffers?.(offers.length > 0) }, [loaded, opsLoaded, offers.length, onHasOffers])
+  useEffect(() => {
+    if (loaded && opsLoaded) { onHasOffers?.(offers.length > 0); onLoaded?.() }
+  }, [loaded, opsLoaded, offers.length, onHasOffers, onLoaded])
 
   if (!loaded) {
     return (

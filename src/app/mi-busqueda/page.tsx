@@ -67,7 +67,7 @@ export default function MiBusquedaPage() {
           <Link href="/comparar" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">Ir a comparar</Link>
           {saved && <span role="status" className="text-sm text-emerald-700">Guardado en este dispositivo.</span>}
         </div>
-        <p className="mt-4 text-xs text-slate-400">Por ahora tu perfil queda guardado en este navegador y no busca propiedades por su cuenta.</p>
+        <p className="mt-4 text-xs text-slate-400">Borrador guardado en este dispositivo: todavía no se sincroniza con tu cuenta ni busca propiedades por su cuenta.</p>
       </div>
     </div>
   )

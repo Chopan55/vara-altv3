@@ -40,17 +40,16 @@ function getBuyNav(operationId: string): NavItem[] {
   const opHref = operationId ? `/operacion/${operationId}` : '/operacion/inicio'
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
-    { href: '/acciones', icon: Zap, label: 'Acciones' },
+    { href: '/acciones', icon: Zap, label: 'Qué hago ahora' },
     { href: '/mi-busqueda', icon: ClipboardCheck, label: 'Mi búsqueda', section: 'Buscar' },
-    { href: '/propiedades', icon: Building2, label: 'Mis propiedades', section: 'Buscar' },
+    { href: '/propiedades', icon: Building2, label: 'Propiedades', section: 'Buscar' },
     { href: '/comparar', icon: BarChart2, label: 'Comparar', section: 'Buscar' },
     { href: '/visitas', icon: ClipboardCheck, label: 'Checklist de visita', section: 'Visitar' },
-    { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', section: 'Visitar', tag: 'Nuevo' },
     { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas', section: 'Visitar' },
-    { href: opHref, icon: FileText, label: 'Mi operación', section: 'Mi operación' },
-    { href: operationId ? `${opHref}?tab=documentos` : '/operacion/inicio', icon: FileText, label: 'Documentos', section: 'Mi operación' },
-    { href: operationId ? `${opHref}?tab=riesgos` : '/operacion/inicio', icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
-    { href: '/dinero', icon: DollarSign, label: 'Dinero', section: 'Mi operación' },
+    { href: opHref, icon: FileText, label: 'Resumen', section: 'Mi operación' },
+    { href: `${opHref}?tab=documentos`, icon: FileText, label: 'Documentos', section: 'Mi operación' },
+    { href: `${opHref}?tab=riesgos`, icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
+    { href: '/dinero', icon: DollarSign, label: 'Costos y financiamiento', section: 'Mi operación' },
     { href: '/profesionales', icon: Users, label: 'Profesionales', section: 'Mi operación' },
   ]
 }
@@ -59,31 +58,27 @@ function getSellNav(operationId: string): NavItem[] {
   const opHref = operationId ? `/operacion/${operationId}` : '/operacion/inicio'
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
-    { href: '/acciones', icon: Zap, label: 'Acciones' },
-    { href: '/preparar-venta', icon: FileText, label: 'Preparar la venta', section: 'Preparar' },
-    { href: '/revisar-publicacion', icon: Eye, label: 'Revisar mi publicación', section: 'Preparar' },
-    { href: '/precio-venta', icon: DollarSign, label: 'Precio de venta', section: 'Preparar' },
-    { href: '/publicar', icon: Share2, label: 'Mi propiedad', section: 'Preparar' },
-    { href: '/property-pack', icon: FileText, label: 'Ficha para interesados', section: 'Preparar' },
-    { href: '/fotos-venta', icon: Eye, label: 'Fotos: recomendaciones', section: 'Preparar' },
-    { href: '/video-presentacion', icon: Eye, label: 'Recorrido en video', section: 'Preparar' },
+    { href: '/acciones', icon: Zap, label: 'Qué hago ahora' },
+    { href: '/publicar', icon: Share2, label: 'Mi propiedad', section: 'Mi venta' },
+    { href: '/precio-venta', icon: DollarSign, label: 'Precio', section: 'Mi venta' },
+    { href: '/revisar-publicacion', icon: Eye, label: 'Publicación', section: 'Mi venta' },
+    { href: '/fotos-venta', icon: Eye, label: 'Fotos y video', section: 'Mi venta' },
     { href: '/interesados', icon: Users, label: 'Interesados', section: 'Interesados' },
-    { href: '/ofertas', icon: Inbox, label: 'Ofertas y negociación', section: 'Interesados' },
-    { href: '/visitas-vendedor', icon: Eye, label: 'Quién quiere visitar', section: 'Interesados' },
-    { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', section: 'Interesados', tag: 'Nuevo' },
-    { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas', section: 'Interesados' },
-    { href: opHref, icon: FileText, label: 'Mi operación', section: 'Mi operación' },
-    { href: operationId ? `${opHref}?tab=documentos` : '/operacion/inicio', icon: FileText, label: 'Documentos', section: 'Mi operación' },
-    { href: operationId ? `${opHref}?tab=riesgos` : '/operacion/inicio', icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
-    { href: '/dinero', icon: DollarSign, label: 'Dinero' },
-    { href: '/profesionales', icon: Users, label: 'Profesionales' },
+    { href: '/ofertas', icon: Inbox, label: 'Ofertas', section: 'Interesados' },
+    { href: '/visitas-vendedor', icon: CalendarCheck, label: 'Visitas', section: 'Interesados' },
+    { href: '/preparar-venta', icon: FileText, label: 'Papeles de la venta', section: 'Mi operación' },
+    { href: opHref, icon: FileText, label: 'Resumen', section: 'Mi operación' },
+    { href: `${opHref}?tab=documentos`, icon: FileText, label: 'Documentos', section: 'Mi operación' },
+    { href: `${opHref}?tab=riesgos`, icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
+    { href: '/dinero', icon: DollarSign, label: 'Neto de la venta', section: 'Mi operación' },
+    { href: '/profesionales', icon: Users, label: 'Profesionales', section: 'Mi operación' },
   ]
 }
 
 const JOURNEY_TOOL_HREFS = new Set(['/mi-busqueda', '/preparar-venta', '/precio-venta', '/property-pack', '/video-presentacion', '/interesados', '/fotos-venta', '/revisar-publicacion', '/recorrido-ia'])
 
 const SECONDARY_NAV: NavItem[] = [
-  { href: '/video-presentacion', icon: Eye, label: 'Recorrido en video' },
+  { href: '/vara-visit', icon: MapPin, label: 'VARA Visit' },
   { href: '/guia', icon: BookOpen, label: 'Guía' },
   { href: '/asistente', icon: MessageSquare, label: 'Asistente' },
 ]

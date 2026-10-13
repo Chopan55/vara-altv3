@@ -68,6 +68,11 @@ export default function FotosVentaPage() {
         <Link href="/publicar" className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm mb-4"><ArrowLeft size={14} /> Volver a Mi propiedad</Link>
         <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Fotos: recomendaciones y potencial</h1>
         <p className="text-sm text-slate-500 mt-1">Mirá qué mejorar en tus fotos antes de publicar y pedí, con tus palabras, cómo te gustaría ver la propiedad. Publicá siempre las fotos originales como base: lo generado es solo una visualización.</p>
+        <nav aria-label="Más para presentar tu propiedad" className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+          <Link href="/video-presentacion" className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-slate-700 hover:border-brand-300">Armar recorrido en video</Link>
+          <Link href="/property-pack" className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-slate-700 hover:border-brand-300">Ficha para interesados</Link>
+          <Link href="/recorrido-ia" className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-slate-500 hover:border-brand-300">Recorrido con IA (experimental)</Link>
+        </nav>
 
         {loaded && photos.length === 0 && (
           <div className="mt-6 rounded-2xl border border-slate-100 bg-white p-6">
