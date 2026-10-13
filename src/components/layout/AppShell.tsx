@@ -18,6 +18,7 @@ import { useVaraState } from '@/hooks/useVaraState'
 import { useOperations } from '@/hooks/useOperations'
 import { journeyToStored } from '@/lib/journey'
 import { forcedJourney } from '@/lib/routeContext'
+import { searchApp } from '@/lib/search/appSearch'
 import { GuiameButton, GuiameTrigger } from '@/components/guidance/GuiameButton'
 import { VaraAIFloat } from '@/components/ai/VaraAIFloat'
 
@@ -370,12 +371,15 @@ function TopBar({
   onToggleGuia: () => void
 }) {
   const router = useRouter()
+  const { activeOperationId } = useOperations()
   const [q, setQ] = useState('')
+  const [open, setOpen] = useState(false)
+  const results = searchApp(q, { journey, operationId: activeOperationId })
 
+  const go = (href: string) => { setOpen(false); setQ(''); router.push(href) }
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    const term = q.trim()
-    router.push(term ? `/guia?q=${encodeURIComponent(term)}` : '/guia')
+    if (results[0]) go(results[0].href)
   }
 
   return (
@@ -388,15 +392,31 @@ function TopBar({
         <Menu size={20} aria-hidden="true" />
       </button>
 
-      <form onSubmit={submit} className="flex-1 max-w-md relative">
+      <form onSubmit={submit} className="flex-1 max-w-md relative" role="search">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
         <input
           value={q}
-          onChange={e => setQ(e.target.value)}
-          placeholder="Buscar en la guía: seña, boleto, sellos…"
-          aria-label="Buscar en la guía"
+          onChange={e => { setQ(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Buscar en VARA: documentos, costos, visitas…"
+          aria-label="Buscar en VARA"
+          aria-expanded={open && results.length > 0}
+          aria-controls="vara-search-results"
           className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:bg-white focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100 transition-colors"
         />
+        {open && results.length > 0 && (
+          <ul id="vara-search-results" role="listbox" className="absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+            {results.map(r => (
+              <li key={`${r.kind}|${r.href}|${r.label}`} role="option" aria-selected={false}>
+                <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => go(r.href)} className="block w-full px-3 py-2 text-left hover:bg-slate-50">
+                  <span className="block text-sm font-semibold text-slate-800">{r.label}</span>
+                  <span className="block text-[11px] text-slate-400">{r.hint}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </form>
 
       <div className="ml-auto flex items-center gap-2">
@@ -407,7 +427,7 @@ function TopBar({
         className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 px-3.5 py-2 text-sm font-semibold text-white transition-colors"
       >
         <Plus size={15} />
-        {journey === 'SELL' ? 'Mi propiedad' : 'Agregar propiedad'}
+        {journey === 'SELL' ? 'Completar mi propiedad' : 'Agregar propiedad'}
       </Link>
       </div>
     </header>
