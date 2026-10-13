@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Handshake, History } from 'lucide-react'
@@ -131,6 +131,24 @@ export default function OperacionPage() {
   // Todos los hooks deben declararse antes de cualquier return condicional (Rules of Hooks).
   // El sidebar linkea directo a una pestaña (?tab=documentos).
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
+  const tabsRef = useRef<HTMLDivElement>(null)
+
+  // La pestaña sigue a la URL: un enlace del menú con ?tab=documentos cambia la pestaña aunque ya estés en la operación.
+  useEffect(() => {
+    if (requested && (TAB_IDS as readonly string[]).includes(requested)) {
+      setActiveTab(requested as Tab)
+      requestAnimationFrame(() => tabsRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }))
+    }
+  }, [requested]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectTab = (id: Tab) => {
+    setActiveTab(id)
+    try {
+      const u = new URL(window.location.href)
+      u.searchParams.set('tab', id)
+      window.history.replaceState(null, '', u)
+    } catch {}
+  }
   const [, setTaskTick] = useState(0)
   // Solo las operaciones del usuario guardan el avance; las de demostración no se tocan.
   const toggleTask = userOp
@@ -337,13 +355,13 @@ export default function OperacionPage() {
         </div>
       )}
 
-      <div className="bg-white border-b border-slate-100 sticky top-[57px] z-10">
+      <div ref={tabsRef} className="bg-white border-b border-slate-100 sticky top-[57px] z-10 scroll-mt-[57px]">
         {/* overflow-x-auto en el contenedor externo; pl-4 al primer ítem y pr-4 al spacer final
             para que el padding se incluya en el área de scroll y no corte el último tab en mobile. */}
         <div className="max-w-4xl mx-auto overflow-x-auto no-scrollbar">
-          <div className="flex w-max min-w-full">
+          <div role="tablist" aria-label="Secciones de la operación" className="flex w-max min-w-full">
             {tabs.map(({ id, label, icon: Icon, badge }, i) => (
-              <button key={id} onClick={() => setActiveTab(id)}
+              <button key={id} role="tab" aria-selected={activeTab === id} onClick={() => selectTab(id)}
                 className={cn(
                   'flex items-center gap-1.5 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0',
                   i === 0 ? 'pl-4 pr-3' : i === tabs.length - 1 ? 'pl-3 pr-4' : 'px-3',

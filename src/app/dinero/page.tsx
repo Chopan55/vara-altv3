@@ -18,6 +18,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, DollarSign, Landmark, Tag } from 'lucide-react'
 import { useVaraState } from '@/hooks/useVaraState'
+import { useOperations } from '@/hooks/useOperations'
 import { CostosPanel } from '@/components/money/CostosPanel'
 import { PreciosPanel } from '@/components/money/PreciosPanel'
 import { FinanciamientoPanel } from '@/components/money/FinanciamientoPanel'
@@ -44,11 +45,12 @@ const SELL_TABS: TabDef[] = [
 
 function DineroContent() {
   const vara = useVaraState()
+  const { journey } = useOperations()
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
 
-  const isSeller = vara.loaded && vara.journeyType === 'SELL_PROPERTY'
+  const isSeller = vara.loaded && journey === 'SELL'
   const tabs = isSeller ? SELL_TABS : BUY_TABS
 
   const requested = searchParams.get('tab')

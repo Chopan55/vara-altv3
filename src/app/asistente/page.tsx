@@ -163,7 +163,7 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
           </button>
           {showFaqs && (
             <div className="mt-2 flex flex-wrap gap-2">
-              {(vara.journeyType === 'SELL_PROPERTY' ? SELLER_FAQS : BUYER_FAQS).map(q => (
+              {(journey === 'SELL' ? SELLER_FAQS : BUYER_FAQS).map(q => (
                 <button
                   key={q}
                   onClick={() => { setShowFaqs(false); sendMessage(q) }}

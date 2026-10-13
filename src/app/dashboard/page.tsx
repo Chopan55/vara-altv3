@@ -835,7 +835,7 @@ const RETURN_THRESHOLD_MS = 60 * 60 * 1000 // 1 hora
 
 export default function Dashboard() {
   const vara = useVaraState()
-  const { operations, activeOperation, activeOperationId, getTransactionData, usingDemo, deleteOperation } = useOperations()
+  const { operations, journey, activeOperation, activeOperationId, getTransactionData, usingDemo, deleteOperation } = useOperations()
   const globalAlerts = useGlobalNextBestAction()
   const activeTxnData = activeOperationId ? getTransactionData(activeOperationId) : null
   // Sin datos reales no se cae a `mockTransaction`: el panel de la operacion
@@ -877,7 +877,7 @@ export default function Dashboard() {
     return <EmptyState userName={vara.userName} propertyUrl={vara.propertyUrl} />
   }
 
-  if (vara.loaded && vara.journeyType === 'SELL_PROPERTY') {
+  if (vara.loaded && journey === 'SELL') {
     const sellOp = operations.find(o => o.type === 'SELL')
     if (sellOp) {
       return <SellerDashboard userName={vara.userName} province={vara.province} operationId={sellOp.id} />

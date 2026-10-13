@@ -5,6 +5,7 @@ import { ArrowLeft, MapPin, Bed, Bath, Square, Upload, Sparkles, ChevronRight, T
 import { Badge } from '@/components/ui/Badge'
 import { formatPrice, cn } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
+import { useOperations } from '@/hooks/useOperations'
 import { loadUserPropertyById, type UserProperty } from '@/lib/userProperties'
 import { analyzePricePosition, priceRef } from '@/lib/market/priceReference'
 import { ApiError, apiErrorMessage, safeJson, userFacingError } from '@/lib/api/client'
@@ -49,7 +50,8 @@ function ImpactBadge({ impact }: { impact: string }) {
 export default function PropertyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const vara = useVaraState()
-  const isSeller = vara.loaded && vara.journeyType === 'SELL_PROPERTY'
+  const { journey } = useOperations()
+  const isSeller = vara.loaded && journey === 'SELL'
   const [property, setProperty] = useState<UserProperty | null>(null)
   const [propertyLoaded, setPropertyLoaded] = useState(false)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)

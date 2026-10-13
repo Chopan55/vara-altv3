@@ -13,6 +13,7 @@ import {
 import { listActivePartners } from '@/lib/supabase/visits'
 import { PartnerCard } from '@/components/visit/PartnerCard'
 import { useVaraState } from '@/hooks/useVaraState'
+import { useOperations } from '@/hooks/useOperations'
 
 /**
  * VARA Visit — la capa humana del producto.
@@ -47,7 +48,8 @@ const GUARANTEES = [
 
 export default function VaraVisitPage() {
   const vara = useVaraState()
-  const isSeller = vara.loaded && vara.journeyType === 'SELL_PROPERTY'
+  const { journey } = useOperations()
+  const isSeller = vara.loaded && journey === 'SELL'
 
   const [partners, setPartners] = useState<PartnerPublicProfile[] | null>(null)
 
