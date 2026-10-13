@@ -61,9 +61,9 @@ const STEPS: { id: Step; label: string }[] = [
 function StepBar({ current }: { current: Step }) {
   const idx = STEPS.findIndex(s => s.id === current)
   return (
-    <ol className="flex items-center gap-2 sm:gap-3 my-5">
+    <ol className="flex flex-wrap items-center gap-x-3 gap-y-2 my-5">
       {STEPS.map((s, i) => (
-        <li key={s.id} className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <li key={s.id} className="flex items-center gap-2 sm:gap-3">
           <span className={cn(
             'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold',
             i === idx ? 'bg-brand-600 text-white'
@@ -73,7 +73,7 @@ function StepBar({ current }: { current: Step }) {
             {i < idx ? <Check size={13} aria-hidden="true" /> : i + 1}
           </span>
           <span className={cn(
-            'text-sm truncate',
+            'text-sm whitespace-nowrap',
             i === idx ? 'font-semibold text-slate-900' : 'text-slate-500',
           )}>
             {s.label}
