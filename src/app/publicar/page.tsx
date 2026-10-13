@@ -112,7 +112,7 @@ export default function PublicarPage() {
       const stored = await loadPhotos()
       if (!alive) return
       setPhotos(stored.map(p => ({ id: p.id, preview: p.preview, label: p.label, isCover: p.isCover })))
-    })().catch(() => {})
+    })().catch(() => {}).finally(() => { if (alive) setSessionChecked(true) })
     return () => { alive = false }
   }, [])
 
@@ -184,6 +184,8 @@ export default function PublicarPage() {
   const [copyError, setCopyError] = useState<string | null>(null)
   const [highlights, setHighlights] = useState<string[]>([])
   const [inCloud, setInCloud] = useState(false)
+  // Hasta saber si hay sesión no se muestra ningún texto definitivo sobre dónde se guardan las fotos.
+  const [sessionChecked, setSessionChecked] = useState(false)
   const [uploading, setUploading] = useState(false)
 
   // Recupera el borrador guardado; si no hay, pre-fill con datos reales de la operación.
@@ -544,9 +546,11 @@ export default function PublicarPage() {
                 </p>
                 <p className="text-xs text-slate-300 mt-1">JPG, PNG, WEBP · Hasta 20 fotos</p>
                 <p className="text-[10px] text-slate-400 mt-1.5">
-                  {inCloud
-                    ? 'Guardadas en tu cuenta — las vas a ver desde cualquier dispositivo'
-                    : 'Guardadas solo en este navegador. Entrá con tu cuenta para que te sigan.'}
+                  {!sessionChecked
+                    ? 'Revisando tu cuenta…'
+                    : inCloud
+                      ? 'Guardadas en tu cuenta — las vas a ver desde cualquier dispositivo'
+                      : 'Guardadas solo en este navegador. Entrá con tu cuenta para que te sigan.'}
                 </p>
               </div>
 

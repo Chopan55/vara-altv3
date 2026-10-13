@@ -331,7 +331,7 @@ function AuthFooter({ collapsed, userName }: { collapsed: boolean; userName: str
           <>
             <div className="min-w-0 flex-1">
               <p className="text-slate-800 font-semibold text-xs truncate">{userName?.split(' ')[0] || 'Mi cuenta'}</p>
-              <p className="text-slate-400 text-[10px] truncate">{email ?? 'Sin cuenta'}</p>
+              <p className="text-slate-400 text-[10px] truncate">{email ?? 'Verificando sesión…'}</p>
             </div>
             {email && (
               <button
