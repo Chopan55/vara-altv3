@@ -1,11 +1,12 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Clapperboard, Download } from 'lucide-react'
 import { loadSellerPhotos, type SellerPhoto } from '@/lib/sellerPhotos'
 import { MAX_PHOTOS } from '@/lib/video/timeline'
 import { buildSlideshow, canRecordVideo } from '@/lib/video/slideshow'
 import { UNLABELED, tourOrder } from '@/lib/photoAdvice'
+import { MUSIC_RIGHTS_NOTE, MUSIC_STYLES, audioFileProblem, buildEvents, decodeAudioFile, playEvents, type MusicStyleId } from '@/lib/video/music'
 
 const DRAFT_KEY = 'vara_publish_draft'
 
@@ -20,6 +21,45 @@ export default function VideoPresentacionPage() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [supported, setSupported] = useState(true)
+  const [music, setMusic] = useState<'none' | MusicStyleId | 'file'>('none')
+  const [fileAudio, setFileAudio] = useState<{ name: string; buffer: AudioBuffer } | null>(null)
+  const [volume, setVolume] = useState(50)
+  const [musicError, setMusicError] = useState<string | null>(null)
+  const [previewing, setPreviewing] = useState<MusicStyleId | null>(null)
+  const previewCtx = useRef<AudioContext | null>(null)
+
+  const stopPreview = () => { previewCtx.current?.close().catch(() => {}); previewCtx.current = null; setPreviewing(null) }
+  useEffect(() => () => { previewCtx.current?.close().catch(() => {}) }, [])
+
+  /** Escuchar 10 segundos del estilo antes de elegirlo. */
+  const preview = (id: MusicStyleId) => {
+    if (previewing === id) { stopPreview(); return }
+    stopPreview()
+    const style = MUSIC_STYLES.find(m => m.id === id)
+    if (!style) return
+    try {
+      const ctx = new window.AudioContext()
+      const master = ctx.createGain()
+      master.gain.value = volume / 100
+      master.connect(ctx.destination)
+      playEvents(ctx, master, buildEvents(style, 10), ctx.currentTime + 0.05)
+      previewCtx.current = ctx
+      setPreviewing(id)
+      setTimeout(() => { if (previewCtx.current === ctx) stopPreview() }, 10500)
+    } catch { setMusicError('Tu navegador no puede reproducir la muestra.') }
+  }
+
+  const onFile = async (file?: File) => {
+    if (!file) return
+    const problem = audioFileProblem(file)
+    if (problem) { setMusicError(problem); return }
+    setMusicError(null)
+    try {
+      const buffer = await decodeAudioFile(file)
+      setFileAudio({ name: file.name, buffer })
+      setMusic('file')
+    } catch { setMusicError('No pudimos leer ese audio. Probá con otro MP3.') }
+  }
 
   useEffect(() => {
     setSupported(canRecordVideo())
@@ -43,7 +83,9 @@ export default function VideoPresentacionPage() {
     setProgress(0)
     try {
       const items = ordered.map(p => ({ url: p.url, label: p.label && p.label !== UNLABELED ? p.label : undefined }))
-      const blob = await buildSlideshow({ items, title, subtitle, secondsPerPhoto: secs, onProgress: setProgress })
+      stopPreview()
+      const chosen = music === 'none' ? null : music === 'file' ? (fileAudio ? { kind: 'file' as const, buffer: fileAudio.buffer } : null) : { kind: 'style' as const, id: music }
+      const blob = await buildSlideshow({ items, title, subtitle, secondsPerPhoto: secs, music: chosen, musicVolume: volume / 100, onProgress: setProgress })
       setVideoUrl(URL.createObjectURL(blob))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No pudimos armar el video.')
@@ -89,6 +131,32 @@ export default function VideoPresentacionPage() {
             {unlabeled > 0 && (
               <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">{unlabeled} {unlabeled === 1 ? 'foto no tiene' : 'fotos no tienen'} nombre de ambiente, así que {unlabeled === 1 ? 'queda' : 'quedan'} al final y sin cartel. Etiquetalas en <Link href="/publicar" className="underline">Mi propiedad</Link> (Living, Cocina…) para un recorrido en orden.</p>
             )}
+
+            <section aria-label="Música de fondo" className="mt-5 rounded-2xl border border-slate-100 bg-white p-5">
+              <h2 className="text-sm font-bold text-slate-900">Música de fondo</h2>
+              <p className="mt-1 text-xs text-slate-500">Cuatro estilos de VARA pensados para recorridos, sin derechos de autor y sin costo. O subí tu propio MP3.</p>
+              <div className="mt-3 space-y-2" role="radiogroup" aria-label="Elegir música">
+                <label className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-sm text-slate-700"><input type="radio" name="music" checked={music === 'none'} onChange={() => { setMusic('none'); stopPreview() }} /> Sin música</label>
+                {MUSIC_STYLES.map(m => (
+                  <div key={m.id} className={`flex items-center justify-between gap-2 rounded-xl border p-3 ${music === m.id ? 'border-brand-500 bg-brand-50' : 'border-slate-200'}`}>
+                    <label className="flex flex-1 items-start gap-2 text-sm text-slate-800"><input type="radio" name="music" className="mt-1" checked={music === m.id} onChange={() => setMusic(m.id)} /><span><span className="font-semibold">{m.label}</span><span className="block text-xs text-slate-500">{m.description}</span></span></label>
+                    <button type="button" onClick={() => preview(m.id)} className="shrink-0 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700">{previewing === m.id ? 'Detener' : 'Escuchar'}</button>
+                  </div>
+                ))}
+                <div className={`rounded-xl border p-3 ${music === 'file' ? 'border-brand-500 bg-brand-50' : 'border-slate-200'}`}>
+                  <label className="flex items-center gap-2 text-sm text-slate-800"><input type="radio" name="music" checked={music === 'file'} disabled={!fileAudio} onChange={() => setMusic('file')} /><span className="font-semibold">Mi propio MP3</span>{fileAudio && <span className="truncate text-xs text-slate-500">{fileAudio.name}</span>}</label>
+                  <input type="file" accept="audio/mpeg,.mp3" onChange={e => { void onFile(e.target.files?.[0]); e.target.value = '' }} aria-label="Subir un MP3" className="mt-2 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white" />
+                  <p className="mt-1 text-[11px] text-slate-500">Hasta 15 MB. El archivo se queda en tu navegador: no se sube a ningún servidor.</p>
+                </div>
+              </div>
+              {music !== 'none' && (
+                <label className="mt-3 block text-xs font-semibold text-slate-600">Volumen: {volume}%
+                  <input type="range" min={10} max={100} step={5} value={volume} onChange={e => setVolume(Number(e.target.value))} className="mt-1 w-full" />
+                </label>
+              )}
+              {music === 'file' && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] text-amber-800">{MUSIC_RIGHTS_NOTE}</p>}
+              {musicError && <p role="alert" className="mt-2 text-xs text-rose-700">{musicError}</p>}
+            </section>
 
             {!supported && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Tu navegador no puede armar videos. Probá con Chrome o Edge en una computadora.</p>}
             {error && <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}

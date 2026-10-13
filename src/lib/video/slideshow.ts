@@ -1,4 +1,5 @@
 import { FADE_SECONDS, SECONDS_PER_PHOTO, frameAt, motionAt, planTimeline } from '@/lib/video/timeline'
+import { MUSIC_STYLES, buildEvents, playEvents, type MusicStyleId } from '@/lib/video/music'
 
 /**
  * Arma el recorrido en video en el navegador con canvas + MediaRecorder: movimiento
@@ -8,11 +9,17 @@ import { FADE_SECONDS, SECONDS_PER_PHOTO, frameAt, motionAt, planTimeline } from
  */
 export interface TourItem { url: string; label?: string }
 
+/** Música de fondo: un estilo incluido (generado en el navegador) o un archivo que subió la persona. */
+export type MusicChoice = { kind: 'style'; id: MusicStyleId } | { kind: 'file'; buffer: AudioBuffer }
+
 export interface SlideshowOptions {
   items: TourItem[]
   title?: string
   subtitle?: string
   secondsPerPhoto?: number
+  music?: MusicChoice | null
+  /** 0 a 1. */
+  musicVolume?: number
   width?: number
   height?: number
   fps?: number
@@ -71,8 +78,24 @@ export async function buildSlideshow(opts: SlideshowOptions): Promise<Blob> {
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('No se pudo preparar el video.')
 
-  const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) ?? 'video/webm'
-  const recorder = new MediaRecorder(canvas.captureStream(fps), { mimeType: mime, videoBitsPerSecond: 4_000_000 })
+  // El audio se mezcla en el mismo flujo que las imágenes, así queda dentro del video.
+  const stream = canvas.captureStream(fps)
+  const music = opts.music ?? null
+  let audio: { ctx: AudioContext; master: GainNode } | null = null
+  if (music) {
+    const ctx = new window.AudioContext()
+    const dest = ctx.createMediaStreamDestination()
+    const master = ctx.createGain()
+    master.gain.value = 0
+    master.connect(dest)
+    dest.stream.getAudioTracks().forEach(t => stream.addTrack(t))
+    audio = { ctx, master }
+  }
+  const candidates = audio
+    ? ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
+    : ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+  const mime = candidates.find(m => MediaRecorder.isTypeSupported(m)) ?? 'video/webm'
+  const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000, ...(audio ? { audioBitsPerSecond: 128_000 } : {}) })
   const chunks: Blob[] = []
   recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data) }
   const done = new Promise<Blob>((resolve, reject) => {
@@ -134,6 +157,28 @@ export async function buildSlideshow(opts: SlideshowOptions): Promise<Blob> {
   }
 
   recorder.start()
+  if (audio && music) {
+    const { ctx, master } = audio
+    if (ctx.state === 'suspended') await ctx.resume()
+    const startAt = ctx.currentTime + 0.05
+    const vol = Math.min(Math.max(opts.musicVolume ?? 0.5, 0), 1)
+    // Entra con un fundido, se mantiene y baja antes del final.
+    master.gain.setValueAtTime(0, startAt)
+    master.gain.linearRampToValueAtTime(vol, startAt + 0.8)
+    master.gain.setValueAtTime(vol, startAt + Math.max(total - 1.5, 1))
+    master.gain.linearRampToValueAtTime(0, startAt + total)
+    if (music.kind === 'style') {
+      const style = MUSIC_STYLES.find(m => m.id === music.id) ?? MUSIC_STYLES[0]
+      playEvents(ctx, master, buildEvents(style, total), startAt)
+    } else {
+      const src = ctx.createBufferSource()
+      src.buffer = music.buffer
+      src.loop = true
+      src.connect(master)
+      src.start(startAt)
+      src.stop(startAt + total + 0.1)
+    }
+  }
   const startedAt = performance.now()
   await new Promise<void>(resolve => {
     const tick = () => {
@@ -147,5 +192,7 @@ export async function buildSlideshow(opts: SlideshowOptions): Promise<Blob> {
   })
   recorder.stop()
   opts.onProgress?.(1)
-  return done
+  const blob = await done
+  void audio?.ctx.close()
+  return blob
 }
