@@ -22,6 +22,17 @@ export const PRICE_METHOD =
   'comparables. Ponderación: similitud × frescura. Atípicos extremos excluidos con MAD. ' +
   'Precios pedidos, no de cierre.'
 
+/**
+ * Precio mínimo creíble de una venta. Por debajo suele ser un marcador
+ * ("consultar", USD 1) y no un precio: tomarlo arruinaría el rango entero.
+ */
+export const MIN_PLAUSIBLE_PRICE = { USD: 5_000, ARS: 1_000_000 } as const
+
+export function isPlausiblePrice(price: number, currency: 'USD' | 'ARS' | undefined): boolean {
+  if (!currency) return false
+  return price >= MIN_PLAUSIBLE_PRICE[currency]
+}
+
 /** Un precio solo es atípico si además se aleja más de este % de la mediana. */
 export const OUTLIER_MIN_RELATIVE_DISTANCE = 0.25
 
@@ -75,7 +86,7 @@ export function calculatePrice(input: PriceInput): PriceCalc {
   const eligible = input.comparables.filter(c =>
     c.similarityScore >= 60 &&
     c.listing.priceProvenance === 'ASKING_PRICE' &&
-    c.listing.price && c.listing.price > 0 &&
+    c.listing.price && isPlausiblePrice(c.listing.price, c.listing.currency) &&
     // Un aviso sin moneda declarada no entra: asumir USD sería inventar un dato.
     c.listing.currency === currency,
   )

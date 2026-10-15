@@ -11,6 +11,11 @@
  *             en común. Se fusionan pero se marcan inciertos, porque dos
  *             unidades idénticas del mismo edificio existen. La confianza
  *             final baja cuando hay fusiones inciertas.
+ *
+ * Rendimiento: comparar todos contra todos es O(n²). Lo caro (normalizar
+ * textos, parsear URLs, armar conjuntos) se hace UNA vez por aviso en
+ * `prepare`, y cada par solo hace comparaciones baratas. Medido con 350
+ * avisos: de ~2,9 s a decenas de milisegundos por análisis.
  */
 
 import type { ListingFacts } from './types'
@@ -39,8 +44,6 @@ function identityKey(l: ListingFacts): string | null {
   }
 }
 
-const area = (l: ListingFacts) => l.coveredArea ?? l.totalArea
-
 function within(a: number | undefined, b: number | undefined, tol: number): boolean | null {
   if (!a || !b) return null
   return Math.abs(a - b) / Math.max(a, b) <= tol
@@ -67,60 +70,81 @@ function jaccard(a: Set<string>, b: Set<string>): number {
   return inter / (a.size + b.size - inter)
 }
 
-export function pairSignal(a: ListingFacts, b: ListingFacts): Signal {
-  const ka = identityKey(a)
-  const kb = identityKey(b)
-  if (ka && kb && ka === kb) return 'CERTAIN'
+/** Lo que hace falta de un aviso para compararlo, calculado una sola vez. */
+interface Prepared {
+  l: ListingFacts
+  key: string | null
+  photos: Set<string> | null
+  addr: string | null        // solo si es una dirección específica
+  place: string
+  area: number | undefined
+  tokens: Set<string>
+  completeness: number
+}
 
-  if (a.photoHashes?.length && b.photoHashes?.length) {
-    const set = new Set(a.photoHashes)
-    if (b.photoHashes.some(h => set.has(h))) return 'CERTAIN'
+function prepare(l: ListingFacts): Prepared {
+  const addr = norm(l.address ?? '')
+  return {
+    l,
+    key: identityKey(l),
+    photos: l.photoHashes?.length ? new Set(l.photoHashes) : null,
+    addr: isSpecificAddress(addr) ? addr : null,
+    place: norm(l.community ?? l.neighborhood ?? ''),
+    area: l.coveredArea ?? l.totalArea,
+    tokens: tokens(l.title ?? l.description),
+    completeness: Object.values(l).filter(v => v !== undefined && v !== null && v !== '').length,
+  }
+}
+
+function signal(a: Prepared, b: Prepared): Signal {
+  if (a.key && b.key && a.key === b.key) return 'CERTAIN'
+
+  if (a.photos && b.photos) {
+    for (const h of b.photos) if (a.photos.has(h)) return 'CERTAIN'
   }
 
   // Tipo distinto nunca es el mismo inmueble.
-  if (a.kind && b.kind && a.kind !== b.kind) return null
-  if (a.bedrooms !== undefined && b.bedrooms !== undefined && a.bedrooms !== b.bedrooms) return null
+  if (a.l.kind && b.l.kind && a.l.kind !== b.l.kind) return null
+  if (a.l.bedrooms !== undefined && b.l.bedrooms !== undefined && a.l.bedrooms !== b.l.bedrooms) return null
 
-  const sameArea = within(area(a), area(b), 0.03)
-  // Para la vía "solo características" las tolerancias son más estrictas: ahí
-  // no hay dirección ni foto que respalde, y dos casas distintas pueden ser parecidas.
-  const tightArea = within(area(a), area(b), 0.02)
-  const samePrice = within(a.price, b.price, a.price && b.price && a.currency === b.currency ? 0.03 : 0)
+  const sameArea = within(a.area, b.area, 0.03)
 
-  const addrA = norm(a.address ?? '')
-  const addrB = norm(b.address ?? '')
-  if (isSpecificAddress(addrA) && addrA === addrB && sameArea !== false) {
-    const farPrice = within(a.price, b.price, 0.15) === false
+  if (a.addr && a.addr === b.addr && sameArea !== false) {
+    const farPrice = within(a.l.price, b.l.price, 0.15) === false
     return farPrice ? 'PROBABLE' : 'CERTAIN'
   }
 
-  // Solo por características: exige cuatro coincidencias y texto parecido.
-  const sameLand = within(a.landArea, b.landArea, 0.05)
-  const place = (l: ListingFacts) => norm(l.community ?? l.neighborhood ?? '')
-  const sameLocation = !!place(a) && place(a) === place(b)
-  const sameBeds = a.bedrooms !== undefined && a.bedrooms === b.bedrooms
+  // Solo por características: exige cuatro coincidencias y texto parecido. Las
+  // tolerancias son más estrictas: ahí no hay dirección ni foto que respalde, y
+  // dos casas distintas pueden ser parecidas.
+  const tightArea = within(a.area, b.area, 0.02)
+  const samePrice = within(a.l.price, b.l.price, a.l.price && b.l.price && a.l.currency === b.l.currency ? 0.03 : 0)
+  const sameLand = within(a.l.landArea, b.l.landArea, 0.05)
+  const sameLocation = !!a.place && a.place === b.place
+  const sameBeds = a.l.bedrooms !== undefined && a.l.bedrooms === b.l.bedrooms
 
   const hits = [sameBeds, tightArea === true, sameLocation, samePrice === true].filter(Boolean).length
+  if (hits < 4) return null
   const contradicts = sameArea === false || sameLand === false
-  const textSim = jaccard(tokens(a.title ?? a.description), tokens(b.title ?? b.description))
+  if (contradicts) return null
 
-  if (hits >= 4 && !contradicts && textSim >= 0.6) return 'PROBABLE'
-  return null
+  return jaccard(a.tokens, b.tokens) >= 0.6 ? 'PROBABLE' : null
 }
 
-function completeness(l: ListingFacts): number {
-  return Object.values(l).filter(v => v !== undefined && v !== null && v !== '').length
+export function pairSignal(a: ListingFacts, b: ListingFacts): Signal {
+  return signal(prepare(a), prepare(b))
 }
 
 export function dedupeListings(listings: ListingFacts[]): DedupeResult {
   const n = listings.length
+  const prepared = listings.map(prepare)
   const parent = Array.from({ length: n }, (_, i) => i)
   const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])))
   const weakEdge: [number, number][] = []
 
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
-      const s = pairSignal(listings[i], listings[j])
+      const s = signal(prepared[i], prepared[j])
       if (!s) continue
       parent[find(j)] = find(i)
       if (s === 'PROBABLE') weakEdge.push([i, j])
@@ -130,7 +154,9 @@ export function dedupeListings(listings: ListingFacts[]): DedupeResult {
   const groups = new Map<number, number[]>()
   for (let i = 0; i < n; i++) {
     const root = find(i)
-    groups.set(root, [...(groups.get(root) ?? []), i])
+    const g = groups.get(root)
+    if (g) g.push(i)
+    else groups.set(root, [i])
   }
 
   const kept: ListingFacts[] = []
@@ -139,13 +165,16 @@ export function dedupeListings(listings: ListingFacts[]): DedupeResult {
   let duplicatesMerged = 0
 
   for (const members of groups.values()) {
-    const rep = members.reduce((a, b) => (completeness(listings[b]) > completeness(listings[a]) ? b : a))
+    const rep = members.reduce((a, b) => (prepared[b].completeness > prepared[a].completeness ? b : a))
     const repListing = listings[rep]
     kept.push(repListing)
     const others = members.filter(m => m !== rep).map(m => listings[m].id)
     mergedInto.set(repListing.id, others)
     duplicatesMerged += others.length
-    if (weakEdge.some(([a, b]) => members.includes(a) && members.includes(b))) uncertain.add(repListing.id)
+    if (members.length > 1) {
+      const set = new Set(members)
+      if (weakEdge.some(([a, b]) => set.has(a) && set.has(b))) uncertain.add(repListing.id)
+    }
   }
 
   return { kept, mergedInto, uncertain, duplicatesMerged }

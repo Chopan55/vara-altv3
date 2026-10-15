@@ -24,6 +24,8 @@ export const CONFIDENCE_CONFIG = {
   minMedianSimilarity: 70,
   maxStaleShare: 0.5,
   maxDispersion: 0.35,
+  /** Desde acá el rango no sirve y la confianza es INSUFFICIENT. */
+  maxUsableDispersion: 1,
   maxUncertainDuplicateShare: 0.3,
 } as const
 
@@ -57,6 +59,12 @@ export function assessConfidence(input: ConfidenceInput, cfg = CONFIDENCE_CONFIG
         ? 'No hay avisos suficientemente parecidos.'
         : `Solo ${n} aviso${n > 1 ? 's' : ''} realmente comparable${n > 1 ? 's' : ''}; se necesitan al menos ${cfg.minUsable}.`,
     )
+    return { level: 'INSUFFICIENT', reasons }
+  }
+
+  // Una banda más ancha que su propia mediana no es una referencia: es ruido.
+  if (input.band && input.band.median > 0 && (input.band.high - input.band.low) / input.band.median > cfg.maxUsableDispersion) {
+    reasons.push('Los precios de los avisos son tan distintos entre sí que no forman una referencia.')
     return { level: 'INSUFFICIENT', reasons }
   }
 

@@ -13,6 +13,7 @@
  */
 
 import { detectAmenities, detectCommunity } from '../normalize'
+import { isPlausiblePrice } from '../priceIntelligence'
 import type { ListingFacts, PropertyCondition, PropertyKind } from '../types'
 
 export type ZonapropRecord = Record<string, unknown>
@@ -95,8 +96,10 @@ export function listingFromZonaprop(r: ZonapropRecord, observedAt: Date = new Da
   if (!url || !/^https:\/\/(www\.)?zonaprop\.com\.ar\//.test(url)) return null
   const id = postingId ? `zp-${postingId}` : `zp-${url}`
 
-  const price = pos(r.Precio)
+  const rawPrice = pos(r.Precio)
   const currency = currencyOf(r.Currency)
+  // "Consultar precio" llega a veces como USD 1: no es un precio de venta.
+  const price = rawPrice && isPlausiblePrice(rawPrice, currency) ? rawPrice : undefined
   const hasPrice = !!price && !!currency
   const title = str(r.Title)
   const address = str(r.address)

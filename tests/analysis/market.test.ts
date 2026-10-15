@@ -64,6 +64,30 @@ describe('registro de Zonaprop → ListingFacts', () => {
     expect(n.condition).toBe('new')
   })
 
+  it('"consultar precio" cargado como USD 1 no es un precio de venta', () => {
+    const l = listingFromZonaprop(rec({ Precio: 1 }), NOW)!
+    expect(l.price).toBeUndefined()
+    expect(l.priceProvenance).toBe('UNKNOWN')
+  })
+
+  it('un rango absurdo (precio de USD 1 más uno de USD 2 millones) no se convierte en referencia', async () => {
+    const bad = [1, 475000, 1980000].map((price, i) => ({
+      ...listingFromZonaprop(rec({
+        posting_id: `9200000${i}`, url: `https://www.zonaprop.com.ar/propiedades/clasificado/t-9200000${i}.html`,
+        Title: `Residencia ${['uno', 'dos', 'tres'][i]} distinta ${['norte', 'sur', 'este'][i]}`,
+        Imagenes: [`https://img.test/b/foto-${i}-yyyyyyyy.jpg`],
+      }), NOW)!,
+      price, currency: 'USD' as const, priceProvenance: 'ASKING_PRICE' as const,
+    }))
+    const a = await analyzeProperty({
+      scrape: scrape({ price: 650000, title: 'Casa 4 dormitorios en Comunidad Test Cc' }),
+      providers: [{ name: 'x', fetch: async () => bad }], now: NOW,
+    })
+    expect(a.pricePositioning.position).not.toBe('WITHIN')
+    const band = a.pricePositioning.comparableListingRange
+    if (band) expect(band.low).toBeGreaterThan(1000)
+  })
+
   it('sin moneda reconocida no hay precio comparable', () => {
     const l = listingFromZonaprop(rec({ Currency: 'EUR' }), NOW)!
     expect(l.price).toBeUndefined()
