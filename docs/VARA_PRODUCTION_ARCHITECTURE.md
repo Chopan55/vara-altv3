@@ -60,6 +60,7 @@ Hoy nada impide publicar con la CI en rojo: falta activar protección de rama en
 - Los buckets son privados; la base tiene seguridad por fila.
 - Las claves públicas de Supabase viajan al navegador por diseño. La clave secreta vive solo en el servidor y la usa únicamente la tabla de mercado.
 - `market_listings` no tiene política pública: solo el servidor la lee y la escribe. No guarda teléfonos ni datos de vendedores.
+- Son datos de terceros. El análisis necesita los de una zona, por eso `/api/v3/market` entrega hasta 300 avisos de la zona consultada, **sin coordenadas** y con un tope de 40 consultas por hora por IP (por instancia del servidor). Reduce la descarga en bloque pero no la impide: antes de salir a producción hace falta la revisión legal de los términos de Zonaprop y, si corresponde, mover la recuperación al servidor para entregar solo los comparables que se muestran.
 - El resumen que se manda a OpenAI no incluye datos de contacto, y la respuesta se descarta si nombra números que el análisis no tiene.
 
 ## 6. Dependencias críticas y qué pasa si fallan

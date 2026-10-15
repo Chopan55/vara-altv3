@@ -4,6 +4,21 @@ Solo lectura: no se migró ni se cambió nada. Evidencia medida contra el repo, 
 
 Clasificación: `CLOUD_PRODUCTION_READY` · `CLOUD_BUT_FRAGILE` · `LOCAL_DEPENDENCY` · `MISSING` · `UNKNOWN`.
 
+## Actualización (2026-10-15, al cierre del día)
+
+Lo que cambió desde la auditoría, sin migrar nada en producción:
+
+| Hallazgo | Estado |
+|---|---|
+| 1. Producción y desarrollo comparten Supabase | **Mitigado en la notebook:** el `.env.local` apunta a "VARA STAGING" (el proyecto que antes se llamaba ALT V3). Producción es "VARA MVP". Falta cargar las variables de Preview en Vercel. |
+| 2. Código solo en la notebook | **Resuelto:** `altv3`, `buy-wow-v3` y `feat/rentals-check` están en GitHub. |
+| 3. Mercado de V3 en disco local | **Resuelto en staging:** `market_listings` creada y con 358 avisos; el store usa Supabase si hay clave secreta. Producción todavía no tiene la tabla. |
+| 4. Sin staging | **Parcial:** existe el proyecto y el entorno local lo usa; faltan las variables de Preview en Vercel. |
+| 5. CI rota | **Resuelta en `buy-wow-v3`:** tipos, tests y build en verde en GitHub. Falta fusionarla a `master` y exigirla con protección de rama. |
+| 8. Sin monitoreo | **Parcial:** `/api/health` y etiquetado de entorno en los eventos. Falta error tracking y monitor externo. |
+
+Dato nuevo: **producción no tiene las migraciones de negociaciones ni la tabla de mercado**; el staging sí tiene el esquema completo.
+
 ## 1. Respuesta corta
 
 **¿Puede apagarse la notebook una semana?**

@@ -198,6 +198,38 @@ describe('cliente de Bright Data: protege el crédito y la clave', () => {
   })
 })
 
+describe('endpoint público de mercado: tope de uso y datos mínimos', () => {
+  it('no entrega coordenadas y corta cuando una IP pasa el tope', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'vara-market-route-'))
+    process.env.MARKET_DATA_DIR = dir
+    delete process.env.SUPABASE_SECRET_KEY
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY
+    try {
+      await createFileStore(dir).upsert([listingFromZonaprop(rec(), NOW)!], NOW)
+      const { GET, MARKET_RATE } = await import('@/app/api/v3/market/route')
+      const call = (ip: string) => GET(new Request('http://localhost/api/v3/market?city=Pilar', { headers: { 'x-forwarded-for': ip } }))
+
+      const first = await call('10.0.0.1')
+      const body = (await first.json()) as { listings: Record<string, unknown>[] }
+      expect(first.status).toBe(200)
+      expect(body.listings).toHaveLength(1)
+      expect(body.listings[0]).not.toHaveProperty('lat')
+      expect(body.listings[0]).not.toHaveProperty('lng')
+      expect(JSON.stringify(body)).not.toMatch(/5555|Seller|Phone/i)
+
+      for (let i = 1; i < MARKET_RATE.perHour; i++) await call('10.0.0.1')
+      const blocked = await call('10.0.0.1')
+      expect(blocked.status).toBe(429)
+      expect(blocked.headers.get('Retry-After')).toBeTruthy()
+
+      // Otra dirección no se ve afectada.
+      expect((await call('10.0.0.2')).status).toBe(200)
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true })
+    }
+  })
+})
+
 describe('de punta a punta con avisos de mercado', () => {
   it('los avisos barridos alimentan el análisis y el precio sale con confianza', async () => {
     const market = [480000, 495000, 505000, 515000, 520000, 530000].map((price, i) =>
