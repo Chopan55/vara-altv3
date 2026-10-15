@@ -9,6 +9,7 @@ import type { UserOverrides } from '@/lib/analysis/normalize'
 import type { NbaType, PropertyAnalysis } from '@/lib/analysis/types'
 import type { ProfileAnswers } from '@/lib/analysis/prefs'
 import type { BuyState } from './useBuyAnalysis'
+import { AskVara } from './AskVara'
 import { AddComparables, ProfilePrompt } from './Entry'
 import { ComparableList, EvidenceSummary } from './Evidence'
 import { CostSection, DetailSection, FitSection, GoodSection, MissingSection, RisksSection, Section } from './Sections'
@@ -201,6 +202,7 @@ export function ResultView({
         onAction={kind => actions.track('missing_data_action', { kind })}
       />
       <CostSection analysis={analysis} />
+      <AskVara analysis={analysis} onAsk={() => actions.track('missing_data_action', { kind: 'ask_vara' })} />
       <DetailSection analysis={analysis} />
 
       <div className="mt-12 rounded-2xl bg-slate-50 p-5 text-center">
