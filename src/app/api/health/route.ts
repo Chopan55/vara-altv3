@@ -4,7 +4,7 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { resolveAppEnv } from '@/lib/config/env'
 import { checkAi, checkDatabase, checkMarket, evaluateHealth } from '@/lib/health'
-import { getMarketStore } from '@/lib/analysis/market/store'
+import { getMarketStore } from '@/lib/analysis/market'
 
 /**
  * ¿Está viva VARA? Pensado para un monitor de disponibilidad externo.

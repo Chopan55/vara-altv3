@@ -135,9 +135,3 @@ export function createFileStore(dir: string): MarketStore {
     },
   }
 }
-
-let shared: MarketStore | null = null
-export function getMarketStore(): MarketStore {
-  shared ??= createFileStore(process.env.MARKET_DATA_DIR ?? path.join(process.cwd(), '.data', 'market'))
-  return shared
-}

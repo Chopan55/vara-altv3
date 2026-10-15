@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server'
 import {
   BrightDataError, downloadSweep, startSweep, sweepProgress, SWEEP_LIMITS,
 } from '@/lib/analysis/market/brightdata'
-import { getMarketStore } from '@/lib/analysis/market/store'
+import { getMarketStore } from '@/lib/analysis/market'
 import { listingsFromZonaprop } from '@/lib/analysis/market/zonaprop'
 import { log } from '@/lib/observability/logger'
 

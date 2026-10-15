@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { getMarketStore } from '@/lib/analysis/market/store'
+import { getMarketStore } from '@/lib/analysis/market'
 
 /**
  * Avisos de mercado de una zona, ya barridos y guardados.
