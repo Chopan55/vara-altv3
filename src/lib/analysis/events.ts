@@ -9,6 +9,7 @@
  * su cuenta, es la mejor evidencia de que VARA aportó valor.
  */
 
+import { clientAppEnv, type AppEnv } from '@/lib/config/env'
 import { log } from '@/lib/observability/logger'
 
 export type EventName =
@@ -20,6 +21,8 @@ export type EventName =
 export interface AnalyticsEvent {
   name: EventName
   sessionId: string
+  /** Entorno donde ocurrió. Las métricas para inversores salen solo de 'production'. */
+  env?: AppEnv
   at: string
   props?: Record<string, string | number | boolean | null>
 }
@@ -40,12 +43,21 @@ export function track(
   props?: AnalyticsEvent['props'],
   now: Date = new Date(),
 ): AnalyticsEvent {
-  const event: AnalyticsEvent = { name, sessionId, at: now.toISOString(), props }
+  const event: AnalyticsEvent = { name, sessionId, env: clientAppEnv(), at: now.toISOString(), props }
   try { sink(event) } catch { /* la analítica nunca rompe el producto */ }
   return event
 }
 
 // ───────────────────────── Funnel y métricas ─────────────────────────
+
+/**
+ * Tracción real: solo eventos de producción. Los de desarrollo, staging, demos
+ * y los que no se pudo ubicar (`unknown` o sin etiqueta) quedan afuera, para
+ * que ninguna prueba se cuente como un usuario.
+ */
+export function productionOnly(events: AnalyticsEvent[]): AnalyticsEvent[] {
+  return events.filter(e => e.env === 'production')
+}
 
 export const FUNNEL_STEPS: EventName[] = [
   'listing_submitted', 'first_insight_shown', 'analysis_completed',
