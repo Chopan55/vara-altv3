@@ -107,6 +107,47 @@ export async function sweepProgress(cfg: BrightDataConfig, snapshotId: string): 
   return { status: j.status === 'starting' || j.status === 'building' ? j.status : 'running' }
 }
 
+export interface SweepSummary {
+  id: string
+  status: string
+  createdAt: string
+}
+
+/** Barridos ya hechos del dataset de Zonaprop, del más nuevo al más viejo. */
+export async function listSweeps(cfg: BrightDataConfig): Promise<SweepSummary[]> {
+  const res = await call(cfg, `/snapshots?dataset_id=${ZONAPROP_DATASET_ID}`)
+  const json = (await res.json()) as unknown
+  const rows = Array.isArray(json) ? json : []
+  return rows
+    .filter((r): r is { id: string; status: string; created: string } =>
+      !!r && typeof r.id === 'string' && /^sd_[A-Za-z0-9]+$/.test(r.id) && typeof r.created === 'string')
+    .map(r => ({ id: r.id, status: String(r.status), createdAt: r.created }))
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+}
+
+export type CronDecision =
+  | { action: 'start' }
+  | { action: 'ingest'; snapshotId: string }
+  | { action: 'wait'; snapshotId: string }
+  | { action: 'idle' }
+
+/**
+ * Qué hace la corrida programada, sin guardar estado: el ingreso es idempotente
+ * (upsert por aviso), así que alcanza mirar el último barrido.
+ *  - sin barrido en los últimos `everyDays` días, o el último falló → iniciar uno;
+ *  - el último está en curso → esperar;
+ *  - el último está listo y tiene menos de 2 días → ingresarlo (repetirlo no duplica);
+ *  - el último está listo y es más viejo → nada que hacer hasta que toque el próximo.
+ */
+export function decideCronAction(sweeps: SweepSummary[], now: Date, everyDays = 7): CronDecision {
+  const latest = sweeps[0]
+  const ageDays = latest ? (now.getTime() - Date.parse(latest.createdAt)) / 86_400_000 : Infinity
+  if (!latest || !Number.isFinite(ageDays) || ageDays >= everyDays) return { action: 'start' }
+  if (latest.status === 'failed') return { action: 'start' }
+  if (latest.status !== 'ready') return { action: 'wait', snapshotId: latest.id }
+  return ageDays < 2 ? { action: 'ingest', snapshotId: latest.id } : { action: 'idle' }
+}
+
 export async function downloadSweep(cfg: BrightDataConfig, snapshotId: string): Promise<ZonapropRecord[]> {
   if (!/^sd_[A-Za-z0-9]+$/.test(snapshotId)) throw new BrightDataError('Id de barrido inválido.')
   const res = await call(cfg, `/snapshot/${snapshotId}?format=json`)
