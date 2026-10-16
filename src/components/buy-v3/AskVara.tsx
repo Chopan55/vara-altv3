@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, Send } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Send } from 'lucide-react'
 import { buildBrief } from '@/lib/analysis/brief'
 import type { PropertyAnalysis } from '@/lib/analysis/types'
 import { Section } from './Sections'
@@ -110,8 +110,9 @@ export function AskVara({ analysis, onAsk }: { analysis: PropertyAnalysis; onAsk
           <p className="font-medium text-slate-800">
             {avatarState === 'thinking' ? 'Pensando…' : avatarState === 'speaking' ? 'Te cuento…' : 'Estoy lista. ¿Qué querés saber?'}
           </p>
-          <button type="button" onClick={toggleAvatar}
-            className="mt-1 text-xs text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline">
+          <button type="button" onClick={toggleAvatar} aria-pressed={!showAvatar}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50">
+            {showAvatar ? <EyeOff size={13} /> : <Eye size={13} />}
             {showAvatar ? 'Ocultar avatar' : 'Mostrar avatar'}
           </button>
         </div>

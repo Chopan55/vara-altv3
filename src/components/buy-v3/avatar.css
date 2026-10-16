@@ -59,8 +59,13 @@
   95% { transform: translate(-50%, -50%) scaleY(1) }
 }
 
-/* Quien pide menos movimiento ve el avatar quieto */
+/* "Reducir movimiento": se apagan los movimientos grandes (flotar, inclinarse, girar, pulsar).
+   Quedan los suaves, que no molestan: respirar, parpadear y la boca al hablar. */
 @media (prefers-reduced-motion: reduce) {
-  .vara-avatar *, .vara-avatar { animation: none !important; }
-  .vara-avatar__ring, .vara-avatar__mouth { display: none; }
+  .vara-avatar__float,
+  .vara-avatar[data-state='thinking'] .vara-avatar__float,
+  .vara-avatar[data-state='thinking'] .vara-avatar__ring,
+  .vara-avatar[data-state='speaking'] .vara-avatar__body { animation: none !important; }
+  .vara-avatar__body { animation-duration: 6s; }
+  .vara-avatar[data-state='thinking'] .vara-avatar__ring { opacity: .55; }
 }
