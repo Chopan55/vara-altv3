@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Shield, Zap, TrendingUp, CheckCircle2, ChevronRight, Sparkles, Globe, FileText, BarChart3, ArrowRight } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
+import { VaraVisitLogo } from '@/components/ui/VaraVisitLogo'
 import { HeroInteractive } from '@/components/home/HeroInteractive'
 
 const risks = [
@@ -74,8 +75,14 @@ export default function LandingPage() {
               <Sparkles size={12} className="text-brand-500" /> Labs
             </Link>
             <Link href="/dashboard" className="hover:text-slate-900 transition-colors">Demo</Link>
+            <Link href="/vara-visit" className="flex items-center gap-1.5 font-semibold text-teal-700 hover:text-teal-900 transition-colors">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-600" aria-hidden="true" /> VARA Visit
+            </Link>
           </nav>
           <div className="flex items-center gap-3">
+            <Link href="/partner/entrar" className="hidden lg:inline text-sm font-medium text-teal-700 hover:text-teal-900 transition-colors">
+              Soy Visit Partner
+            </Link>
             <Link href="/login" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">
               Entrar
             </Link>
@@ -341,6 +348,33 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* VARA Visit: otra puerta del producto, con su propia cara y su propio acceso. */}
+      <section className="px-5 pb-24">
+        <div
+          className="max-w-5xl mx-auto rounded-2xl p-8 md:p-12 text-white grid md:grid-cols-[1.2fr_1fr] gap-8 items-center"
+          style={{ background: 'linear-gradient(160deg,#0b3f3c 0%,#115e59 55%,#0f766e 100%)' }}
+        >
+          <div>
+            <VaraVisitLogo size={44} tone="light" href="/vara-visit" />
+            <h2 className="mt-5 text-2xl md:text-3xl font-black leading-tight text-balance">
+              ¿No podés ir a ver la propiedad? Que vaya alguien con respaldo.
+            </h2>
+            <p className="mt-3 text-teal-100 text-sm md:text-base leading-relaxed">
+              Una persona de la red de VARA Visit muestra o acompaña la visita. Empieza con un PIN que le das vos, hace un
+              checklist y te deja un reporte de lo que vio.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <Link href="/vara-visit" className="bg-white text-teal-800 font-black px-6 py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-teal-50 transition-colors">
+              Quiero que me acompañen <ArrowRight size={15} />
+            </Link>
+            <Link href="/partner/entrar" className="bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3.5 rounded-xl border border-white/25 transition-colors text-center">
+              Soy Visit Partner
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-slate-100 px-5 py-8 bg-white">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
@@ -350,6 +384,8 @@ export default function LandingPage() {
             <Link href="/vara-labs" className="hover:text-slate-700 transition-colors">Labs</Link>
             <Link href="/dashboard" className="hover:text-slate-700 transition-colors">Explorar</Link>
             <Link href="/costos" className="hover:text-slate-700 transition-colors">Costos</Link>
+            <Link href="/vara-visit" className="hover:text-slate-700 transition-colors">VARA Visit</Link>
+            <Link href="/partner/entrar" className="hover:text-slate-700 transition-colors">Visit Partners</Link>
           </div>
         </div>
       </footer>

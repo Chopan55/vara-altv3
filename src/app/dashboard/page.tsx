@@ -15,6 +15,7 @@ import { GuidanceBanner } from '@/components/guidance/GuidanceBanner'
 import { loadUserProperties, type UserProperty } from '@/lib/userProperties'
 import type { UserOperationSummary, Transaction } from '@/types'
 import { computeNextActions, primaryAction, CATEGORY_LABELS } from '@/lib/nba/engine'
+import { NextStepAgent } from '@/components/operation/NextStepAgent'
 import {
   fetchSellerTasks, toggleSellerTask, setSellerTaskDueDate,
   type SellerTaskState,
@@ -637,6 +638,31 @@ function OperationCard({ op, isActive, onSelect, getTransactionData, onDelete, i
  * Todo lo que muestra sale de las operaciones reales del usuario. Si no hay nada
  * pendiente, lo dice; no llenamos la columna con avisos inventados.
  */
+type GlobalAlert = ReturnType<typeof useGlobalNextBestAction>[number]
+
+/**
+ * Una fila por TIPO de aviso, no por operación. Con varias operaciones en el mismo
+ * estado (y el mismo nombre por defecto), listarlas una por una repetía la misma
+ * línea seis veces sin decir nada nuevo.
+ */
+function groupAlerts(alerts: GlobalAlert[]) {
+  const groups = new Map<string, { label: string; severity: GlobalAlert['severity']; items: GlobalAlert[] }>()
+  for (const a of alerts) {
+    const g = groups.get(a.label) ?? { label: a.label, severity: a.severity, items: [] }
+    g.items.push(a)
+    if (a.severity === 'HIGH') g.severity = 'HIGH'
+    groups.set(a.label, g)
+  }
+  return [...groups.values()].sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'HIGH' ? -1 : 1))
+}
+
+/** "Mi compra ×3 · Mi venta": agrupa los nombres repetidos en vez de repetirlos. */
+function summarizeTitles(titles: string[]): string {
+  const counts = new Map<string, number>()
+  for (const title of titles) counts.set(title, (counts.get(title) ?? 0) + 1)
+  return [...counts].map(([title, n]) => (n > 1 ? `${title} ×${n}` : title)).join(' · ')
+}
+
 function RightRail({
   alerts,
   operations,
@@ -654,7 +680,7 @@ function RightRail({
    * Sin fechas: el modelo de tareas no las tiene e inventarlas seria peor que
    * no mostrarlas.
    */
-  const nextSteps = operations
+  const allSteps = operations
     .flatMap(op => {
       const txn = getTransactionData(op.id)
       if (!txn) return []
@@ -663,16 +689,31 @@ function RightRail({
         .map(action => ({ opTitle: op.title, action }))
     })
     .sort((a, b) => a.action.priority - b.action.priority)
-    .slice(0, 4)
+
+  // Un paso por acción, no por operación: varias compras en el mismo punto pedían
+  // "Conseguí escritura anterior" una vez cada una, y las claves de React chocaban.
+  const stepsByAction = new Map<string, { action: (typeof allSteps)[number]['action']; titles: string[] }>()
+  for (const { opTitle, action } of allSteps) {
+    const found = stepsByAction.get(action.id)
+    if (found) found.titles.push(opTitle)
+    else stepsByAction.set(action.id, { action, titles: [opTitle] })
+  }
+  const nextSteps = [...stepsByAction.values()].slice(0, 4)
+
+  const alertGroups = groupAlerts(alerts)
+  const hasUrgent = alertGroups.some(g => g.severity === 'HIGH')
 
   return (
     <aside className="space-y-4 lg:sticky lg:top-20">
       <section className="rounded-2xl bg-white border border-slate-200/70 shadow-card p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-bold text-slate-900">Qué requiere atención hoy</h2>
-          {alerts.length > 0 && (
-            <span className="rounded-full bg-red-50 text-red-600 text-[10px] font-bold w-5 h-5 flex items-center justify-center">
-              {alerts.length}
+          {alertGroups.length > 0 && (
+            <span className={cn(
+              'rounded-full text-[10px] font-bold w-5 h-5 flex items-center justify-center',
+              hasUrgent ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700',
+            )}>
+              {alertGroups.length}
             </span>
           )}
         </div>
@@ -684,26 +725,33 @@ function RightRail({
           </div>
         ) : (
           <ul className="space-y-1.5">
-            {alerts.map((alert, i) => (
-              <li key={i}>
-                <Link
-                  href={`/operacion/${alert.operationId}`}
-                  className="flex items-start gap-2.5 rounded-xl px-3 py-2.5 hover:bg-slate-50 transition-colors"
-                >
-                  <AlertTriangle size={13} className="text-red-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-slate-800 truncate">{alert.title}</p>
-                    <p className="text-[11px] text-slate-500">{alert.label}</p>
-                  </div>
-                  <span className={cn(
-                    'flex-shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold',
-                    alert.severity === 'HIGH' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'
-                  )}>
-                    {alert.severity === 'HIGH' ? 'Urgente' : 'Media'}
-                  </span>
-                </Link>
-              </li>
-            ))}
+            {alertGroups.map(group => {
+              const urgent = group.severity === 'HIGH'
+              return (
+                <li key={group.label}>
+                  <Link
+                    href={`/operacion/${group.items[0].operationId}`}
+                    className="flex items-start gap-2.5 rounded-xl px-3 py-2.5 hover:bg-slate-50 transition-colors"
+                  >
+                    <AlertTriangle
+                      size={13}
+                      className={cn('flex-shrink-0 mt-0.5', urgent ? 'text-red-500' : 'text-amber-500')}
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-slate-800">{group.label}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{summarizeTitles(group.items.map(i => i.title))}</p>
+                    </div>
+                    <span className={cn(
+                      'flex-shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold',
+                      urgent ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700',
+                    )}>
+                      {urgent ? 'Urgente' : 'Pendiente'}
+                    </span>
+                  </Link>
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>
@@ -714,8 +762,8 @@ function RightRail({
           <p className="text-xs text-slate-500">Cuando avances en la operación, acá aparece lo que sigue.</p>
         ) : (
           <ul className="space-y-0.5">
-            {nextSteps.map(({ opTitle, action }) => (
-              <li key={`${opTitle}-${action.id}`}>
+            {nextSteps.map(({ titles, action }) => (
+              <li key={action.id}>
                 <Link
                   href={action.cta.href}
                   className="flex items-start gap-2.5 rounded-xl px-2 py-2 hover:bg-slate-50 transition-colors"
@@ -728,7 +776,7 @@ function RightRail({
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium text-slate-800 leading-snug">{action.title}</p>
                     <p className="text-[11px] text-slate-400 truncate">
-                      {opTitle} · {CATEGORY_LABELS[action.category]}
+                      {summarizeTitles(titles)} · {CATEGORY_LABELS[action.category]}
                     </p>
                   </div>
                 </Link>
@@ -921,43 +969,15 @@ export default function Dashboard() {
         {(() => {
           const firstTxn = operations[0] ? getTransactionData(operations[0].id) : null
           const action = primaryAction({ transaction: firstTxn ?? null })
-          if (!action || action.id === 'no_operation') return null
+          if (!action || action.id === 'no_operation' || !operations[0]) return null
           return (
-            <div className={cn(
-              'rounded-2xl p-4 flex items-start gap-3',
-              action.blocking ? 'bg-red-50 border border-red-100' : 'bg-brand-50 border border-brand-100'
-            )}>
-              <div className={cn(
-                'w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0',
-                action.blocking ? 'bg-red-100' : 'bg-brand-100'
-              )}>
-                <Zap size={16} className={action.blocking ? 'text-red-600' : 'text-brand-600'} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={cn('text-[10px] font-bold uppercase tracking-widest mb-0.5', action.blocking ? 'text-red-400' : 'text-brand-400')}>
-                  {CATEGORY_LABELS[action.category]}
-                </p>
-                <p className={cn('text-sm font-bold leading-tight', action.blocking ? 'text-red-800' : 'text-slate-900')}>
-                  {action.title}
-                </p>
-                {action.why && (
-                  <p className={cn('text-xs mt-0.5 leading-relaxed', action.blocking ? 'text-red-600' : 'text-slate-500')}>
-                    {action.why}
-                  </p>
-                )}
-              </div>
-              <Link
-                href={action.cta.href}
-                className={cn(
-                  'flex-shrink-0 text-xs font-bold px-3 py-2 rounded-xl transition-colors',
-                  action.blocking
-                    ? 'bg-red-100 hover:bg-red-200 text-red-700'
-                    : 'bg-brand-100 hover:bg-brand-200 text-brand-700'
-                )}
-              >
-                {action.cta.label}
-              </Link>
-            </div>
+            <NextStepAgent
+              key={`${operations[0].id}-${action.id}`}
+              action={action}
+              operationId={operations[0].id}
+              kind={operations[0].type === 'SELL' ? 'SELL' : 'BUY'}
+              province={operations[0].province}
+            />
           )
         })()}
 
@@ -967,26 +987,8 @@ export default function Dashboard() {
         {/* NOVEDADES — qué cambió desde la última visita (milestones de activity_events) */}
         {activeOperationId && <NovedadesWidget operationId={activeOperationId} />}
 
-        {/* GLOBAL NBA — alertas cross-operación */}
-        {globalAlerts.length > 0 && (
-          <div className="bg-red-50 border border-red-100 rounded-2xl p-4 space-y-1.5">
-            <div className="flex items-center gap-2 mb-1">
-              <ShieldAlert size={13} className="text-red-500" />
-              <p className="text-xs font-bold text-red-700 uppercase tracking-wide">Alertas en tus operaciones</p>
-            </div>
-            {globalAlerts.map((alert, i) => (
-              <div key={i} className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <AlertTriangle size={11} className="text-red-500 flex-shrink-0" />
-                  <p className="text-xs text-red-700 truncate"><span className="font-semibold">{alert.title}:</span> {alert.label}</p>
-                </div>
-                <Link href={`/operacion/${alert.operationId}`} className="text-xs font-semibold text-red-600 hover:underline flex-shrink-0">
-                  Resolver →
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Las alertas entre operaciones viven solo en el panel "Qué requiere atención hoy".
+            Antes también estaban acá, en rojo: la misma lista dos veces en la misma pantalla. */}
 
         {/* Con operaciones propias siempre mostramos la lista: ahí vive el botón de borrar. */}
         {(operations.length > 1 || !usingDemo) && (

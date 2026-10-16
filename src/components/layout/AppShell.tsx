@@ -7,14 +7,14 @@ import {
   MessageSquare, Eye, Share2,
   ChevronLeft, ChevronRight, Menu, X, Inbox,
   LogIn, LogOut, BookOpen, Search, Plus, Sparkles,
-  ShieldAlert, Users, Landmark, Tag, MapPin, CalendarCheck, Briefcase,
+  ShieldAlert, Users, Landmark, Tag, MapPin, CalendarCheck,
   ClipboardCheck, Zap, BarChart2,
 } from 'lucide-react'
 import { tryCreateClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { useVaraState } from '@/hooks/useVaraState'
-import { GuiameButton } from '@/components/guidance/GuiameButton'
+import { GuiameButton, GuiameTrigger } from '@/components/guidance/GuiameButton'
 import { VaraAIFloat } from '@/components/ai/VaraAIFloat'
 
 const NO_SHELL = new Set(['/', '/onboarding', '/login'])
@@ -204,21 +204,9 @@ function SidebarContent({
         </Link>
       </div>
 
-      {/* El portal del partner es otra cara del producto, no otra sección de esta.
-          Va discreto: la mayoría de los usuarios son clientes, no partners. */}
-      {!collapsed && (
-        <div className="px-3 pb-1">
-          <Link
-            href="/partner"
-            onClick={onClose}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-          >
-            <Briefcase size={12} className="flex-shrink-0 text-slate-400" aria-hidden="true" />
-            Soy Visit Partner
-          </Link>
-        </div>
-      )}
-
+      {/* El portal del Visit Partner NO está en este menú: es otra cara del producto
+          y entra por la pantalla de login, no desde adentro de la cuenta de quien
+          compra o vende. */}
       <AuthFooter collapsed={collapsed} userName={userName} />
     </div>
   )
@@ -319,7 +307,14 @@ function AuthFooter({ collapsed, userName }: { collapsed: boolean; userName: str
  * tiene un índice real para buscar; prometer un buscador global que no busca
  * nada sería peor que no tenerlo.
  */
-function TopBar({ onOpenDrawer, journey }: { onOpenDrawer: () => void; journey: JourneyType }) {
+function TopBar({
+  onOpenDrawer, journey, guiaOpen, onToggleGuia,
+}: {
+  onOpenDrawer: () => void
+  journey: JourneyType
+  guiaOpen: boolean
+  onToggleGuia: () => void
+}) {
   const router = useRouter()
   const [q, setQ] = useState('')
 
@@ -350,6 +345,9 @@ function TopBar({ onOpenDrawer, journey }: { onOpenDrawer: () => void; journey: 
         />
       </form>
 
+      <div className="ml-auto flex items-center gap-2">
+      <GuiameTrigger expanded={guiaOpen} onClick={onToggleGuia} />
+
       <Link
         href={journey === 'SELL' ? '/publicar' : '/propiedades'}
         className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 px-3.5 py-2 text-sm font-semibold text-white transition-colors"
@@ -357,6 +355,7 @@ function TopBar({ onOpenDrawer, journey }: { onOpenDrawer: () => void; journey: 
         <Plus size={15} />
         {journey === 'SELL' ? 'Mi propiedad' : 'Agregar propiedad'}
       </Link>
+      </div>
     </header>
   )
 }
@@ -366,16 +365,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const vara = useVaraState()
   const [collapsed, setCollapsed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [guiaMenuOpen, setGuiaMenuOpen] = useState(false)
 
   const journey: JourneyType = vara.journeyType === 'SELL_PROPERTY' ? 'SELL' : 'BUY'
 
   useEffect(() => {
     setDrawerOpen(false)
+    setGuiaMenuOpen(false)
   }, [pathname])
 
   // Visit Mode ocupa la pantalla entera: el partner lo usa parado en la puerta
   // de una casa, con una mano. Un sidebar ahi seria un estorbo.
-  if (NO_SHELL.has(pathname) || pathname.startsWith('/visit/')) {
+  // El portal de partners (/partner) tampoco usa el menú del comprador o vendedor:
+  // es otra puerta, con su propia barra (ver app/partner/layout.tsx).
+  if (NO_SHELL.has(pathname) || pathname.startsWith('/visit/') || pathname.startsWith('/partner')) {
     return <>{children}</>
   }
 
@@ -437,13 +440,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <TopBar onOpenDrawer={() => setDrawerOpen(true)} journey={journey} />
+        <TopBar
+          onOpenDrawer={() => setDrawerOpen(true)}
+          journey={journey}
+          guiaOpen={guiaMenuOpen}
+          onToggleGuia={() => setGuiaMenuOpen(o => !o)}
+        />
 
         <main id="main-content" className="flex-1 min-w-0">
           {children}
         </main>
 
-        <GuiameButton />
+        <GuiameButton menuOpen={guiaMenuOpen} onMenuOpenChange={setGuiaMenuOpen} />
         <VaraAIFloat />
       </div>
     </div>
