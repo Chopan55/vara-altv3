@@ -172,6 +172,9 @@ export function ResultView({
         </p>
       )}
 
+      {/* VARA con su avatar, a la vista apenas termina el análisis (solo si la IA está habilitada) */}
+      <AskVara analysis={analysis} onAsk={() => actions.track('missing_data_action', { kind: 'ask_vara' })} />
+
       <Section title="La evidencia" hint="Podés abrir cada aviso y discutir la conclusión.">
         <EvidenceSummary analysis={analysis} />
         <ComparableList
@@ -202,7 +205,6 @@ export function ResultView({
         onAction={kind => actions.track('missing_data_action', { kind })}
       />
       <CostSection analysis={analysis} />
-      <AskVara analysis={analysis} onAsk={() => actions.track('missing_data_action', { kind: 'ask_vara' })} />
       <DetailSection analysis={analysis} />
 
       <div className="mt-12 rounded-2xl bg-slate-50 p-5 text-center">
