@@ -4,11 +4,10 @@ export const maxDuration = 30
 
 import OpenAI from 'openai'
 import { NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { sanitizeBrief } from '@/lib/analysis/brief'
 import { explainAnalysis, openAiModelClient, sanitizeMessages } from '@/lib/analysis/explain'
-import { AI_LIMITS, createRateLimiter, isAiAllowed } from '@/lib/analysis/aiAccess'
+import { AI_LIMITS, createRateLimiter } from '@/lib/analysis/aiAccess'
+import { allowedUser } from '@/lib/analysis/aiSession'
 import { log } from '@/lib/observability/logger'
 
 /**
@@ -18,26 +17,6 @@ import { log } from '@/lib/observability/logger'
 
 const perUser = createRateLimiter(AI_LIMITS.perUserPerHour, 60 * 60 * 1000)
 const global = createRateLimiter(AI_LIMITS.globalPerDay, 24 * 60 * 60 * 1000)
-
-async function sessionEmail(): Promise<{ id: string; email: string } | null> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-  if (!url || !key) return null
-  try {
-    const store = await cookies()
-    const supabase = createServerClient(url, key, { cookies: { getAll: () => store.getAll(), setAll: () => {} } })
-    const { data: { user } } = await supabase.auth.getUser()
-    return user?.email ? { id: user.id, email: user.email } : null
-  } catch {
-    return null
-  }
-}
-
-async function allowedUser() {
-  if (!process.env.OPENAI_API_KEY) return null
-  const user = await sessionEmail()
-  return user && isAiAllowed(user.email, process.env.AI_ALLOWED_EMAILS) ? user : null
-}
 
 /** La pantalla pregunta primero si la IA está disponible para no mostrar un botón roto. */
 export async function GET() {

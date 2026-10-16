@@ -1,5 +1,6 @@
 'use client'
 
+import type { Ref } from 'react'
 import Image from 'next/image'
 import './avatar.css'
 
@@ -10,9 +11,16 @@ export type AvatarState = 'idle' | 'thinking' | 'speaking'
  * muestra si VARA está quieta, pensando o hablando. Mostrarlo u ocultarlo lo decide
  * quien usa la app.
  */
-export function VaraAvatar({ state = 'idle', size = 88 }: { state?: AvatarState; size?: number }) {
+export function VaraAvatar({ state = 'idle', size = 88, lipsync = false, rootRef }: {
+  state?: AvatarState
+  size?: number
+  /** La boca sigue la variable CSS `--vara-level` (0..1), que actualiza quien reproduce el audio. */
+  lipsync?: boolean
+  rootRef?: Ref<HTMLSpanElement>
+}) {
   return (
-    <span className="vara-avatar" data-state={state} style={{ width: size, height: size }} aria-hidden="true">
+    <span ref={rootRef} className="vara-avatar" data-state={state} data-lipsync={lipsync}
+      style={{ width: size, height: size }} aria-hidden="true">
       <span className="vara-avatar__ring" />
       <span className="vara-avatar__float block">
         <span className="vara-avatar__body block">

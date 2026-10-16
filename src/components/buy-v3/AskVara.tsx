@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Eye, EyeOff, Loader2, Send } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Eye, EyeOff, Loader2, Send, Volume2, VolumeX } from 'lucide-react'
 import { buildBrief } from '@/lib/analysis/brief'
 import type { PropertyAnalysis } from '@/lib/analysis/types'
 import { Section } from './Sections'
 import { VaraAvatar, type AvatarState } from './VaraAvatar'
+import { useVaraVoice } from './useVaraVoice'
 
 interface Msg { role: 'user' | 'assistant'; content: string }
 
@@ -42,10 +43,21 @@ export function AskVara({ analysis, onAsk }: { analysis: PropertyAnalysis; onAsk
   const [showAvatar, setShowAvatar] = useState(true)
   // Cuántos caracteres de la última respuesta ya se mostraron (VARA "habla" mientras se completa).
   const [revealed, setRevealed] = useState<number | null>(null)
+  // Voz: mientras suena el audio, la boca del avatar sigue su volumen (variable CSS --vara-level).
+  const [playing, setPlaying] = useState(false)
+  const avatarRef = useRef<HTMLSpanElement>(null)
+  const setLevel = useCallback((v: number) => { avatarRef.current?.style.setProperty('--vara-level', v.toFixed(3)) }, [])
+  const voice = useVaraVoice(setLevel)
 
   useEffect(() => {
     try { if (localStorage.getItem(AVATAR_KEY) === 'off') setShowAvatar(false) } catch { /* sin storage */ }
   }, [])
+
+  const toggleVoice = () => {
+    voice.toggle()
+    setPlaying(false)
+    setRevealed(null)
+  }
 
   const toggleAvatar = () => {
     const next = !showAvatar
@@ -54,14 +66,16 @@ export function AskVara({ analysis, onAsk }: { analysis: PropertyAnalysis; onAsk
   }
 
   const last = messages[messages.length - 1]
-  const speaking = revealed !== null && last?.role === 'assistant' && revealed < last.content.length
+  const textRevealing = revealed !== null && last?.role === 'assistant' && revealed < last.content.length
+  const speaking = playing || textRevealing
   const avatarState: AvatarState = loading ? 'thinking' : speaking ? 'speaking' : 'idle'
 
   useEffect(() => {
-    if (revealed === null || !last || last.role !== 'assistant' || revealed >= last.content.length) return
+    // Con audio, el texto avanza al ritmo de la voz; el temporizador es solo para cuando no hay audio.
+    if (playing || revealed === null || !last || last.role !== 'assistant' || revealed >= last.content.length) return
     const t = setTimeout(() => setRevealed(r => (r === null ? r : r + REVEAL_STEP)), 28)
     return () => clearTimeout(t)
-  }, [revealed, last])
+  }, [revealed, last, playing])
 
   useEffect(() => {
     let alive = true
@@ -92,8 +106,19 @@ export function AskVara({ analysis, onAsk }: { analysis: PropertyAnalysis; onAsk
       })
       const j = (await res.json()) as { reply?: string; error?: string }
       if (res.status === 403) setEnabled(false)
-      setMessages(m => [...m, { role: 'assistant', content: j.reply ?? j.error ?? 'No pude responder ahora.' }])
-      setRevealed(reducedMotion() ? null : 0)
+      const reply = j.reply ?? j.error ?? 'No pude responder ahora.'
+      // El audio se pide ANTES de mostrar la respuesta, así texto y voz arrancan juntos.
+      const prepared = voice.voiceOn && res.ok && j.reply ? await voice.prepare(j.reply) : null
+      setMessages(m => [...m, { role: 'assistant', content: reply }])
+      setRevealed(0)
+      const started = prepared
+        ? await prepared.start({
+            onStart: () => setPlaying(true),
+            onProgress: p => setRevealed(Math.floor(reply.length * p)),
+            onEnd: () => { setPlaying(false); setRevealed(null) },
+          })
+        : false
+      if (!started) setRevealed(reducedMotion() ? null : 0)
     } catch {
       setMessages(m => [...m, { role: 'assistant', content: 'No pude conectarme. Probá de nuevo.' }])
       setRevealed(null)
@@ -105,16 +130,23 @@ export function AskVara({ analysis, onAsk }: { analysis: PropertyAnalysis; onAsk
   return (
     <Section title="Preguntale a VARA" hint="Responde solo con lo que está en este análisis. Si algo no se sabe, te lo dice.">
       <div className="mb-4 flex items-center gap-4">
-        {showAvatar && <VaraAvatar state={avatarState} size={88} />}
+        {showAvatar && <VaraAvatar state={avatarState} size={88} lipsync={playing} rootRef={avatarRef} />}
         <div className="min-w-0 flex-1 text-sm text-slate-600" aria-live="polite">
           <p className="font-medium text-slate-800">
             {avatarState === 'thinking' ? 'Pensando…' : avatarState === 'speaking' ? 'Te cuento…' : 'Estoy lista. ¿Qué querés saber?'}
           </p>
-          <button type="button" onClick={toggleAvatar} aria-pressed={!showAvatar}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50">
-            {showAvatar ? <EyeOff size={13} /> : <Eye size={13} />}
-            {showAvatar ? 'Ocultar avatar' : 'Mostrar avatar'}
-          </button>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" onClick={toggleAvatar} aria-pressed={!showAvatar}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50">
+              {showAvatar ? <EyeOff size={13} /> : <Eye size={13} />}
+              {showAvatar ? 'Ocultar avatar' : 'Mostrar avatar'}
+            </button>
+            <button type="button" onClick={toggleVoice} aria-pressed={!voice.voiceOn}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50">
+              {voice.voiceOn ? <VolumeX size={13} /> : <Volume2 size={13} />}
+              {voice.voiceOn ? 'Silenciar voz' : 'Activar voz'}
+            </button>
+          </div>
         </div>
       </div>
 

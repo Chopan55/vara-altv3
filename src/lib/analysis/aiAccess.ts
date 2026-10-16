@@ -39,4 +39,7 @@ export const AI_LIMITS = {
   /** Tope global por proceso: protege el crédito si algo se descontrola. */
   globalPerDay: 300,
   maxBodyChars: 40_000,
+  /** Voz (audio de pago): cada audio cuesta mucho menos que un chat largo, pero se acota igual. */
+  speakPerUserPerHour: 40,
+  speakGlobalPerDay: 150,
 } as const

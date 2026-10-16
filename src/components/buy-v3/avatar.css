@@ -44,6 +44,15 @@
 .vara-avatar[data-state='speaking'] .vara-avatar__body { animation: vara-talk-pulse 1.1s ease-in-out infinite; }
 .vara-avatar[data-state='speaking'] .vara-avatar__mouth { opacity: 1; animation: vara-mouth .42s ease-in-out infinite; }
 
+/* Con audio real, la boca y el cuerpo siguen el volumen (--vara-level, de 0 a 1) en vez de un ciclo fijo */
+.vara-avatar[data-lipsync='true'] .vara-avatar__mouth {
+  opacity: 1; animation: none !important;
+  transform: translate(-50%, -50%) scale(calc(.5 + var(--vara-level, 0) * .6), calc(.12 + var(--vara-level, 0) * 1.15));
+}
+.vara-avatar[data-lipsync='true'] .vara-avatar__body {
+  animation: none !important; transform: scale(calc(1 + var(--vara-level, 0) * .035));
+}
+
 @keyframes vara-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-4%) } }
 @keyframes vara-breathe { 0%,100% { transform: scale(1) } 50% { transform: scale(1.025) } }
 @keyframes vara-tilt { 0%,100% { transform: rotate(-4deg) translateY(-1%) } 50% { transform: rotate(4deg) translateY(-3%) } }
