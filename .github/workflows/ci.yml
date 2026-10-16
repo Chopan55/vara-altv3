@@ -28,10 +28,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # `next lint` no existe en esta versión de Next y ESLint no está instalado: el paso
-      # anterior fallaba siempre. Mientras no haya ESLint configurado, la puerta es el chequeo de tipos.
       - name: Typecheck
         run: npm run typecheck
+
+      # Falla con errores; los avisos se ven pero no bloquean (ver eslint.config.mjs).
+      - name: Lint
+        run: npm run lint
 
       - name: Test
         run: npm run test
