@@ -41,6 +41,10 @@ function getBuyNav(operationId: string): NavItem[] {
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
     { href: '/acciones', icon: Zap, label: 'Qué hago ahora' },
+    // VARA Buy WOW V3: pegás el link de una propiedad y VARA la analiza.
+    ...(isEnabled('buyWowV3')
+      ? [{ href: '/analizar', icon: Search, label: 'Analizar propiedad', tag: 'Nuevo', section: 'Buscar' } as NavItem]
+      : []),
     { href: '/mi-busqueda', icon: ClipboardCheck, label: 'Mi búsqueda', section: 'Buscar' },
     { href: '/propiedades', icon: Building2, label: 'Propiedades', section: 'Buscar' },
     { href: '/comparar', icon: BarChart2, label: 'Comparar', section: 'Buscar' },
