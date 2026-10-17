@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server'
 import { requireAuth, type AuthError, type AuthResult } from '@/lib/api/requireAuth'
+import { isAiAllowed, parseAllowed } from '@/lib/ai/allowlist'
+
+export { isAiAllowed, parseAllowed }
 
 /**
- * Acceso a las funciones de IA que cuestan plata (OpenAI).
+ * Acceso a las funciones de IA que cuestan plata (OpenAI, Gemini/Veo).
  *
- * Mientras se prueba, solo pueden usarlas los emails listados en la variable de
- * entorno VARA_AI_ALLOWED_EMAILS (separados por coma). Sin la variable, nadie las
- * usa. Además hay un tope diario por usuario y por tipo de uso.
+ * Solo pueden usarlas los emails de la lista única `AI_ALLOWED_EMAILS` (ver `lib/ai/allowlist`).
+ * Sin la variable, nadie las usa (falla cerrado). Además hay un tope diario por usuario y por
+ * tipo de uso.
  *
  * El tope vive en memoria de cada instancia del servidor: sirve para frenar un
  * abuso evidente, no es contabilidad exacta. El tope real de gasto es el límite
@@ -16,15 +19,6 @@ export type AiBucket = 'image' | 'text' | 'video'
 
 /** Video: cada clip cuesta plata real, por eso el tope es bajo. */
 export const DAILY_LIMITS: Record<AiBucket, number> = { image: 10, text: 100, video: 10 }
-
-export function parseAllowed(raw: string | undefined): string[] {
-  return (raw ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
-}
-
-export function isAiAllowed(email: string | undefined, raw: string | undefined = process.env.VARA_AI_ALLOWED_EMAILS): boolean {
-  if (!email) return false
-  return parseAllowed(raw).includes(email.trim().toLowerCase())
-}
 
 const usage = new Map<string, number>()
 

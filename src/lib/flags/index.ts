@@ -26,9 +26,13 @@ const ALL_FLAGS = {
    * Preview: `?v3=1` en la URL o NEXT_PUBLIC_FLAGS=buyWowV3. El flujo actual no cambia.
    */
   buyWowV3: false,
+  /**
+   * Después del login, quien no tiene operaciones pasa por /empezar. APAGADA por defecto hasta
+   * verificar el flujo con sesión real; se enciende con NEXT_PUBLIC_FLAGS=conversationalEntry.
+   * Con ella apagada, /empezar redirige a /dashboard y el login también va a /dashboard.
+   */
+  conversationalEntry: false,
   /** Encendidos por defecto: se apagan con NEXT_PUBLIC_FLAGS_OFF=nombre (rollback sin tocar código). */
-  /** Después del login, quien no tiene operaciones pasa por /empezar. */
-  conversationalEntry: true,
   /** Menú lateral agrupado por etapa del recorrido. */
   groupedMenu: true,
   /** Herramientas nuevas de venta y compra (precio, ficha, video, interesados, mi búsqueda). */

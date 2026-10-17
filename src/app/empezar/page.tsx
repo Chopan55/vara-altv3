@@ -93,7 +93,8 @@ function Conversation() {
   }
 
   const pickIntent = (id: (typeof INTENTS)[number]['id'], label: string) => {
-    if (id === 'FOUND') { router.push('/propiedades'); return }
+    // "Ya encontré una propiedad": con V3 activo, el mejor primer paso es analizarla.
+    if (id === 'FOUND') { router.push(isEnabled('buyWowV3') ? '/analizar' : '/propiedades'); return }
     if (id === 'IN_PROGRESS') { router.push('/dashboard'); return }
     const next: Answers = { intent: id }
     save(next); setAnswers(next)

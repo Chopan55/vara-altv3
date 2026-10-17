@@ -367,7 +367,7 @@ export async function POST(req: NextRequest) {
     } satisfies ScrapeResult, { status: 400 })
   }
 
-  // La lectura con IA cuesta plata: solo para quien tiene sesión. Sin cuenta se lee la página igual, sin IA.
+  // La lectura con IA cuesta plata: solo para emails de la lista AI_ALLOWED_EMAILS (con sesión). Sin acceso se lee la página igual, sin IA.
   const canUseAI = !(await requireAiAccess('text')).error
   const ai = (text: string, known: ScrapedData) => (canUseAI ? viaAI(text, known) : Promise.resolve(null))
 
@@ -397,7 +397,7 @@ export async function POST(req: NextRequest) {
           errorMessage: aiData === null
             ? (canUseAI
                 ? 'La lectura automática no está disponible en este momento. Cargá los datos a mano.'
-                : 'La lectura automática del texto es para quienes tienen cuenta. Creá una (es gratis) o cargá los datos a mano.')
+                : 'La lectura automática del texto está en prueba y todavía no está habilitada para tu cuenta. Podés cargar los datos a mano.')
             : 'No encontramos datos de la propiedad en ese texto. Revisá que hayas copiado la publicación completa.',
         } : {}),
       } satisfies ScrapeResult)

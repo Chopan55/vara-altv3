@@ -15,7 +15,7 @@ import {
  *   GET   ?op=<operation>                  → { state, message? }
  *   GET   ?op=<operation>&download=1       → el video (mp4), servido desde acá
  *
- * Solo para emails autorizados (VARA_AI_ALLOWED_EMAILS) y con tope diario.
+ * Solo para emails autorizados (AI_ALLOWED_EMAILS) y con tope diario.
  * La clave de Google (GEMINI_API_KEY) vive solo en el servidor.
  */
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp'])

@@ -1,33 +1,53 @@
 import { NextResponse } from 'next/server'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
+import { createRateLimiter } from '@/lib/analysis/aiAccess'
+import { CONTACT_LIMITS, clientIp, validateContact } from '@/lib/contact'
+import { log } from '@/lib/observability/logger'
 
 /**
  * "Hablá con una persona" de la portada. Es público a propósito: guarda un pedido
  * de contacto y nada más. La tabla solo admite INSERT (ver la migración); leerla
  * es cosa del dueño del proyecto desde el panel.
+ *
+ * Protecciones: tope de tamaño del cuerpo, validación estricta de tipos y largos, mail
+ * normalizado, campo trampa, tope de pedidos por IP y por día (en memoria de cada instancia:
+ * frena abusos evidentes, no es contabilidad exacta). No envía mails (no hay relay abierto)
+ * y no registra nombre, mail ni mensaje en los logs.
  */
+
+const perIp = createRateLimiter(CONTACT_LIMITS.perIpPerHour, 60 * 60 * 1000)
+const global = createRateLimiter(CONTACT_LIMITS.globalPerDay, 24 * 60 * 60 * 1000)
+
 export async function POST(req: Request) {
-  let body: Record<string, unknown>
+  if (!perIp.allow(clientIp(req.headers)) || !global.allow('all')) {
+    log.warn('contacto.rate_limited', 'tope de pedidos')
+    return NextResponse.json({ error: 'Recibimos muchos pedidos. Probá de nuevo más tarde.' }, { status: 429 })
+  }
+
+  let body: unknown
   try {
-    body = (await req.json()) as Record<string, unknown>
+    const raw = await req.text()
+    if (raw.length > CONTACT_LIMITS.maxBodyChars) return NextResponse.json({ error: 'Pedido demasiado grande.' }, { status: 413 })
+    body = JSON.parse(raw)
   } catch {
     return NextResponse.json({ error: 'Pedido inválido.' }, { status: 400 })
   }
 
   // Campo trampa completo = bot. Respondemos OK para no darle pistas.
-  if (typeof body.website === 'string' && body.website.length > 0) return NextResponse.json({ ok: true })
+  if (body && typeof body === 'object' && typeof (body as { website?: unknown }).website === 'string' && (body as { website: string }).website.length > 0) {
+    return NextResponse.json({ ok: true })
+  }
 
-  const name = String(body.name ?? '').trim()
-  const email = String(body.email ?? '').trim()
-  const message = String(body.message ?? '').trim()
-  if (name.length < 2 || name.length > 80) return NextResponse.json({ error: 'Poné tu nombre.' }, { status: 400 })
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120) return NextResponse.json({ error: 'Ese mail no parece válido.' }, { status: 400 })
-  if (message.length < 10 || message.length > 1000) return NextResponse.json({ error: 'Contanos un poco más (entre 10 y 1000 caracteres).' }, { status: 400 })
+  const check = validateContact(body)
+  if (!check.ok) return NextResponse.json({ error: check.error }, { status: 400 })
 
   if (!isSupabaseConfigured) return NextResponse.json({ error: 'El contacto todavía no está disponible.' }, { status: 503 })
 
   const supabase = await createClient()
-  const { error } = await supabase.from('contact_requests').insert({ name, email, message })
-  if (error) return NextResponse.json({ error: 'No pudimos guardar tu mensaje. Probá de nuevo en un rato.' }, { status: 500 })
+  const { error } = await supabase.from('contact_requests').insert(check.value)
+  if (error) {
+    log.warn('contacto.save_failed', 'no se pudo guardar') // sin datos de la persona
+    return NextResponse.json({ error: 'No pudimos guardar tu mensaje. Probá de nuevo en un rato.' }, { status: 500 })
+  }
   return NextResponse.json({ ok: true })
 }
