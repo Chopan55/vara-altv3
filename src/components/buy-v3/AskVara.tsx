@@ -5,7 +5,8 @@ import { Eye, EyeOff, Loader2, Send, Volume2, VolumeX } from 'lucide-react'
 import { buildBrief } from '@/lib/analysis/brief'
 import type { PropertyAnalysis } from '@/lib/analysis/types'
 import { Section } from './Sections'
-import { VaraAvatar, type AvatarState } from './VaraAvatar'
+import type { AvatarState } from './VaraAvatar'
+import { VaraOrb } from './VaraOrb'
 import { useVaraVoice } from './useVaraVoice'
 
 interface Msg { role: 'user' | 'assistant'; content: string }
@@ -45,8 +46,8 @@ export function AskVara({ analysis, onAsk }: { analysis: PropertyAnalysis; onAsk
   const [revealed, setRevealed] = useState<number | null>(null)
   // Voz: mientras suena el audio, la boca del avatar sigue su volumen (variable CSS --vara-level).
   const [playing, setPlaying] = useState(false)
-  const avatarRef = useRef<HTMLSpanElement>(null)
-  const setLevel = useCallback((v: number) => { avatarRef.current?.style.setProperty('--vara-level', v.toFixed(3)) }, [])
+  const levelRef = useRef(0)
+  const setLevel = useCallback((v: number) => { levelRef.current = v }, [])
   const voice = useVaraVoice(setLevel)
 
   useEffect(() => {
@@ -130,7 +131,7 @@ export function AskVara({ analysis, onAsk }: { analysis: PropertyAnalysis; onAsk
   return (
     <Section title="Preguntale a VARA" hint="Responde solo con lo que está en este análisis. Si algo no se sabe, te lo dice.">
       <div className="mb-4 flex items-center gap-4">
-        {showAvatar && <VaraAvatar state={avatarState} size={88} lipsync={playing} rootRef={avatarRef} />}
+        {showAvatar && <VaraOrb state={avatarState} size={104} levelRef={levelRef} audio={playing} />}
         <div className="min-w-0 flex-1 text-sm text-slate-600" aria-live="polite">
           <p className="font-medium text-slate-800">
             {avatarState === 'thinking' ? 'Pensando…' : avatarState === 'speaking' ? 'Te cuento…' : 'Estoy lista. ¿Qué querés saber?'}
