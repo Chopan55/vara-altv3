@@ -166,7 +166,10 @@ export async function loadOperations(): Promise<StoredOperation[]> {
     try {
       await migrateOperationsToSupabase()
       const { fetchOperations } = await import('@/lib/supabase/operations')
-      return await fetchOperations()
+      const remote = await fetchOperations()
+      // Operaciones que todavía no se pudieron subir a la base siguen siendo del usuario: no deben desaparecer.
+      const pending = getOperations().filter(l => !remote.some(r => r.id === l.id))
+      return [...remote, ...pending]
     } catch (err) { log.error('operations.load.supabase.failed', err) }
   }
   return getOperations()

@@ -262,6 +262,8 @@ export type PublishRequestRow = {
  */
 type Insert<T, Req extends keyof T> = Pick<T, Req> & Partial<Omit<T, Req>>
 
+type ContactRequestRow = { id: string; name: string; email: string; message: string; created_at: string }
+
 /** Supabase exige Row/Insert/Update/Relationships en cada tabla. Sin Relationships infiere `never`. */
 type Tbl<R, Req extends keyof R> = {
   Row: R
@@ -330,6 +332,7 @@ export type Database = {
       safety_incidents: Tbl<V.SafetyIncidentRow, 'reported_by_user_id' | 'category' | 'description'>
       coverage_requests: Tbl<V.CoverageRequestRow, 'user_id' | 'zone_label'>
       visit_events: Tbl<V.VisitEventRow, 'name'>
+      contact_requests: Tbl<ContactRequestRow, 'name' | 'email' | 'message'>
     }
   }
 }

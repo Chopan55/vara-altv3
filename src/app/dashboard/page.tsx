@@ -110,6 +110,13 @@ function computeIntelligence(txn: Transaction) {
   return { blockedTasks, pendingDocs, currentStage, nextTask, risks, totalBuyerMin, totalBuyerMax, propertyPrice, operationStatus, checklist }
 }
 
+/** El saludo depende de la hora local: se resuelve después de montar, no durante el render. */
+function useGreeting() {
+  const [g, setG] = useState('Hola')
+  useEffect(() => { setG(greeting()) }, [])
+  return g
+}
+
 function greeting() {
   const h = new Date().getHours()
   if (h < 12) return 'Buenos días'
@@ -118,11 +125,12 @@ function greeting() {
 }
 
 function EmptyState({ userName, propertyUrl }: { userName: string; propertyUrl: string }) {
+  const hello = useGreeting()
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="px-4 lg:px-6 pt-8 pb-3">
         <div className="max-w-2xl mx-auto">
-          <p className="text-sm text-slate-400 mb-0.5">{greeting()}, {userName.split(' ')[0]}</p>
+          <p className="text-sm text-slate-400 mb-0.5">{hello}, {userName.split(' ')[0]}</p>
           <h1 className="text-xl font-bold text-slate-900">Bienvenido a VARA</h1>
         </div>
       </header>
@@ -218,6 +226,7 @@ function fmtDueDate(iso: string): string {
 }
 
 function SellerDashboard({ userName, province, operationId }: { userName: string; province: string; operationId: string }) {
+  const hello = useGreeting()
   const [tasks, setTasks] = useState<SellerTaskState[]>([])
   const [loaded, setLoaded] = useState(false)
   const [editingDateId, setEditingDateId] = useState<string | null>(null)
@@ -262,6 +271,15 @@ function SellerDashboard({ userName, province, operationId }: { userName: string
   const done = tasks.filter(t => t.done).length
   const progress = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0
 
+  // Si no hay checklist remoto (operación sin sincronizar o sin filas), se usa el de venta del motor regulatorio.
+  // Nunca se muestra "0 de 0": o hay pasos reales, o se dice que todavía no hay checklist.
+  const { getTransactionData } = useOperations()
+  const fallbackTasks = tasks.length === 0 ? (getTransactionData(operationId)?.stages.flatMap(st => st.tasks) ?? []) : []
+  const stepsTotal = tasks.length > 0 ? tasks.length : fallbackTasks.length
+  const stepsDone = tasks.length > 0 ? done : fallbackTasks.filter(t => t.status === 'DONE').length
+  const stepsPct = stepsTotal > 0 ? Math.round((stepsDone / stepsTotal) * 100) : 0
+  const nextFallback = fallbackTasks.find(t => t.status !== 'DONE')
+
   const sellerCosts = [
     { label: 'Comisión inmobiliaria', value: '3–4% del precio' },
     { label: 'Honorarios escribano', value: '~1% del precio' },
@@ -281,7 +299,7 @@ function SellerDashboard({ userName, province, operationId }: { userName: string
     <div className="min-h-screen bg-slate-50">
       <header className="px-4 lg:px-6 pt-8 pb-3">
         <div className="max-w-2xl mx-auto">
-          <p className="text-sm text-slate-400 mb-0.5">{greeting()}, {userName.split(' ')[0]}</p>
+          <p className="text-sm text-slate-400 mb-0.5">{hello}, {userName.split(' ')[0]}</p>
           <h1 className="text-xl font-bold text-slate-900">Tu operación de venta</h1>
           <p className="text-sm text-slate-400 mt-0.5 flex items-center gap-1">
             <MapPin size={11} /> {province}
@@ -302,16 +320,33 @@ function SellerDashboard({ userName, province, operationId }: { userName: string
                   No mide tiempo ni plata: mide cuántos pasos del proceso ya resolviste.
                 </InfoTip>
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">{done} de {tasks.length} pasos completados</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {stepsTotal > 0 ? `${stepsDone} de ${stepsTotal} pasos completados` : 'Todavía no hay checklist disponible. Empezá por preparar la venta.'}
+              </p>
             </div>
-            <span className="text-2xl font-extrabold text-slate-900">{progress}%</span>
+            {stepsTotal > 0 && <span className="text-2xl font-extrabold text-slate-900">{stepsPct}%</span>}
           </div>
-          <Progress value={progress} showLabel={false} />
+          {stepsTotal > 0 && <Progress value={stepsPct} showLabel={false} />}
         </div>
 
         {/* NEXT BEST ACTION */}
         {(() => {
           const next = tasks.find(t => !t.done)
+          if (!next && tasks.length === 0) {
+            return (
+              <div className="bg-amber-500 rounded-2xl p-5 text-slate-900">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp size={13} className="opacity-50" />
+                  <p className="text-xs font-bold opacity-50 uppercase tracking-widest">Próximo paso</p>
+                </div>
+                <h3 className="font-extrabold text-base mb-1 leading-tight">{nextFallback ? nextFallback.title : 'Empezá por preparar la venta'}</h3>
+                <p className="text-sm opacity-70 leading-relaxed mb-4">{nextFallback ? nextFallback.description : 'Juntá los papeles y definí el precio antes de publicar.'}</p>
+                <Link href={nextFallback ? `/operacion/${operationId}` : '/preparar-venta'} className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors">
+                  {nextFallback ? 'Ver el paso' : 'Preparar la venta'} <ArrowRight size={14} />
+                </Link>
+              </div>
+            )
+          }
           if (!next) return null
           return (
             <div className="bg-amber-500 rounded-2xl p-5 text-slate-900">
@@ -826,7 +861,7 @@ const RETURN_THRESHOLD_MS = 60 * 60 * 1000 // 1 hora
 
 export default function Dashboard() {
   const vara = useVaraState()
-  const { operations, activeOperationId, getTransactionData, usingDemo, deleteOperation } = useOperations()
+  const { operations, journey, activeOperation, activeOperationId, getTransactionData, usingDemo, deleteOperation } = useOperations()
   const globalAlerts = useGlobalNextBestAction()
   const activeTxnData = activeOperationId ? getTransactionData(activeOperationId) : null
   // Sin datos reales no se cae a `mockTransaction`: el panel de la operacion
@@ -868,7 +903,7 @@ export default function Dashboard() {
     return <EmptyState userName={vara.userName} propertyUrl={vara.propertyUrl} />
   }
 
-  if (vara.loaded && vara.journeyType === 'SELL_PROPERTY') {
+  if (vara.loaded && journey === 'SELL') {
     const sellOp = operations.find(o => o.type === 'SELL')
     if (sellOp) {
       return <SellerDashboard userName={vara.userName} province={vara.province} operationId={sellOp.id} />
@@ -884,7 +919,7 @@ export default function Dashboard() {
       <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6">
         {/* RESUME EXPERIENCE — banner de retorno cuando el usuario vuelve tras >1h */}
         {isReturning && !returnDismissed && !usingDemo && operations.length > 0 && (() => {
-          const op = operations[0]
+          const op = activeOperation ?? operations[0]
           const firstTxn = getTransactionData(op.id)
           const action = primaryAction({ transaction: firstTxn ?? null })
           const opTitle = op.title ?? (op.type === 'SELL' ? 'Tu venta' : 'Tu compra')
@@ -967,22 +1002,28 @@ export default function Dashboard() {
 
         {/* RESUME EXPERIENCE — la acción más urgente del momento, bien visible */}
         {(() => {
-          const firstTxn = operations[0] ? getTransactionData(operations[0].id) : null
+          const firstTxn = activeOperation ? getTransactionData(activeOperation.id) : null
           const action = primaryAction({ transaction: firstTxn ?? null })
-          if (!action || action.id === 'no_operation' || !operations[0]) return null
+          if (!action || action.id === 'no_operation' || !activeOperation) return null
           return (
             <NextStepAgent
-              key={`${operations[0].id}-${action.id}`}
+              key={`${activeOperation.id}-${action.id}`}
               action={action}
-              operationId={operations[0].id}
-              kind={operations[0].type === 'SELL' ? 'SELL' : 'BUY'}
-              province={operations[0].province}
+              operationId={activeOperation.id}
+              kind={activeOperation.type === 'SELL' ? 'SELL' : 'BUY'}
+              province={activeOperation.province}
             />
           )
         })()}
 
-        {/* GUIDANCE BANNER — NBA contextual */}
-        <GuidanceBanner />
+        {/* Una sola recomendación a la vista: si arriba ya se muestra la próxima acción de la operación,
+            el banner de guía (otro motor) no se suma, para que nunca se contradigan. */}
+        {(() => {
+          const firstTxn = activeOperation ? getTransactionData(activeOperation.id) : null
+          const action = primaryAction({ transaction: firstTxn ?? null })
+          const nbaShown = Boolean(activeOperation) && Boolean(action) && action?.id !== 'no_operation'
+          return nbaShown ? null : <GuidanceBanner />
+        })()}
 
         {/* NOVEDADES — qué cambió desde la última visita (milestones de activity_events) */}
         {activeOperationId && <NovedadesWidget operationId={activeOperationId} />}
@@ -1012,8 +1053,11 @@ export default function Dashboard() {
                 </Link>
               </div>
             )}
-            <div className="grid grid-cols-1 gap-3">
-              {operations.map(op => (
+            {/* Compra y venta separadas: primero las del recorrido actual, después las del otro. */}
+            {(() => {
+              const mine = operations.filter(o => o.type === journey)
+              const other = operations.filter(o => o.type !== journey)
+              const card = (op: UserOperationSummary) => (
                 <OperationCard
                   key={op.id}
                   op={op}
@@ -1023,8 +1067,23 @@ export default function Dashboard() {
                   isDemo={usingDemo}
                   onDelete={deleteOperation}
                 />
-              ))}
-            </div>
+              )
+              return (
+                <>
+                  {operations.length > 0 && other.length > 0 && (
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{journey === 'SELL' ? 'Tus ventas' : 'Tus compras'}</p>
+                  )}
+                  <div className="grid grid-cols-1 gap-3">{mine.map(card)}</div>
+                  {other.length > 0 && (
+                    <div className="mt-5">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{journey === 'SELL' ? 'También tenés compras' : 'También tenés ventas'}</p>
+                      <p className="mb-2 text-[11px] text-slate-400">Para trabajar con ellas, cambiá a {journey === 'SELL' ? 'Comprando' : 'Vendiendo'} en el menú.</p>
+                      <div className="grid grid-cols-1 gap-3 opacity-80">{other.map(card)}</div>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
         )}
 

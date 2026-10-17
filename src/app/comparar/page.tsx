@@ -16,6 +16,7 @@ import {
   LIGHT_LABELS, CONDITION_LABELS,
   type ScoringCriterion, type ScoringWeight, type ManualAttrs, type LightLevel, type ConditionLevel,
 } from '@/lib/candidates/model'
+import { loadProfile, profileToImportance } from '@/lib/buyerProfile'
 
 const MAX_COMPARE = 3
 const WEIGHTS_KEY = 'vara_compare_weights'
@@ -225,8 +226,10 @@ export default function CompararPage() {
   const [weights, setWeights] = useState<ScoringWeight[]>(() => weightsFromImportance(PRESETS[0].values))
   const [manual, setManual] = useState<Record<string, ManualAttrs>>({})
   const [panelOpen, setPanelOpen] = useState(true)
+  const [fromProfile, setFromProfile] = useState<Partial<Record<ScoringCriterion, Importance>>>({})
 
   useEffect(() => {
+    setFromProfile(profileToImportance(loadProfile()) as Partial<Record<ScoringCriterion, Importance>>)
     loadUserProperties().then(ps => {
       setProperties(ps)
       setSelected(prev => (prev.length === 0 ? ps.slice(0, MAX_COMPARE).map(p => p.id) : prev))
@@ -328,12 +331,13 @@ export default function CompararPage() {
             <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <BarChart2 size={20} className="text-slate-300" />
             </div>
-            <p className="text-sm font-semibold text-slate-800 mb-1">Sin propiedades guardadas</p>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto mb-4">
-              Importá propiedades desde un aviso de Zonaprop o Argenprop para compararlas.
+            <p className="text-sm font-semibold text-slate-800 mb-1">Todavía no agregaste propiedades para comparar</p>
+            <p className="text-xs text-slate-500 max-w-xs mx-auto mb-4">
+              Sumá hasta {MAX_COMPARE} propiedades (con el link del aviso o a mano) y las ves lado a lado:
+              precio, superficie, costo por m², zona, expensas y una recomendación según lo que te importa.
             </p>
             <Link href="/propiedades" className="inline-block text-xs font-bold bg-brand-600 text-white px-4 py-2 rounded-xl hover:bg-brand-700 transition-colors">
-              Ir a mis propiedades →
+              Agregar propiedad
             </Link>
           </div>
         )}
@@ -422,6 +426,17 @@ export default function CompararPage() {
                         {preset.label}
                       </button>
                     ))}
+                    {Object.keys(fromProfile).length > 0 ? (
+                      <button
+                        onClick={() => updateWeights(weightsFromImportance(fromProfile))}
+                        title="Toma lo que cargaste en Mi búsqueda"
+                        className="text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-200 rounded-full px-3 py-1.5"
+                      >
+                        Usar mi búsqueda
+                      </button>
+                    ) : (
+                      <Link href="/mi-busqueda" className="text-xs font-semibold text-slate-500 underline px-2 py-1.5">Cargar mi búsqueda</Link>
+                    )}
                   </div>
 
                   <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3.5 mt-4">
