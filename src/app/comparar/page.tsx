@@ -272,7 +272,7 @@ export default function CompararPage() {
     () => selected.map(id => properties.find(p => p.id === id)).filter(Boolean) as UserProperty[],
     [selected, properties],
   )
-  const rows = useMemo(buildRows, [])
+  const rows = useMemo(() => buildRows(), [])
 
   /** A, B, C: la forma de nombrar cada columna aunque dos casas compartan barrio. */
   const letterOf = (id: string) => String.fromCharCode(65 + Math.max(0, compared.findIndex(p => p.id === id)))

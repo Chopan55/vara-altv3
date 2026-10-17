@@ -21,6 +21,11 @@ const ALL_FLAGS = {
   publicApi: false,
   /** P3: UI y dominio personalizables para corredores o escribanías. */
   whiteLabel: false,
+  /**
+   * VARA Buy WOW V3: pegás un aviso y el análisis comparable aparece en /analizar.
+   * Preview: `?v3=1` en la URL o NEXT_PUBLIC_FLAGS=buyWowV3. El flujo actual no cambia.
+   */
+  buyWowV3: false,
 } as const
 
 export type FlagName = keyof typeof ALL_FLAGS
