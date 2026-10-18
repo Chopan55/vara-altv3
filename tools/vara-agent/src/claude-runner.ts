@@ -101,7 +101,31 @@ export function buildClaudeEnv(source: Record<string, string | undefined>): Reco
   return out
 }
 
+/** Tope de gasto de UNA llamada a Claude Code (`--max-budget-usd`, verificado en claude 2.1.267). */
+export const DEFAULT_CLAUDE_MAX_BUDGET_USD = 2.5
+/** Tope acumulado de la corrida (suma de todas las rondas, incluidas las reanudaciones). Lo aplica el bridge. */
+export const DEFAULT_MAX_AGENT_COST_USD = 8
+
+export interface Budgets {
+  claudeMaxBudgetUsd: number
+  maxAgentCostUsd: number
+}
+
+/** Lee CLAUDE_MAX_BUDGET_USD y MAX_AGENT_COST_USD. Valores vacíos, no numéricos o ≤ 0 vuelven al valor por defecto. */
+export function readBudgets(env: Record<string, string | undefined>): Budgets {
+  const positive = (v: string | undefined, fallback: number) => {
+    const n = Number(v)
+    return v !== undefined && v.trim() !== '' && Number.isFinite(n) && n > 0 ? n : fallback
+  }
+  return {
+    claudeMaxBudgetUsd: positive(env.CLAUDE_MAX_BUDGET_USD, DEFAULT_CLAUDE_MAX_BUDGET_USD),
+    maxAgentCostUsd: positive(env.MAX_AGENT_COST_USD, DEFAULT_MAX_AGENT_COST_USD),
+  }
+}
+
 export interface ClaudeRunnerConfig {
+  /** Si se define, cada llamada lleva `--max-budget-usd <valor>`. */
+  maxBudgetUsd?: number
   model: string
   cwd?: string
   /** Entorno de origen (por defecto process.env). Claude recibe solo lo que permite CLAUDE_ENV_ALLOWLIST. */
@@ -153,6 +177,7 @@ export function buildClaudeArgs(cfg: ClaudeRunnerConfig, opts: { readOnly: boole
     '--json-schema',
     sanitizeSchemaForClaude(cfg.resultSchema),
     '--no-session-persistence',
+    ...(cfg.maxBudgetUsd && cfg.maxBudgetUsd > 0 ? ['--max-budget-usd', String(cfg.maxBudgetUsd)] : []),
     '--append-system-prompt',
     cfg.systemPrompt,
   ]

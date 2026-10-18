@@ -99,6 +99,10 @@ export interface ResumeState {
   roundsUsed: number
   historySummary: string
   humanDecisions: HumanDecision[]
+  /** Costo acumulado en USD hasta la pausa (para que el tope de gasto valga entre reanudaciones). */
+  costUsd?: number
+  /** Límite vigente en USD; si Pancho aprueba tras una pausa por costo, sube una ventana. */
+  costLimitUsd?: number
 }
 
 export interface RunRecord {

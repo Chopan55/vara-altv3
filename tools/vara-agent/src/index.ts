@@ -10,7 +10,7 @@ import { appendFileSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { BOT_MARKER, PR_BASE, buildIssueBody, createGhApi, requestApproval, resolveResume, type GitHubApi } from './approvals'
-import { createClaudeRunner, type ClaudeClient } from './claude-runner'
+import { DEFAULT_MAX_AGENT_COST_USD, createClaudeRunner, readBudgets, type ClaudeClient } from './claude-runner'
 import { Git, diffFingerprints, makeBranchName, type Fingerprint } from './git-state'
 import { createLogger, type Logger } from './logger'
 import { createOpenAIManager, preflightModel, type ManagerClient, type ManagerInput } from './openai-manager'
@@ -96,6 +96,8 @@ export interface BridgeDeps {
   preflight: () => Promise<void>
   /** Espera máxima por el CI del PR (por defecto 30 min). */
   ciTimeoutMs?: number
+  /** Tope de costo acumulado de la corrida en USD (MAX_AGENT_COST_USD, por defecto 8). Al superarlo se pausa y se le pregunta a Pancho. */
+  maxCostUsd?: number
 }
 
 type Escalation = { reason: string; question: string; recommendation: string }
@@ -107,6 +109,18 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
   const roundsBefore = config.resume?.roundsUsed ?? 0
   const readOnly = config.dryRun || isReadOnlyGoal(config.goal)
   const rec = createRunRecord(config.resume?.runId ?? newRunId(deps.now()), { ...config, maxRounds }, deps.now())
+
+  // ─── Guarda de costo acumulado (costo real que informa Claude + OpenAI si hay precios), incluyendo reanudaciones ───
+  const maxCost = deps.maxCostUsd ?? DEFAULT_MAX_AGENT_COST_USD
+  const spentBefore = config.resume?.costUsd ?? 0
+  const costLimit = config.resume?.costLimitUsd ?? maxCost
+  const spent = () => spentBefore + (estimateCost(rec, deps.prices) ?? 0)
+  const overBudget = () => spent() > costLimit
+  const costEscalation = (): Escalation => ({
+    reason: `El costo acumulado (USD ${spent().toFixed(2)}) superó el límite de USD ${costLimit.toFixed(2)}. No se hacen más llamadas a Claude.`,
+    question: `¿Autorizás otra ventana de hasta USD ${maxCost.toFixed(2)} (APPROVE/CONTINUE) o frenamos (STOP/REJECT)?`,
+    recommendation: 'Revisar qué se logró hasta ahora antes de seguir gastando; STOP si el avance no justifica el costo.',
+  })
 
   const blockers = new Map<string, number>()
   const bump = (text: string) => {
@@ -166,7 +180,8 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
         tests: lastValidations ? validationsSummary(lastValidations) : 'Sin validaciones todavía.',
         problem: e.reason,
         links: rec.branch ? [`Rama: ${rec.branch}`] : [],
-        state: toResumeState(rec, used),
+        // Si se pausó por costo, aprobar otorga una ventana nueva de maxCost a partir de lo ya gastado.
+        state: { ...toResumeState(rec, used), costUsd: spent(), costLimitUsd: overBudget() ? spent() + maxCost : costLimit },
       })
       const issue = await requestApproval(deps.gh, rec.run_id, body)
       rec.issue_url = issue.url
@@ -287,6 +302,9 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
         )
       }
 
+      // Nunca se inicia otra llamada a Claude si el costo acumulado ya superó el límite (p. ej. al reanudar).
+      if (overBudget()) return await escalate(costEscalation(), round)
+
       let claudeRaw: { raw: unknown; usage?: Usage; numTurns?: number }
       try {
         claudeRaw = await deps.claude.run(decision.task_for_claude, {
@@ -341,6 +359,9 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
       }
       round.validations = lastValidations
       logger.info(`Validaciones: ${validationsSummary(lastValidations)}`)
+
+      // Fin de ronda: si el gasto acumulado superó el límite, se detiene sin pedirle nada más al Manager ni a Claude.
+      if (overBudget()) return await escalate(costEscalation(), round)
 
       if (lastClaude.status === 'BLOCKED' && bump(lastClaude.summary) >= 2) {
         return await escalate(
@@ -600,11 +621,14 @@ export async function main(): Promise<number> {
     const managerSchema = JSON.parse(read('agent/schemas/manager-decision.schema.json')) as Record<string, unknown>
     const claudeSchema = JSON.stringify(JSON.parse(read('agent/schemas/claude-result.schema.json')))
 
+    const budgets = readBudgets(process.env)
     const deps: BridgeDeps = {
+      maxCostUsd: budgets.maxAgentCostUsd,
       preflight: () => preflightModel(openaiKey, config.openaiModel),
       manager: createOpenAIManager({ apiKey: openaiKey, model: config.openaiModel, instructions: rules, schema: managerSchema }),
       claude: createClaudeRunner(nodeRunner, {
         model: config.claudeModel,
+        maxBudgetUsd: budgets.claudeMaxBudgetUsd,
         cwd: root,
         sourceEnv: process.env,
         resultSchema: claudeSchema,

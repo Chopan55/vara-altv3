@@ -31,8 +31,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # El bridge de agentes (tools/vara-agent) tiene su propio tsconfig y dependencias; el tsconfig del proyecto lo excluye.
+      - name: Install dependencies (bridge)
+        run: npm ci --prefix tools/vara-agent
+
       - name: Typecheck
         run: npm run typecheck
+
+      # Si el bridge no compila, el CI no puede quedar en verde.
+      - name: Typecheck del bridge (tools/vara-agent)
+        run: npm run typecheck --prefix tools/vara-agent
 
       # Falla con errores; los avisos se ven pero no bloquean (ver eslint.config.mjs).
       - name: Lint

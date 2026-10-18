@@ -61,6 +61,7 @@ export function fakeManager(steps: Step<unknown>[]): ManagerClient & { calls: nu
 export function fakeClaude(
   steps: Step<ClaudeResult | Record<string, unknown>>[],
   onRun?: (n: number) => void,
+  costUsd = 0.05,
 ): ClaudeClient & { calls: number; tasks: string[] } {
   const c = {
     calls: 0,
@@ -71,7 +72,7 @@ export function fakeClaude(
       c.tasks.push(task)
       onRun?.(c.calls)
       if (step instanceof Error) throw step
-      return { raw: step, numTurns: 3, usage: { inputTokens: 500, outputTokens: 100, costUsd: 0.05 } as Usage }
+      return { raw: step, numTurns: 3, usage: { inputTokens: 500, outputTokens: 100, costUsd } as Usage }
     },
   }
   return c
