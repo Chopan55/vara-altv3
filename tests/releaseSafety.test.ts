@@ -58,9 +58,13 @@ describe('secretos: solo en el servidor', () => {
   })
 
   it('ninguna variable privada se publica con prefijo NEXT_PUBLIC_', () => {
-    const bad = files().flatMap(f => SECRETS.filter(s => read(f).includes(`NEXT_PUBLIC_${s}`)).map(s => `${rel(f)}: NEXT_PUBLIC_${s}`))
+    // Cada archivo se lee una sola vez (antes se leía una vez por secreto y, bajo carga, pasaba los 5 s).
+    const bad = files().flatMap(f => {
+      const text = read(f)
+      return SECRETS.filter(s => text.includes(`NEXT_PUBLIC_${s}`)).map(s => `${rel(f)}: NEXT_PUBLIC_${s}`)
+    })
     expect(bad).toEqual([])
-  })
+  }, 30_000)
 
   it('el código fuente no contiene claves reales (patrones conocidos)', () => {
     const patterns: [string, RegExp][] = [

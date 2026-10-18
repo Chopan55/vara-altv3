@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vara.local/agent/claude-result.schema.json",
+  "title": "ClaudeResult",
+  "description": "Resultado que Claude Code devuelve al terminar una tarea. Siempre este objeto como respuesta final.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "summary", "files_changed", "tests", "risks", "questions", "suggested_next_step"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["COMPLETED", "PARTIAL", "BLOCKED"]
+    },
+    "summary": {
+      "type": "string",
+      "description": "Qué hizo, en pocas líneas."
+    },
+    "files_changed": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "tests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["typecheck", "lint", "tests", "build"],
+      "properties": {
+        "typecheck": { "type": "string", "description": "PASS, FAIL o NOT_RUN, con una nota breve." },
+        "lint": { "type": "string" },
+        "tests": { "type": "string" },
+        "build": { "type": "string" }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "questions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "suggested_next_step": {
+      "type": "string"
+    }
+  }
+}

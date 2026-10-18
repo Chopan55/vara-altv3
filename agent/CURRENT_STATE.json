@@ -1,0 +1,70 @@
+{
+  "updated_at": "2026-10-18",
+  "note": "Resumen técnico para los agentes. Si discrepa con el repositorio, manda el repositorio. Se actualiza a mano o con un PR.",
+  "production": {
+    "branch": "master",
+    "sha": "3fb86cd",
+    "url": "https://vara-altv3-theta.vercel.app",
+    "database": "Supabase VARA MVP",
+    "backups": "No verificados (plan Free de Supabase)",
+    "who_touches_it": "Solo Pancho"
+  },
+  "staging": {
+    "branch": "integracion",
+    "database": "Supabase VARA STAGING",
+    "previews": "Vercel arma una vista previa por rama. Las variables de IA (OPENAI_API_KEY, AI_ALLOWED_EMAILS) y NEXT_PUBLIC_FLAGS=buyWowV3 están cargadas solo para la rama integracion."
+  },
+  "stack": {
+    "framework": "Next.js 16 (App Router, Turbopack)",
+    "ui": "React 19, Tailwind 4",
+    "language": "TypeScript estricto",
+    "backend": "Supabase (Postgres, Auth, Storage, RLS)",
+    "tests": "Vitest (más de 790 tests, incluye una suite de seguridad con Postgres en memoria)",
+    "lint": "ESLint 9 (0 errores; los avisos de estilo no bloquean)"
+  },
+  "required_checks": ["npm run typecheck", "npm run lint", "npm run test", "npm run build"],
+  "feature_flags": {
+    "buyWowV3": "encendida en producción por NEXT_PUBLIC_FLAGS",
+    "groupedMenu": "encendida por defecto",
+    "journeyTools": "encendida por defecto",
+    "conversationalEntry": "apagada por defecto (la pantalla /empezar existe pero no es la entrada)"
+  },
+  "ai": {
+    "allowlist_env": "AI_ALLOWED_EMAILS (única lista; sin ella nadie usa la IA)",
+    "chat_explain": "/api/v3/explain: solo explica el análisis ya calculado",
+    "voice": "/api/v3/speak: voz TTS de OpenAI, con tope por hora y por día",
+    "legacy_routes": ["/api/chat", "/api/negotiation", "/api/transform", "/api/listing-copy", "/api/scrape-property", "/api/tour-clip"]
+  },
+  "canonical_routes": {
+    "analyze_property": "/analizar",
+    "home_after_login": "/dashboard"
+  },
+  "market_data": {
+    "table": "market_listings",
+    "source": "barridos de Zonaprop guardados en Supabase",
+    "sweep": "Bright Data, apagado; solo hace falta para actualizar datos, no para /analizar",
+    "cron": "Registrado a diario pero responde disabled mientras MARKET_CRON_ENABLED no exista"
+  },
+  "known_issues": [
+    "Tras crear una operación, el menú lateral queda en el modo anterior hasta recargar o cambiar de pantalla",
+    "La voz tarda unos 7 a 10 segundos en empezar tras la pregunta",
+    "Con la sesión iniciada, /login igual muestra el formulario",
+    "Un link de aviso inexistente puede terminar analizando otra propiedad",
+    "Error de hidratación de React en /planes, /demo y /labs (las páginas funcionan)",
+    "El test tests/releaseSafety.test.ts puede pasar los 5 s de límite si la máquina está cargada",
+    "Leer texto pegado de un aviso con IA solo funciona para los emails de AI_ALLOWED_EMAILS"
+  ],
+  "next_sprint": [
+    "Integrar el avatar (VaraOrb) y la voz actual (useVaraVoice) en /asistente",
+    "Voz en vivo con OpenAI Realtime (full-duplex)",
+    "Respaldo verificado de la base de producción",
+    "Dominio propio",
+    "Revisión legal de los términos de uso de Zonaprop"
+  ],
+  "hard_constraints": [
+    "Los agentes nunca escriben en master ni despliegan a producción",
+    "Los agentes nunca tocan la base de producción ni sus migraciones",
+    "Costo externo USD 0 salvo aprobación de Pancho",
+    "Sin secretos en código, logs ni artefactos"
+  ]
+}
