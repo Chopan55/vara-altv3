@@ -33,11 +33,11 @@ export function GuiameTrigger({ expanded, onClick }: { expanded: boolean; onClic
       style={{ background: 'linear-gradient(155deg, #0a45d6 0%, #1357ec 55%, #2a6df5 100%)' }}
     >
       <Sparkles size={15} aria-hidden="true" />
-      <span className="hidden sm:inline">Guíame</span>
+      <span className="hidden sm:inline">{count > 0 ? `${count} ${count === 1 ? 'paso pendiente' : 'pasos pendientes'}` : 'Qué hago ahora'}</span>
       {count > 0 && (
         <span
-          className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/25 px-1 text-[11px] font-bold"
-          aria-label={`${count} pendiente${count > 1 ? 's' : ''}`}
+          className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/25 px-1 text-[11px] font-bold sm:hidden"
+          aria-label={`${count} ${count === 1 ? 'paso pendiente' : 'pasos pendientes'}`}
         >
           {count}
         </span>

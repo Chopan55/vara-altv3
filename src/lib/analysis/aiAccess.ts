@@ -1,16 +1,12 @@
 /**
- * Quién puede usar la IA de V3 y cuánto.
+ * Cuánto puede usar la IA de V3.
  *
- * Gasto externo: solo para emails autorizados (`AI_ALLOWED_EMAILS`, separados
- * por coma) y con tope de uso. Sin autorización el resultado sigue mostrando
- * la conclusión determinística; la IA es un extra, no un requisito.
+ * Quién puede usarla se decide en `lib/ai/allowlist` (única lista: `AI_ALLOWED_EMAILS`).
+ * Sin autorización el resultado sigue mostrando la conclusión determinística; la IA es un
+ * extra, no un requisito.
  */
 
-export function isAiAllowed(email: string | null | undefined, allowList: string | undefined): boolean {
-  if (!email || !allowList) return false
-  const allowed = allowList.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
-  return allowed.includes(email.trim().toLowerCase())
-}
+export { isAiAllowed } from '@/lib/ai/allowlist'
 
 export interface RateLimiter {
   /** true si el pedido entra; false si superó el tope de la ventana. */

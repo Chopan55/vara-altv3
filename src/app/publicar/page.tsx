@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { useOperations } from '@/hooks/useOperations'
 import { toggleSellerTask } from '@/lib/supabase/sellerTasks'
 import { loadPhotos, savePhoto, deletePhoto, updatePhotoMeta, setCoverPhoto } from '@/lib/photoStore'
+import { ApiError, apiErrorMessage, safeJson, userFacingError } from '@/lib/api/client'
 import {
   hasPhotoSession, uploadPhoto, listPhotos, deletePhotoRemote,
   updatePhotoRemote, setCoverRemote,
@@ -27,6 +28,8 @@ const ROOM_LABELS = [
   'Frente', 'Living', 'Comedor', 'Cocina', 'Dormitorio principal',
   'Dormitorio 2', 'Dormitorio 3', 'Baño', 'Jardín', 'Pileta',
   'Quincho', 'Garage / Cochera', 'Entrada', 'Otro',
+  // Internas: nunca se muestran en la ficha, el video ni el aviso.
+  'Plano', 'Documento (privado)',
 ]
 
 const FOTO_TIPS = [
@@ -109,7 +112,7 @@ export default function PublicarPage() {
       const stored = await loadPhotos()
       if (!alive) return
       setPhotos(stored.map(p => ({ id: p.id, preview: p.preview, label: p.label, isCover: p.isCover })))
-    })().catch(() => {})
+    })().catch(() => {}).finally(() => { if (alive) setSessionChecked(true) })
     return () => { alive = false }
   }, [])
 
@@ -181,6 +184,8 @@ export default function PublicarPage() {
   const [copyError, setCopyError] = useState<string | null>(null)
   const [highlights, setHighlights] = useState<string[]>([])
   const [inCloud, setInCloud] = useState(false)
+  // Hasta saber si hay sesión no se muestra ningún texto definitivo sobre dónde se guardan las fotos.
+  const [sessionChecked, setSessionChecked] = useState(false)
   const [uploading, setUploading] = useState(false)
 
   // Recupera el borrador guardado; si no hay, pre-fill con datos reales de la operación.
@@ -218,8 +223,8 @@ export default function PublicarPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, notes: form.description }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'No pudimos generar el texto.')
+      const data = await safeJson<{ title?: string; description?: string; highlights?: string[]; error?: string }>(res)
+      if (!res.ok) throw new ApiError(apiErrorMessage(res.status, data.error), res.status)
       setForm(prev => ({
         ...prev,
         title: data.title || prev.title,
@@ -227,7 +232,7 @@ export default function PublicarPage() {
       }))
       setHighlights(Array.isArray(data.highlights) ? data.highlights : [])
     } catch (e) {
-      setCopyError(e instanceof Error ? e.message : 'No pudimos generar el texto.')
+      setCopyError(userFacingError(e, 'No pudimos generar el texto. No se perdió nada: probá de nuevo.'))
     } finally {
       setCopyLoading(false)
     }
@@ -541,9 +546,11 @@ export default function PublicarPage() {
                 </p>
                 <p className="text-xs text-slate-300 mt-1">JPG, PNG, WEBP · Hasta 20 fotos</p>
                 <p className="text-[10px] text-slate-400 mt-1.5">
-                  {inCloud
-                    ? 'Guardadas en tu cuenta — las vas a ver desde cualquier dispositivo'
-                    : 'Guardadas solo en este navegador. Entrá con tu cuenta para que te sigan.'}
+                  {!sessionChecked
+                    ? 'Revisando tu cuenta…'
+                    : inCloud
+                      ? 'Guardadas en tu cuenta — las vas a ver desde cualquier dispositivo'
+                      : 'Guardadas solo en este navegador. Entrá con tu cuenta para que te sigan.'}
                 </p>
               </div>
 
@@ -634,11 +641,14 @@ export default function PublicarPage() {
                   <span className="text-base">🎥</span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs font-bold text-slate-700">Video recorrida</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Las propiedades con video reciben hasta 3× más consultas. Disponible próximamente vía VARA Visit.</p>
+                  <p className="text-xs font-bold text-slate-700">Recorrido en video</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Armalo vos con tus fotos, con movimiento de cámara y el nombre de cada ambiente. Sin costo. Si querés un recorrido filmado en la propiedad, se pide por VARA Visit.</p>
+                  <Link href="/vara-visit" className="mt-1 inline-block text-[10px] font-semibold text-slate-500 hover:underline">
+                    Pedir recorrido filmado
+                  </Link>
                 </div>
-                <Link href="/vara-visit" className="text-[10px] font-bold text-amber-600 hover:underline whitespace-nowrap">
-                  Solicitar
+                <Link href="/video-presentacion" className="text-[10px] font-bold text-amber-600 hover:underline whitespace-nowrap">
+                  Armar recorrido
                 </Link>
               </div>
             </div>

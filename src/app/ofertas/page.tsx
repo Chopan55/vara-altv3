@@ -66,6 +66,8 @@ export default function OfertasPage() {
   const [ofertas, setOfertas] = useState<typeof MOCK_OFERTAS>([])
   // Si hay ofertas reales no ofrecemos el ejemplo: ya hay algo verdadero que mirar.
   const [hasReal, setHasReal] = useState(false)
+  // Hasta que el panel de ofertas reales termine de buscar no se dice "Sin ofertas": sería contradictorio.
+  const [realLoaded, setRealLoaded] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [showCompare, setShowCompare] = useState(false)
@@ -116,7 +118,7 @@ export default function OfertasPage() {
             <div>
               <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Ofertas recibidas</h1>
               <p className="text-sm text-slate-500 mt-1">
-                {mostrandoEjemplo ? 'Ejemplo · compradores no reales' : 'Sin ofertas todavía'}
+                {mostrandoEjemplo ? 'Ejemplo · compradores no reales' : !realLoaded ? 'Buscando tus ofertas…' : hasReal ? 'Tus ofertas' : 'Sin ofertas todavía'}
               </p>
             </div>
             {mostrandoEjemplo && (
@@ -129,9 +131,9 @@ export default function OfertasPage() {
       </header>
 
       <div className="max-w-3xl mx-auto px-4 pt-5">
-        <RealOffersPanel onHasOffers={setHasReal} />
+        <RealOffersPanel onHasOffers={setHasReal} onLoaded={() => setRealLoaded(true)} />
 
-        {!mostrandoEjemplo && !hasReal && (
+        {!mostrandoEjemplo && !hasReal && realLoaded && (
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-8 text-center mb-5">
             <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <Inbox size={24} className="text-slate-300" />
