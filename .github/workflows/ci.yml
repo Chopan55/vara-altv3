@@ -6,7 +6,10 @@ on:
   push:
     branches: ['**']
   pull_request:
-    branches: [master, main, altv3]
+    branches: [master, main, altv3, integracion]
+  # El bridge de agentes lo dispara a mano (gh workflow run) porque los push y PR creados
+  # con GITHUB_TOKEN no disparan CI por sí solos.
+  workflow_dispatch:
 
 # Una corrida nueva de la misma rama cancela la anterior.
 concurrency:

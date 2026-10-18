@@ -53,10 +53,59 @@ export const DISALLOWED_TOOLS = [
   'Write(tools/vara-agent/**)',
 ]
 
+/**
+ * Variables de entorno que Claude Code puede ver. Lista blanca: todo lo demás (OPENAI_API_KEY, GH_TOKEN,
+ * GITHUB_TOKEN, Supabase, Bright Data, Gemini, cualquier otro secreto) NO se hereda.
+ */
+export const CLAUDE_ENV_ALLOWLIST = [
+  // Autenticación de Claude (una de las dos)
+  'ANTHROPIC_API_KEY',
+  'CLAUDE_CODE_OAUTH_TOKEN',
+  // Sistema y shell
+  'PATH',
+  'Path',
+  'PATHEXT',
+  'HOME',
+  'USER',
+  'USERNAME',
+  'USERPROFILE',
+  'APPDATA',
+  'LOCALAPPDATA',
+  'SYSTEMROOT',
+  'SystemRoot',
+  'windir',
+  'COMSPEC',
+  'ProgramFiles',
+  'ProgramData',
+  'SHELL',
+  'TERM',
+  'LANG',
+  'LC_ALL',
+  'TZ',
+  'CI',
+  // Temporales y caché
+  'TEMP',
+  'TMP',
+  'TMPDIR',
+  'XDG_CONFIG_HOME',
+  'XDG_CACHE_HOME',
+  'XDG_DATA_HOME',
+] as const
+
+export function buildClaudeEnv(source: Record<string, string | undefined>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const key of CLAUDE_ENV_ALLOWLIST) {
+    const v = source[key]
+    if (v !== undefined && v !== '') out[key] = v
+  }
+  return out
+}
+
 export interface ClaudeRunnerConfig {
   model: string
   cwd?: string
-  env?: Record<string, string | undefined>
+  /** Entorno de origen (por defecto process.env). Claude recibe solo lo que permite CLAUDE_ENV_ALLOWLIST. */
+  sourceEnv?: Record<string, string | undefined>
   /** JSON Schema (texto) de claude-result.schema.json. */
   resultSchema: string
   systemPrompt: string
@@ -117,7 +166,7 @@ export function createClaudeRunner(run: CommandRunner, cfg: ClaudeRunnerConfig):
     async run(task, opts) {
       const r = await run('claude', buildClaudeArgs(cfg, opts), {
         cwd: cfg.cwd,
-        env: cfg.env,
+        env: buildClaudeEnv(cfg.sourceEnv ?? process.env),
         input: buildClaudePrompt(task, opts.readOnly),
         timeoutMs: cfg.timeoutMs ?? 20 * 60_000,
       })

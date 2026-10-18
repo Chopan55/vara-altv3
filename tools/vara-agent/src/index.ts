@@ -9,17 +9,7 @@ import { spawn } from 'node:child_process'
 import { appendFileSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import {
-  AUTHORIZED_ACTOR,
-  PR_BASE,
-  buildIssueBody,
-  createGhApi,
-  extractStateFromIssueBody,
-  pickHumanDecision,
-  requestApproval,
-  type GitHubApi,
-  type IssueComment,
-} from './approvals'
+import { BOT_MARKER, PR_BASE, buildIssueBody, createGhApi, requestApproval, resolveResume, type GitHubApi } from './approvals'
 import { createClaudeRunner, type ClaudeClient } from './claude-runner'
 import { Git, makeBranchName } from './git-state'
 import { createLogger, type Logger } from './logger'
@@ -45,6 +35,7 @@ import {
   type FinalStatus,
   type GitState,
   type ManagerDecision,
+  type ResumeState,
   type RoundRecord,
   type RunConfig,
   type RunRecord,
@@ -99,6 +90,10 @@ export interface BridgeDeps {
   prices?: Prices
   validationEnv?: Record<string, string | undefined>
   claudeMaxTurns?: number
+  /** Verifica que el modelo de OpenAI exista para la cuenta. Obligatorio: corre antes de cualquier trabajo. */
+  preflight: () => Promise<void>
+  /** Espera máxima por el CI del PR (por defecto 30 min). */
+  ciTimeoutMs?: number
 }
 
 type Escalation = { reason: string; question: string; recommendation: string }
@@ -168,7 +163,7 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
         links: rec.branch ? [`Rama: ${rec.branch}`] : [],
         state: toResumeState(rec, used),
       })
-      const issue = await requestApproval(deps.gh, body)
+      const issue = await requestApproval(deps.gh, rec.run_id, body)
       rec.issue_url = issue.url
       return finish('WAITING_FOR_HUMAN')
     } catch (err) {
@@ -177,6 +172,9 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
   }
 
   try {
+    // ─── Preflight del modelo (obligatorio, también en dry-run) ───
+    await deps.preflight()
+
     // ─── Preparación de la rama ───
     const current = await git.currentBranch()
     if (config.resume) {
@@ -419,6 +417,19 @@ async function finalizeSuccess(
       base: PR_BASE,
     })
     logger.info(`PR abierto hacia ${PR_BASE}: ${rec.pr_url}`)
+
+    // CI explícito: los push y PR creados con GITHUB_TOKEN no lo disparan solos.
+    const head = await git.head()
+    await gh.dispatchCi(rec.branch)
+    logger.info(`CI disparado sobre ${rec.branch} (${head.slice(0, 7)}); esperando resultado…`)
+    const ci = await gh.waitForCi(rec.branch, head, deps.ciTimeoutMs ?? 30 * 60_000)
+    rec.ci = { run_url: ci.url, conclusion: ci.conclusion }
+    const ciNote = `${BOT_MARKER} CI: ${ci.conclusion}${ci.url ? ` (${ci.url})` : ''}.`
+    if (ci.conclusion !== 'success') {
+      await gh.commentPullRequest(rec.pr_url, `${ciNote} El agente NO lo declara listo para revisión.`).catch(() => undefined)
+      return finish('FAILED', `El CI terminó en "${ci.conclusion}"; no se declara ${status}.`)
+    }
+    await gh.commentPullRequest(rec.pr_url, `${ciNote} Listo para revisión humana; no se mergea solo.`).catch(() => undefined)
     return finish(status)
   } catch (e) {
     return finish('FAILED', e instanceof Error ? e.message : String(e))
@@ -427,30 +438,35 @@ async function finalizeSuccess(
 
 // ───────────────────────── Reanudación tras decisión humana ─────────────────────────
 
-export const BOT_MARKER = '[vara-agent]'
-
-/** Lee la respuesta de Pancho en el Issue y devuelve el estado para retomar (o la orden de parar). */
-export async function prepareResume(
-  gh: GitHubApi,
-  issueNumber: number,
-): Promise<{ state: NonNullable<RunConfig['resume']>; command: 'APPROVE' | 'REJECT' | 'CONTINUE' | 'STOP' }> {
-  const issue = await gh.findOpenApprovalIssue()
-  if (!issue || issue.number !== issueNumber) {
-    throw new BridgeError('GITHUB_FAILURE', `El issue #${issueNumber} no está abierto o no es el de aprobación.`)
+/** Pasa el estado guardado en el Issue a la configuración de una corrida. El objetivo es el original, textual. */
+export function configFromResume(state: ResumeState, base: Partial<RunConfig> = {}): RunConfig {
+  return {
+    maxRounds: MAX_ROUNDS_PER_RUN,
+    dryRun: false,
+    baseBranch: PR_BASE,
+    openaiModel: 'gpt-5.5',
+    claudeModel: 'sonnet',
+    ...base,
+    goal: state.goal,
+    resume: state,
   }
-  const state = extractStateFromIssueBody(issue.body)
-  if (!state) throw new BridgeError('GITHUB_FAILURE', 'El issue no tiene el estado de la corrida (marca vara-agent-state).')
-  const all: IssueComment[] = await gh.listComments(issueNumber)
-  let from = 0
-  all.forEach((c, i) => {
-    if (c.body.trim().startsWith(BOT_MARKER)) from = i + 1
-  })
-  const { decision, ignored } = pickHumanDecision(all.slice(from))
-  if (ignored > 0) await gh.commentIssue(issueNumber, `${BOT_MARKER} Ignoré ${ignored} comando(s) de usuarios no autorizados. Solo vale @${AUTHORIZED_ACTOR}.`)
-  if (!decision) throw new BridgeError('GITHUB_FAILURE', `Todavía no hay respuesta de @${AUTHORIZED_ACTOR} en el issue #${issueNumber}.`)
-  await gh.commentIssue(issueNumber, `${BOT_MARKER} Registré tu decisión: ${decision.command}.`)
-  state.humanDecisions = [...state.humanDecisions, decision]
-  return { state, command: decision.command }
+}
+
+/** Registro de una corrida que Pancho cerró con STOP o REJECT (no se trabaja más). */
+export function recordHumanStop(
+  state: ResumeState,
+  command: string,
+  now: Date,
+  opts: { logger: Logger; runsDir?: string; secrets?: string[]; issueUrl?: string },
+): RunRecord {
+  const rec = createRunRecord(state.runId, configFromResume(state), now)
+  rec.branch = state.branch
+  rec.issue_url = opts.issueUrl ?? null
+  rec.final_status = 'STOPPED'
+  rec.ended_at = now.toISOString()
+  opts.logger.info(`Pancho respondió ${command}: la corrida ${state.runId} se cierra sin más trabajo.`)
+  if (opts.runsDir) saveRun(rec, opts.runsDir, opts.secrets ?? [], opts.logger.lines)
+  return rec
 }
 
 // ───────────────────────────── Entorno real ─────────────────────────────
@@ -531,32 +547,42 @@ export async function main(): Promise<number> {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
   const secrets = collectSecretValues(process.env)
   const logger = createLogger(secrets)
-  const config = loadConfigFromEnv(process.env, process.argv)
-  const resumeIssue = Number(process.env.RESUME_ISSUE ?? '') || null
+  let config = loadConfigFromEnv(process.env, process.argv)
+  const fromComment = process.env.EVENT_NAME === 'issue_comment'
+  const resumeIssue = Number(fromComment ? process.env.ISSUE_NUMBER : process.env.RESUME_ISSUE) || null
 
   try {
+    const git = new Git(nodeRunner, root)
+    const gh = createGhApi(nodeRunner, { cwd: root })
+
+    // ─── Reanudación: por comentario de Pancho (automática) o por relanzamiento manual ───
+    if (fromComment && !resumeIssue) throw new BridgeError('CONFIG', 'Evento issue_comment sin número de issue.')
+    if (resumeIssue) {
+      const res = await resolveResume(gh, {
+        issueNumber: resumeIssue,
+        source: fromComment ? 'comment' : 'dispatch',
+        author: process.env.COMMENT_AUTHOR,
+        authorType: process.env.COMMENT_AUTHOR_TYPE,
+        body: process.env.COMMENT_BODY,
+      })
+      if (res.kind === 'ignore') {
+        logger.info(`Evento ignorado: ${res.reason}.`)
+        return 0
+      }
+      if (res.kind === 'stop') {
+        recordHumanStop(res.state, res.command, new Date(), { logger, runsDir: root, secrets, issueUrl: res.issueUrl })
+        return 0
+      }
+      config = configFromResume(res.state, config)
+    } else if (!config.goal) {
+      throw new BridgeError('CONFIG', 'Falta el objetivo (input goal).')
+    }
+
     const openaiKey = process.env.OPENAI_API_KEY
     if (!openaiKey) throw new BridgeError('CONFIG', 'Falta el secreto OPENAI_API_KEY.')
     if (!process.env.ANTHROPIC_API_KEY && !process.env.CLAUDE_CODE_OAUTH_TOKEN) {
       throw new BridgeError('CONFIG', 'Falta ANTHROPIC_API_KEY o CLAUDE_CODE_OAUTH_TOKEN.')
     }
-    if (!config.goal && !resumeIssue) throw new BridgeError('CONFIG', 'Falta el objetivo (input goal).')
-
-    const git = new Git(nodeRunner, root)
-    const gh = createGhApi(nodeRunner, root)
-
-    if (resumeIssue) {
-      const { state, command } = await prepareResume(gh, resumeIssue)
-      if (command === 'STOP' || command === 'REJECT') {
-        logger.info(`Pancho respondió ${command}: la corrida ${state.runId} se cierra sin más trabajo.`)
-        await gh.commentIssue(resumeIssue, `${BOT_MARKER} Corrida ${state.runId} cerrada por ${command}.`)
-        return 0
-      }
-      config.resume = state
-      config.goal = config.goal || state.historySummary.split('\n')[0] || 'Retomar corrida'
-    }
-
-    await preflightModel(openaiKey, config.openaiModel)
 
     const read = (p: string) => readText(path.join(root, p))
     const rules = ['agent/ORCHESTRATOR_RULES.md', 'agent/PRODUCT_PRINCIPLES.md', 'agent/RELEASE_RULES.md', 'agent/PRODUCT_CONTEXT.md', 'agent/CURRENT_STATE.json']
@@ -565,13 +591,13 @@ export async function main(): Promise<number> {
     const managerSchema = JSON.parse(read('agent/schemas/manager-decision.schema.json')) as Record<string, unknown>
     const claudeSchema = JSON.stringify(JSON.parse(read('agent/schemas/claude-result.schema.json')))
 
-    const claudeEnv = withoutKeys(process.env, ['OPENAI_API_KEY', 'GITHUB_TOKEN', 'GH_TOKEN'])
     const deps: BridgeDeps = {
+      preflight: () => preflightModel(openaiKey, config.openaiModel),
       manager: createOpenAIManager({ apiKey: openaiKey, model: config.openaiModel, instructions: rules, schema: managerSchema }),
       claude: createClaudeRunner(nodeRunner, {
         model: config.claudeModel,
         cwd: root,
-        env: claudeEnv,
+        sourceEnv: process.env,
         resultSchema: claudeSchema,
         systemPrompt: `${read('agent/PRODUCT_PRINCIPLES.md')}\n\n${read('agent/RELEASE_RULES.md')}`,
         secrets,

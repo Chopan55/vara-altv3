@@ -1,6 +1,6 @@
 /** Dobles de prueba del bridge: ninguno usa red, procesos ni GitHub reales. */
 
-import type { GitHubApi, IssueComment } from '../src/approvals'
+import { ISSUE_TITLE, type CiOutcome, type GitHubApi, type IssueComment, type IssueInfo } from '../src/approvals'
 import type { ClaudeClient } from '../src/claude-runner'
 import type { BridgeDeps, GitPort } from '../src/index'
 import { createLogger } from '../src/logger'
@@ -19,6 +19,14 @@ export function dec(over: Partial<ManagerDecision> = {}): ManagerDecision {
     confidence: 0.8,
     ...over,
   }
+}
+
+export function askDec(question = '¿Sigo?'): ManagerDecision {
+  return dec({ decision: 'ASK_PANCHO', requires_human: true, human_question: question, task_for_claude: '', summary: 'Necesito tu OK', reason: 'Decisión de producto' })
+}
+
+export function doneDec(): ManagerDecision {
+  return dec({ decision: 'DONE', task_for_claude: '', summary: 'ok', reason: 'ok' })
 }
 
 export function claudeResult(over: Partial<ClaudeResult> = {}): ClaudeResult {
@@ -73,6 +81,7 @@ export interface FakeGit extends GitPort {
   changed: string[]
   branch: string
   created: string[]
+  checkedOut: string[]
   commits: string[]
   pushed: string[]
 }
@@ -82,6 +91,7 @@ export function fakeGit(branch = 'integracion'): FakeGit {
     changed: [],
     branch,
     created: [],
+    checkedOut: [],
     commits: [],
     pushed: [],
     currentBranch: async () => g.branch,
@@ -91,6 +101,7 @@ export function fakeGit(branch = 'integracion'): FakeGit {
       g.branch = name
     },
     async checkoutWorkBranch(name) {
+      g.checkedOut.push(name)
       g.branch = name
     },
     async snapshot(): Promise<GitState> {
@@ -109,39 +120,75 @@ export function fakeGit(branch = 'integracion'): FakeGit {
   return g
 }
 
+export interface FakeIssue extends IssueInfo {
+  comments: IssueComment[]
+  closedCount: number
+}
+
 export interface FakeGh extends GitHubApi {
-  issues: { title: string; body: string }[]
+  issues: FakeIssue[]
   prs: { title: string; body: string; head: string; base: string }[]
-  comments: Record<number, IssueComment[]>
+  prComments: string[]
+  ciDispatches: string[]
+  ciResult: CiOutcome
   posted: string[]
+  /** Simula un comentario humano en un Issue. */
+  say(issueNumber: number, author: string, body: string, authorType?: string): void
 }
 
 export function fakeGh(): FakeGh {
+  const find = (n: number) => g.issues.find(i => i.number === n)
   const g: FakeGh = {
     issues: [],
     prs: [],
-    comments: {},
+    prComments: [],
+    ciDispatches: [],
+    ciResult: { conclusion: 'success', url: 'https://github.com/x/y/actions/runs/1' },
     posted: [],
-    async findOpenApprovalIssue() {
-      const i = g.issues[0]
-      return i ? { number: 1, url: 'https://github.com/x/y/issues/1', body: i.body } : null
+    say(n, author, body, authorType = 'User') {
+      find(n)?.comments.push({ author, authorType, body, createdAt: new Date(Date.UTC(2026, 9, 17, 12, 0, find(n)!.comments.length + 1)).toISOString() })
+    },
+    async findApprovalIssue(runId) {
+      return g.issues.find(i => i.title === `${ISSUE_TITLE} [${runId}]`) ?? null
+    },
+    async getIssue(n) {
+      return find(n) ?? null
     },
     async createIssue(title, body) {
-      g.issues.push({ title, body })
-      return { number: g.issues.length, url: `https://github.com/x/y/issues/${g.issues.length}` }
+      const number = g.issues.length + 1
+      g.issues.push({ number, url: `https://github.com/x/y/issues/${number}`, title, body, state: 'open', comments: [], closedCount: 0 })
+      return { number, url: `https://github.com/x/y/issues/${number}` }
     },
-    async updateIssue(_n, body) {
-      g.issues[0].body = body
+    async updateIssue(n, body) {
+      find(n)!.body = body
     },
-    async commentIssue(_n, body) {
+    async reopenIssue(n) {
+      find(n)!.state = 'open'
+    },
+    async closeIssue(n) {
+      const i = find(n)!
+      i.state = 'closed'
+      i.closedCount++
+    },
+    async commentIssue(n, body) {
       g.posted.push(body)
+      find(n)?.comments.push({ author: 'github-actions[bot]', authorType: 'Bot', body, createdAt: new Date(Date.UTC(2026, 9, 17, 13, 0, find(n)!.comments.length + 1)).toISOString() })
     },
     async listComments(n) {
-      return g.comments[n] ?? []
+      return find(n)?.comments ?? []
     },
     async createPullRequest(args) {
       g.prs.push(args)
       return 'https://github.com/x/y/pull/9'
+    },
+    async commentPullRequest(_url, body) {
+      g.prComments.push(body)
+    },
+    async dispatchCi(branch) {
+      g.ciDispatches.push(branch)
+    },
+    async waitForCi() {
+      return g.ciResult
     },
   }
   return g
@@ -177,6 +224,7 @@ export function makeDeps(parts: Partial<BridgeDeps> & Pick<BridgeDeps, 'manager'
     run: fakeRunner(),
     logger: createLogger(parts.secrets ?? [], () => {}),
     now: () => new Date('2026-10-17T12:00:00Z'),
+    preflight: async () => {},
     ...parts,
   }
   return { deps, git: git as FakeGit, gh: gh as FakeGh }

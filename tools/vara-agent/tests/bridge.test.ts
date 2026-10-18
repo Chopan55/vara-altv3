@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { prepareResume, runBridge } from '../src/index'
+import { runBridge } from '../src/index'
 import { createLogger } from '../src/logger'
 import { createRunRecord, decodeState, encodeState, toResumeState } from '../src/run-state'
 import { BridgeError } from '../src/types'
@@ -114,7 +114,7 @@ describe('límites de rondas y bloqueos', () => {
     expect(rec.rounds).toHaveLength(4)
     expect(rec.final_status).toBe('WAITING_FOR_HUMAN')
     expect(gh.issues).toHaveLength(1)
-    expect(gh.issues[0].title).toBe('VARA Agent — Approval Required')
+    expect(gh.issues[0].title).toBe(`VARA Agent — Approval Required [${rec.run_id}]`)
   })
 
   it('el mismo bloqueo dos veces → ASK_PANCHO sin llamar de nuevo a Claude', async () => {
@@ -145,18 +145,6 @@ describe('ASK_PANCHO', () => {
     expect(gh.issues[0].body).toContain('Chopan55')
   })
 
-  it('reanuda solo con la respuesta de Chopan55', async () => {
-    const manager = fakeManager([dec({ decision: 'ASK_PANCHO', requires_human: true, human_question: '¿Sigo?', task_for_claude: '', summary: 's', reason: 'r' })])
-    const { deps, gh } = makeDeps({ manager, claude: fakeClaude([claudeResult()]) })
-    await runBridge(deps, baseConfig({ goal: 'Algo' }))
-    gh.comments[1] = [{ author: 'intruso', body: 'APPROVE', createdAt: '2026-10-17T13:00:00Z' }]
-    await expect(prepareResume(gh, 1)).rejects.toThrowError(/Todavía no hay respuesta/)
-    gh.comments[1].push({ author: 'Chopan55', body: 'CONTINUE dale', createdAt: '2026-10-17T14:00:00Z' })
-    const { state, command } = await prepareResume(gh, 1)
-    expect(command).toBe('CONTINUE')
-    expect(state.humanDecisions.at(-1)?.actor).toBe('Chopan55')
-    expect(state.roundsUsed).toBe(1)
-  })
 })
 
 describe('acciones prohibidas', () => {

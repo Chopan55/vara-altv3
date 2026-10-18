@@ -93,6 +93,8 @@ export interface RunConfig {
 
 export interface ResumeState {
   runId: string
+  /** Objetivo original, textual. Al reanudar se usa tal cual; nunca se reconstruye. */
+  goal: string
   branch: string
   roundsUsed: number
   historySummary: string
@@ -112,6 +114,8 @@ export interface RunRecord {
   final_status: FinalStatus | null
   human_approvals: HumanDecision[]
   pr_url: string | null
+  /** CI explícito disparado por el bridge sobre la rama del PR. */
+  ci: { run_url: string | null; conclusion: string } | null
   issue_url: string | null
   human_question: string | null
   error: string | null

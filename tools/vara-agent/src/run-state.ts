@@ -28,6 +28,7 @@ export function createRunRecord(runId: string, config: RunConfig, now: Date): Ru
     final_status: null,
     human_approvals: config.resume?.humanDecisions ? [...config.resume.humanDecisions] : [],
     pr_url: null,
+    ci: null,
     issue_url: null,
     human_question: null,
     error: null,
@@ -101,6 +102,7 @@ export function historySummary(rec: RunRecord): string {
 export function toResumeState(rec: RunRecord, roundsUsed: number): ResumeState {
   return {
     runId: rec.run_id,
+    goal: rec.goal,
     branch: rec.branch ?? '',
     roundsUsed,
     historySummary: historySummary(rec),
@@ -115,7 +117,8 @@ export function encodeState(state: ResumeState): string {
 export function decodeState(encoded: string): ResumeState | null {
   try {
     const s = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8')) as ResumeState
-    if (typeof s.runId !== 'string' || typeof s.branch !== 'string' || typeof s.roundsUsed !== 'number') return null
+    if (typeof s.runId !== 'string' || typeof s.goal !== 'string' || !s.goal.trim()) return null
+    if (typeof s.branch !== 'string' || typeof s.roundsUsed !== 'number') return null
     return { ...s, humanDecisions: Array.isArray(s.humanDecisions) ? s.humanDecisions : [] }
   } catch {
     return null
