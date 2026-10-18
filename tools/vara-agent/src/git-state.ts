@@ -3,10 +3,55 @@
  * master/main/integracion ni fuerza pushes. Callers: index.ts. Usa un CommandRunner inyectado.
  */
 
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { BridgeError, type CommandRunner, type GitState } from './types'
 import { assertSafeAgentBranch, isProtectedBranch } from './validations'
 
 const MAX_DIFF_CHARS = 20_000
+
+/** Huella de cada archivo "sucio" del working tree: ruta → estado de git + hash del contenido. */
+export type Fingerprint = Record<string, string>
+
+export interface StatusEntry {
+  xy: string
+  file: string
+}
+
+/** Parsea `git status --porcelain -z`: rutas crudas (sin comillas ni escapes). Los renombres traen la ruta vieja como entrada extra. */
+export function parseStatusZ(raw: string): StatusEntry[] {
+  const parts = raw.split('\0')
+  const out: StatusEntry[] = []
+  for (let i = 0; i < parts.length; i++) {
+    const entry = parts[i]
+    if (entry.length < 4) continue
+    const xy = entry.slice(0, 2)
+    out.push({ xy, file: entry.slice(3) })
+    if (xy.includes('R') || xy.includes('C')) i++
+  }
+  return out
+}
+
+/**
+ * Archivos cuya huella cambió entre dos fotos del working tree: nuevos, modificados (incluso los que ya estaban sucios
+ * y se volvieron a tocar), eliminados o revertidos. Los que no cambiaron desde el baseline se ignoran.
+ */
+export function diffFingerprints(baseline: Fingerprint, now: Fingerprint): string[] {
+  const changed = new Set<string>()
+  for (const f of Object.keys(now)) if (baseline[f] !== now[f]) changed.add(f)
+  for (const f of Object.keys(baseline)) if (!(f in now)) changed.add(f)
+  return [...changed].filter(f => !f.startsWith('.agent-runs/')).sort()
+}
+
+function hashFile(abs: string): string {
+  try {
+    return createHash('sha1').update(readFileSync(abs)).digest('hex')
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code
+    return code === 'ENOENT' ? 'MISSING' : `UNREADABLE:${code ?? 'error'}`
+  }
+}
 
 export function timestamp(now: Date): string {
   const p = (n: number, l = 2) => String(n).padStart(l, '0')
@@ -53,13 +98,23 @@ export class Git {
     return this.out(['rev-parse', 'HEAD'])
   }
 
+  private async statusEntries(): Promise<StatusEntry[]> {
+    const r = await this.run('git', ['status', '--porcelain', '-uall', '-z'], { cwd: this.cwd, timeoutMs: 120_000 })
+    if (r.code !== 0) throw new BridgeError('CONFIG', `git status falló: ${(r.stderr || r.stdout).trim().slice(0, 300)}`)
+    return parseStatusZ(r.stdout).filter(e => !e.file.startsWith('.agent-runs/'))
+  }
+
+  /** Todos los archivos sucios ahora (incluye los que ya estaban antes de la corrida). */
   async changedFiles(): Promise<string[]> {
-    const raw = await this.out(['status', '--porcelain', '-uall'])
-    return raw
-      .split(/\r?\n/)
-      .filter(Boolean)
-      .map(l => l.slice(3).replace(/^.* -> /, '').replace(/^"|"$/g, ''))
-      .filter(f => !f.startsWith('.agent-runs/'))
+    return (await this.statusEntries()).map(e => e.file)
+  }
+
+  /** Foto del working tree para comparar contra el baseline y detectar solo lo que cambió durante la corrida. */
+  async fingerprint(): Promise<Fingerprint> {
+    const root = this.cwd ?? process.cwd()
+    const fp: Fingerprint = {}
+    for (const { xy, file } of await this.statusEntries()) fp[file] = `${xy}:${hashFile(path.join(root, file))}`
+    return fp
   }
 
   async isClean(): Promise<boolean> {
@@ -97,11 +152,19 @@ export class Git {
     }
   }
 
-  /** Hace commit de todo salvo .agent-runs. Devuelve el SHA o null si no había cambios. */
-  async commitAll(message: string): Promise<string | null> {
+  /**
+   * Hace commit solo de `paths` (los archivos que cambió la corrida; los que ya estaban sucios antes no entran).
+   * Sin `paths` hace commit de todo salvo .agent-runs. Devuelve el SHA o null si no había cambios.
+   */
+  async commitAll(message: string, paths?: string[]): Promise<string | null> {
     const branch = await this.currentBranch()
     assertSafeAgentBranch(branch)
-    await this.out(['add', '-A'])
+    if (paths) {
+      if (paths.length === 0) return null
+      await this.out(['add', '-A', '--', ...paths])
+    } else {
+      await this.out(['add', '-A'])
+    }
     await this.out(['reset', '-q', '--', '.agent-runs'], true)
     const staged = await this.run('git', ['diff', '--cached', '--quiet'], { cwd: this.cwd })
     if (staged.code === 0) return null

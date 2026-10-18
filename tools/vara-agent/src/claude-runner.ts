@@ -113,6 +113,28 @@ export interface ClaudeRunnerConfig {
   secrets?: string[]
 }
 
+/** Metadatos de JSON Schema que Claude Code CLI no resuelve (no trae los metaesquemas): se quitan solo al pasarlo por --json-schema. */
+const SCHEMA_META_KEYS = ['$schema', '$id']
+
+/**
+ * Copia del esquema para `--json-schema` sin `$schema` ni `$id` (en cualquier nivel).
+ * El esquema canónico del repo no se toca; type, properties, required, additionalProperties y enum quedan idénticos.
+ */
+export function sanitizeSchemaForClaude(schemaText: string): string {
+  const strip = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(strip)
+    if (node && typeof node === 'object') {
+      const out: Record<string, unknown> = {}
+      for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+        if (!SCHEMA_META_KEYS.includes(k)) out[k] = strip(v)
+      }
+      return out
+    }
+    return node
+  }
+  return JSON.stringify(strip(JSON.parse(schemaText)))
+}
+
 export function buildClaudeArgs(cfg: ClaudeRunnerConfig, opts: { readOnly: boolean; maxTurns: number }): string[] {
   return [
     '-p',
@@ -129,7 +151,7 @@ export function buildClaudeArgs(cfg: ClaudeRunnerConfig, opts: { readOnly: boole
     '--disallowedTools',
     DISALLOWED_TOOLS.join(','),
     '--json-schema',
-    cfg.resultSchema,
+    sanitizeSchemaForClaude(cfg.resultSchema),
     '--no-session-persistence',
     '--append-system-prompt',
     cfg.systemPrompt,

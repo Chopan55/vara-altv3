@@ -11,7 +11,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { BOT_MARKER, PR_BASE, buildIssueBody, createGhApi, requestApproval, resolveResume, type GitHubApi } from './approvals'
 import { createClaudeRunner, type ClaudeClient } from './claude-runner'
-import { Git, makeBranchName } from './git-state'
+import { Git, diffFingerprints, makeBranchName, type Fingerprint } from './git-state'
 import { createLogger, type Logger } from './logger'
 import { createOpenAIManager, preflightModel, type ManagerClient, type ManagerInput } from './openai-manager'
 import {
@@ -71,7 +71,9 @@ export interface GitPort {
   checkoutWorkBranch(name: string): Promise<void>
   snapshot(baseRef?: string): Promise<GitState>
   changedFiles(): Promise<string[]>
-  commitAll(message: string): Promise<string | null>
+  /** Foto del working tree (ruta → estado + hash) para separar lo que ya estaba sucio de lo que cambia la corrida. */
+  fingerprint(): Promise<Fingerprint>
+  commitAll(message: string, paths?: string[]): Promise<string | null>
   push(branch: string): Promise<void>
 }
 
@@ -117,6 +119,9 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
   let lastValidations: Validations | null = null
   let notes: string[] = []
   let baseRef = 'HEAD'
+  /** Foto del working tree al empezar: lo que ya estaba sucio antes no cuenta como cambio de esta corrida. */
+  let baseline: Fingerprint | null = null
+  const newChanges = async (): Promise<string[]> => (baseline ? diffFingerprints(baseline, await git.fingerprint()) : [])
 
   const finish = (status: FinalStatus, error: string | null = null): RunRecord => {
     rec.final_status = status
@@ -145,7 +150,7 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
     }
     try {
       if (rec.branch) {
-        const sha = await git.commitAll(`wip(agent): ${rec.run_id} pausado para decisión humana`)
+        const sha = await git.commitAll(`wip(agent): ${rec.run_id} pausado para decisión humana`, await newChanges())
         if (sha) {
           rec.commits.push(sha)
           await git.push(rec.branch)
@@ -191,6 +196,9 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
       }
     }
     baseRef = await git.head()
+    baseline = await git.fingerprint()
+    const preexisting = Object.keys(baseline)
+    if (preexisting.length > 0) logger.info(`Working tree con ${preexisting.length} archivo(s) ya sucios antes de empezar; se ignoran como baseline.`)
     logger.info(`Objetivo: ${config.goal} · rama ${rec.branch ?? '(dry-run, sin rama)'} · solo lectura=${readOnly}`)
 
     // ─── Bucle Manager ↔ Claude ───
@@ -208,7 +216,8 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
       }
 
       const snapshot = await git.snapshot(baseRef)
-      const gitSummary = [`Rama: ${snapshot.branch}`, `Archivos cambiados: ${snapshot.changedFiles.join(', ') || '(ninguno)'}`, snapshot.diff].join('\n')
+      const changedSoFar = await newChanges()
+      const gitSummary = [`Rama: ${snapshot.branch}`, `Archivos cambiados por esta corrida: ${changedSoFar.join(', ') || '(ninguno)'}`, snapshot.diff].join('\n')
       const input: ManagerInput = {
         goal: config.goal,
         round: roundNo,
@@ -226,7 +235,7 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
 
       const { decision, usage } = await getDecision(deps.manager, input, logger)
       addUsage(rec, 'openai', usage)
-      const round: RoundRecord = { round: roundNo, manager: { decision, usage }, changedFiles: snapshot.changedFiles, notes: [] }
+      const round: RoundRecord = { round: roundNo, manager: { decision, usage }, changedFiles: changedSoFar, notes: [] }
       rec.rounds.push(round)
       logger.info(`Ronda ${roundNo}: GPT → ${decision.decision}: ${decision.summary}`)
 
@@ -238,7 +247,7 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
       }
 
       if (decision.decision === 'DONE' || decision.decision === 'READY_FOR_REVIEW') {
-        const changed = await git.changedFiles()
+        const changed = changedSoFar
         if (changed.length > 0 && !config.dryRun && !readOnly) {
           if (!lastValidations || !allValidationsPassed(lastValidations)) {
             lastValidations = await runValidations(deps.run, { env: deps.validationEnv, secrets })
@@ -300,7 +309,7 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
       round.claude = { result: lastClaude, usage: claudeRaw.usage, numTurns: claudeRaw.numTurns, readOnly }
       logger.info(`Ronda ${roundNo}: Claude → ${lastClaude.status}: ${lastClaude.summary.slice(0, 200)}`)
 
-      const changed = await git.changedFiles()
+      const changed = await newChanges()
       round.changedFiles = changed
 
       if (readOnly && changed.length > 0) {
@@ -406,7 +415,7 @@ async function finalizeSuccess(
     return finish(status)
   }
   try {
-    const sha = await git.commitAll(`feat(agent): ${config.goal.slice(0, 60)}`)
+    const sha = await git.commitAll(`feat(agent): ${config.goal.slice(0, 60)}`, changed)
     if (sha) rec.commits.push(sha)
     await git.push(rec.branch)
     rec.final_status = status

@@ -78,6 +78,9 @@ export function fakeClaude(
 }
 
 export interface FakeGit extends GitPort {
+  /** Archivos que ya estaban sucios antes de la corrida: ruta → huella (cambiarla simula que Claude lo volvió a tocar). */
+  pre: Record<string, string>
+  committedPaths: (string[] | undefined)[]
   changed: string[]
   branch: string
   created: string[]
@@ -88,6 +91,8 @@ export interface FakeGit extends GitPort {
 
 export function fakeGit(branch = 'integracion'): FakeGit {
   const g: FakeGit = {
+    pre: {},
+    committedPaths: [],
     changed: [],
     branch,
     created: [],
@@ -107,9 +112,11 @@ export function fakeGit(branch = 'integracion'): FakeGit {
     async snapshot(): Promise<GitState> {
       return { branch: g.branch, head: 'abc1234', status: '', changedFiles: [...g.changed], diff: '', diffTruncated: false, log: '' }
     },
-    changedFiles: async () => [...g.changed],
-    async commitAll(message) {
+    changedFiles: async () => [...Object.keys(g.pre), ...g.changed],
+    fingerprint: async () => ({ ...g.pre, ...Object.fromEntries(g.changed.map(f => [f, `M:${f}`])) }),
+    async commitAll(message, paths) {
       if (g.changed.length === 0) return null
+      g.committedPaths.push(paths)
       g.commits.push(message)
       return 'def5678'
     },
