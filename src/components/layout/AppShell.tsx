@@ -284,6 +284,8 @@ function AuthFooter({ collapsed, userName }: { collapsed: boolean; userName: str
         'vara_user_name', 'vara_journey_type', 'vara_province',
         'vara_property_url', 'vara_onboarding_done', 'vara_dismissed_guidance',
         'vara_country', 'vara_publish_requests', 'vara_publish_draft', 'vara_scoring_weights',
+        // Mapas de ids de la migración invitado → cuenta: no deben pasar a la persona que entre después.
+        'vara_ops_idmap', 'vara_props_idmap', 'vara_props_promo_links', 'vara_save_banner_dismissed',
       ]
       keysToRemove.forEach(k => localStorage.removeItem(k))
     } catch {}

@@ -10,6 +10,11 @@ export function isUuid(id: unknown): id is string {
   return typeof id === 'string' && UUID_RE.test(id)
 }
 
+/** Mismo UUID v4 para propiedades y candidatos: así se suben a la cuenta con el id que ya tenían. */
+export function newEntityId(): string {
+  return newOperationId()
+}
+
 export function newOperationId(): string {
   const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto
   if (c?.randomUUID) return c.randomUUID()
