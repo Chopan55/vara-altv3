@@ -48,7 +48,7 @@ export default function LandingPage() {
             Más libertad para decidir. Más control para avanzar. Menos costos innecesarios.
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <ButtonLink href="#empezar" size="lg">Empezar</ButtonLink>
+            <ButtonLink href="/onboarding" size="lg">Empezar</ButtonLink>
             <ButtonLink href="#como-funciona" variant="secondary" size="lg">Ver cómo funciona</ButtonLink>
           </div>
         </div>
