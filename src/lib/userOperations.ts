@@ -1,5 +1,6 @@
 import type { UserOperationSummary, CountryCode } from '@/types'
 import { log } from '@/lib/observability/logger'
+import { newOperationId } from '@/lib/operationIds'
 
 /**
  * Operaciones REALES del usuario.
@@ -71,7 +72,8 @@ export interface NewOperationInput {
 
 export function createOperation(input: NewOperationInput): StoredOperation {
   const op: StoredOperation = {
-    id: `op-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    // UUID: al crear la cuenta se sube con este mismo id, así que la operación no cambia de identidad.
+    id: newOperationId(),
     type: input.type,
     title: input.title || (input.type === 'BUY' ? 'Mi compra' : 'Mi venta'),
     status: 'ACTIVE',
@@ -116,48 +118,94 @@ export function hasRealOperations(): boolean {
 
 /* ─────────── Con sesión: Supabase. Sin sesión: este navegador. ─────────── */
 
-const OPS_MIGRATED_KEY = 'vara_ops_migrated'
+/** Id local → id en la base, para las operaciones viejas (ids no UUID) que ya se subieron pero siguen en este navegador. */
+const IDMAP_KEY = 'vara_ops_idmap'
+
+/**
+ * Import perezoso y compartido: las llamadas simultáneas (varios componentes pidiendo operaciones a la vez) esperan
+ * UNA sola carga del módulo en vez de disparar un import() cada una. Si la carga falla no queda cacheada.
+ */
+function lazy<T>(load: () => Promise<T>): () => Promise<T> {
+  let p: Promise<T> | null = null
+  return () => (p ??= load().catch(err => { p = null; throw err }))
+}
+const sessionModule = lazy(() => import('@/lib/supabase/properties'))
+const remoteOperations = lazy(() => import('@/lib/supabase/operations'))
 
 async function hasSession(): Promise<boolean> {
   try {
-    const { hasSession: hs } = await import('@/lib/supabase/properties')
+    const { hasSession: hs } = await sessionModule()
     return await hs()
   } catch { return false }
 }
 
-/** Sube a la base las operaciones que ya estaban en este navegador. Una sola vez. */
-export async function migrateOperationsToSupabase(): Promise<number> {
-  const local = read()
-  if (local.length === 0) return 0
-  try { if (localStorage.getItem(OPS_MIGRATED_KEY)) return 0 } catch { return 0 }
+function readIdMap(): Record<string, string> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(IDMAP_KEY) ?? '{}')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch { return {} }
+}
 
-  const { fetchOperations, insertOperation } = await import('@/lib/supabase/operations')
-  const remote = await fetchOperations()
-  if (remote.length > 0) {
-    try { localStorage.setItem(OPS_MIGRATED_KEY, '1') } catch {}
-    return 0
-  }
+function writeIdMap(map: Record<string, string>): void {
+  try { localStorage.setItem(IDMAP_KEY, JSON.stringify(map)) } catch {}
+}
 
-  let n = 0
-  for (const op of local) {
-    const newId = await insertOperation(op)
-    if (!newId) continue
-    n++
-    // El id cambia al pasar a la base: llevamos con él el estado de sus tareas.
-    try {
-      const tasks = localStorage.getItem('vara_op_tasks_' + op.id)
-      if (tasks) localStorage.setItem('vara_op_tasks_' + newId, tasks)
-      if (localStorage.getItem('vara_operation_id') === op.id) {
-        localStorage.setItem('vara_operation_id', newId)
-      }
-    } catch {}
+/** Si el id cambió al pasar a la base, lleva con él el estado de las tareas y la operación elegida. */
+function carryOperationState(oldId: string, newId: string): void {
+  if (oldId === newId) return
+  try {
+    const tasks = localStorage.getItem('vara_op_tasks_' + oldId)
+    if (tasks && !localStorage.getItem('vara_op_tasks_' + newId)) localStorage.setItem('vara_op_tasks_' + newId, tasks)
+    localStorage.removeItem('vara_op_tasks_' + oldId)
+    if (localStorage.getItem('vara_operation_id') === oldId) localStorage.setItem('vara_operation_id', newId)
+  } catch {}
+}
+
+/** Un solo migrador a la vez: entre pestañas (Web Locks, si el navegador los tiene) y dentro de la misma página. */
+function withMigrationLock<T>(fn: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator !== 'undefined' ? (navigator as { locks?: { request: <R>(name: string, cb: () => Promise<R>) => Promise<R> } }).locks : undefined
+  return locks ? locks.request('vara-ops-migration', fn) : fn()
+}
+
+let migrationInFlight: Promise<number> | null = null
+
+async function runMigration(): Promise<number> {
+  if (read().length === 0) return 0
+  const { insertOperation } = await remoteOperations()
+  const idMap = readIdMap()
+  let uploaded = 0
+  // Se relee dentro del lock: otra pestaña pudo haber subido algunas mientras esperábamos.
+  for (const op of read()) {
+    if (isDemoOperation(op.id)) continue
+    let remoteId: string | null = idMap[op.id] ?? null
+    if (!remoteId) {
+      remoteId = await insertOperation(op)
+      if (!remoteId) continue // no se pudo (corte, sin sesión): sigue en este navegador y se reintenta en la próxima carga
+      idMap[op.id] = remoteId
+      writeIdMap(idMap) // antes de tocar nada más: si algo se corta acá, el reintento no vuelve a insertarla
+      uploaded++
+    }
+    carryOperationState(op.id, remoteId)
+    // Ya vive en la cuenta: sale de este navegador. Es lo que hace que la migración ocurra una sola vez y sin duplicados.
+    write(read().filter(o => o.id !== op.id))
+    delete idMap[op.id]
+    writeIdMap(idMap)
   }
-  // Solo marcar migrado si al menos una operación fue subida exitosamente,
-  // o si no había nada que migrar. Nunca marcar si hubo intentos fallidos.
-  if (n > 0 || local.length === 0) {
-    try { localStorage.setItem(OPS_MIGRATED_KEY, '1') } catch {}
+  return uploaded
+}
+
+/**
+ * Sube a la cuenta las operaciones que el usuario creó como invitado en este navegador.
+ * - Conserva el id (UUID): no cambian ni la selección ni el estado de las tareas.
+ * - Una sola vez por operación: al subirla se borra de acá; un reintento tras un corte no la duplica.
+ * - Corre también al entrar a una cuenta que ya tenía operaciones: lo que hizo el invitado no se pierde.
+ * Devuelve cuántas se subieron en esta pasada.
+ */
+export function migrateOperationsToSupabase(): Promise<number> {
+  if (!migrationInFlight) {
+    migrationInFlight = withMigrationLock(runMigration).finally(() => { migrationInFlight = null })
   }
-  return n
+  return migrationInFlight
 }
 
 /** Fuente única de operaciones. */
@@ -165,7 +213,7 @@ export async function loadOperations(): Promise<StoredOperation[]> {
   if (await hasSession()) {
     try {
       await migrateOperationsToSupabase()
-      const { fetchOperations } = await import('@/lib/supabase/operations')
+      const { fetchOperations } = await remoteOperations()
       const remote = await fetchOperations()
       // Operaciones que todavía no se pudieron subir a la base siguen siendo del usuario: no deben desaparecer.
       const pending = getOperations().filter(l => !remote.some(r => r.id === l.id))
@@ -179,7 +227,7 @@ export async function createOperationAnywhere(input: NewOperationInput): Promise
   const local = createOperation(input)
   if (await hasSession()) {
     try {
-      const { insertOperation } = await import('@/lib/supabase/operations')
+      const { insertOperation } = await remoteOperations()
       const id = await insertOperation(local)
       if (id) {
         // Queda solo en la base: evitamos que aparezca duplicada.
@@ -201,7 +249,7 @@ export async function loadOperation(id: string): Promise<StoredOperation | null>
   if (local) return local
   if (await hasSession()) {
     try {
-      const { getOperationById } = await import('@/lib/supabase/operations')
+      const { getOperationById } = await remoteOperations()
       return await getOperationById(id)
     } catch (err) { log.error('operations.loadById.supabase.failed', err) }
   }
@@ -212,7 +260,7 @@ export async function deleteOperationAnywhere(id: string): Promise<void> {
   deleteOperation(id)
   if (await hasSession()) {
     try {
-      const { removeOperationRemote } = await import('@/lib/supabase/operations')
+      const { removeOperationRemote } = await remoteOperations()
       await removeOperationRemote(id)
     } catch (err) { log.error('operations.delete.supabase.failed', err) }
   }

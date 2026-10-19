@@ -90,7 +90,8 @@ function LoginForm({ audience }: { audience: AuthAudience }) {
   const next = postLoginTarget(audience, params.get('next'))
   const th = THEME[audience]
   const field = `${FIELD_BASE} ${th.focus}`
-  const [mode, setMode] = useState<Mode>('login')
+  // `?mode=signup` abre directo "Crear cuenta" (la invitación "Guardá tu operación" del dashboard).
+  const [mode, setMode] = useState<Mode>(params.get('mode') === 'signup' ? 'signup' : 'login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -184,6 +185,12 @@ function LoginForm({ audience }: { audience: AuthAudience }) {
             <span className="font-semibold text-slate-700">{sentTo.email}</span>.{' '}
             {isReset ? 'Tocalo y elegís una nueva.' : 'Tocalo y entrás directo.'}
           </p>
+          {/* Confirmar el mail puede tardar y la operación del invitado vive en este navegador: se lo decimos para que no la dé por perdida. */}
+          {!isReset && audience === 'client' && (
+            <p className="mt-3 rounded-xl bg-brand-50 px-3 py-2 text-xs leading-relaxed text-brand-800" data-testid="guest-kept-note">
+              Tu operación sigue guardada en este dispositivo. Abrí el link desde acá y la sumamos a tu cuenta.
+            </p>
+          )}
         </div>
         <p className="text-xs text-slate-400">
           ¿No te llegó? Mirá en spam o promociones, o{' '}
