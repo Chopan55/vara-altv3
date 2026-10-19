@@ -1,6 +1,11 @@
 import type { Property, PropertyType } from '@/types'
 import type { ScrapedData } from '@/app/api/scrape-property/route'
 import { applyOverrides } from '@/lib/propertyOverrides'
+import type { PropertyCandidate } from '@/lib/candidates/model'
+import { lazyModule, singleFlight, withGuestMigrationLock } from '@/lib/guestLock'
+import { log } from '@/lib/observability/logger'
+import { isUuid } from '@/lib/operationIds'
+import type { NewPropertyInput } from './supabase/properties'
 
 /**
  * Propiedades REALES del usuario. Nunca devuelve mocks.
@@ -222,68 +227,205 @@ export function clearImportedProperty(): void {
 
 /* ─────────── Con sesión: Supabase. Sin sesión: el navegador. ─────────── */
 
-const MIGRATED_KEY = 'vara_migrated_to_supabase'
+const CANDIDATES_KEY = 'vara_candidates'
+/** Id local → id en la cuenta. Permite reescribir el vínculo operación ↔ propiedad aun cuando la propiedad ya salió del navegador. */
+const PROPS_IDMAP_KEY = 'vara_props_idmap'
+/** Id de la propiedad en la cuenta → id local de la operación con la que estaba vinculada; se enlaza cuando la operación ya existe allá. */
+const PROMO_LINKS_KEY = 'vara_props_promo_links'
 
-/**
- * Sube a la base lo que el usuario ya tenía cargado en el navegador.
- * Corre una sola vez por navegador; lo local queda intacto por si algo falla.
- */
-export async function migrateLocalToSupabase(): Promise<number> {
-  const local = getUserProperties()
-  if (local.length === 0) return 0
+const remoteProperties = lazyModule(() => import('./supabase/properties'))
+const remoteCandidates = lazyModule(() => import('./supabase/candidates'))
 
+function readMap(key: string): Record<string, string> {
   try {
-    if (localStorage.getItem(MIGRATED_KEY)) return 0
-  } catch { return 0 }
-
-  const { insertProperty, fetchUserProperties } = await import('./supabase/properties')
-
-  // Si ya hay propiedades en la base, no duplicamos.
-  const remote = await fetchUserProperties()
-  if (remote.length > 0) {
-    try { localStorage.setItem(MIGRATED_KEY, '1') } catch {}
-    return 0
-  }
-
-  let migrated = 0
-  for (const p of local) {
-    const id = await insertProperty({
-      source: p.source === 'imported' ? 'IMPORTED' : 'MANUAL',
-      sourceUrl: p.sourceUrl ?? null,
-      portal: p.portal ?? null,
-      title: p.title,
-      type: p.type,
-      price: p.price || undefined,
-      currency: p.currency,
-      address: p.address || undefined,
-      neighborhood: p.neighborhood || undefined,
-      city: p.city || undefined,
-      province: p.province || undefined,
-      surfaceTotal: p.surface || undefined,
-      surfaceCovered: p.coveredSurface,
-      rooms: p.rooms || undefined,
-      bedrooms: p.bedrooms || undefined,
-      bathrooms: p.bathrooms || undefined,
-      garage: p.garage,
-      description: p.description || undefined,
-      features: p.features,
-      expenses: p.expenses,
-      remoteImages: p.images,
-    })
-    if (id) migrated++
-  }
-
-  try { localStorage.setItem(MIGRATED_KEY, '1') } catch {}
-  return migrated
+    const parsed = JSON.parse(localStorage.getItem(key) ?? '{}')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch { return {} }
 }
 
-/** Fuente única de propiedades: base si hay sesión, navegador si no. */
+function writeMap(key: string, map: Record<string, string>): void {
+  try { localStorage.setItem(key, JSON.stringify(map)) } catch {}
+}
+
+/** Una propiedad (o candidato) que el invitado tiene en este navegador y todavía no está en una cuenta. */
+export interface GuestProperty {
+  localId: string
+  prop: UserProperty
+  candidate: PropertyCandidate | null
+}
+
+/**
+ * Lo que el invitado cargó: candidatos y propiedades importadas. Un importado y su copia como candidato son la misma
+ * propiedad (misma URL): cuenta una sola vez, con el estado del candidato. El borrador de publicación no entra:
+ * es un formulario en curso, sin identidad estable (migrarlo duplicaría la propiedad en cada edición).
+ */
+export function collectGuestProperties(): GuestProperty[] {
+  const out: GuestProperty[] = []
+  const seenUrls = new Set<string>()
+  const list = readJson<PropertyCandidate[]>(CANDIDATES_KEY)
+  for (const c of Array.isArray(list) ? list : []) {
+    if (!c || typeof c.id !== 'string' || c.source === 'draft') continue
+    if (c.sourceUrl) seenUrls.add(c.sourceUrl)
+    out.push({ localId: c.id, prop: c as unknown as UserProperty, candidate: c })
+  }
+  for (const imp of getImportedProperties()) {
+    if (imp.url && seenUrls.has(imp.url)) continue
+    out.push({ localId: imp.id, prop: fromImported(imp), candidate: null })
+  }
+  return out
+}
+
+/** Id con el que una propiedad vive hoy en la cuenta (el mismo si no cambió). Sirve para no romper el vínculo operación ↔ propiedad. */
+export function mapPropertyId(id: string | undefined): string | undefined {
+  if (!id) return id
+  return readMap(PROPS_IDMAP_KEY)[id] ?? id
+}
+
+/** true si esa propiedad sigue solo en este navegador: la operación que la usa debe esperar para no subir sin su vínculo. */
+export function isPendingGuestProperty(id: string | undefined): boolean {
+  return !!id && collectGuestProperties().some(g => g.localId === id)
+}
+
+function propertyToInput(p: UserProperty, id?: string): NewPropertyInput {
+  return {
+    id,
+    source: p.source === 'imported' ? 'IMPORTED' : 'MANUAL',
+    sourceUrl: p.sourceUrl ?? null,
+    portal: p.portal ?? null,
+    title: p.title,
+    type: p.type,
+    price: p.price || undefined,
+    currency: p.currency,
+    address: p.address || undefined,
+    neighborhood: p.neighborhood || undefined,
+    city: p.city || undefined,
+    province: p.province || undefined,
+    surfaceTotal: p.surface || undefined,
+    surfaceCovered: p.coveredSurface,
+    rooms: p.rooms || undefined,
+    bedrooms: p.bedrooms || undefined,
+    bathrooms: p.bathrooms || undefined,
+    garage: p.garage,
+    description: p.description || undefined,
+    features: p.features,
+    expenses: p.expenses,
+    remoteImages: p.images,
+  }
+}
+
+/** Saca de este navegador todas las representaciones locales de esa propiedad (candidato e importado comparten URL). */
+function removeGuestProperty(g: GuestProperty): void {
+  const url = g.prop.sourceUrl
+  try {
+    const cands = readJson<PropertyCandidate[]>(CANDIDATES_KEY)
+    if (Array.isArray(cands)) {
+      localStorage.setItem(CANDIDATES_KEY, JSON.stringify(cands.filter(c => c && c.id !== g.localId && !(url && c.sourceUrl === url))))
+    }
+    const imported = readJson<ImportedProperty[]>(IMPORTED_LIST_KEY)
+    if (Array.isArray(imported)) {
+      const kept = imported.filter(x => x && !(url && x.url === url) && `imported-${x.importedAt ?? 0}` !== g.localId)
+      if (kept.length > 0) localStorage.setItem(IMPORTED_LIST_KEY, JSON.stringify(kept))
+      else localStorage.removeItem(IMPORTED_LIST_KEY)
+    }
+    const legacy = readJson<ImportedProperty>(IMPORTED_KEY)
+    if (legacy && ((url && legacy.url === url) || `imported-${legacy.importedAt ?? 0}` === g.localId)) {
+      localStorage.removeItem(IMPORTED_KEY)
+    }
+  } catch {}
+}
+
+const hasCandidateState = (c: PropertyCandidate) =>
+  c.status !== 'ANALYZING' || Boolean(c.userNotes) || Boolean(c.discardReason) || Boolean(c.promotedAt)
+
+/**
+ * Sube a la cuenta lo que el invitado cargó, SIN bandera global: cada propiedad se resuelve por sí misma.
+ * - Mismo id (UUID) cuando se puede; los ids viejos (`cand_…`, `imported-…`) reciben uno nuevo y quedan en el mapa.
+ * - Si la cuenta ya tiene esa propiedad (misma URL) se reutiliza: no se duplica ni se pisa lo que tenía.
+ * - Una propiedad se saca del navegador recién cuando ya está en la cuenta; si la subida falla, se conserva y se reintenta.
+ * Sin lock: lo llaman migratePropertiesToSupabase (con lock) y la migración de operaciones (que ya lo tiene).
+ */
+export async function runPropertyMigration(): Promise<number> {
+  const guests = collectGuestProperties()
+  if (guests.length === 0) return 0
+
+  const { insertProperty, fetchUserProperties } = await remoteProperties()
+  const { updateCandidate } = await remoteCandidates()
+  const idMap = readMap(PROPS_IDMAP_KEY)
+  const links = readMap(PROMO_LINKS_KEY)
+
+  const byUrl = new Map<string, string>()
+  for (const r of await fetchUserProperties()) if (r.sourceUrl) byUrl.set(r.sourceUrl, r.id)
+
+  let uploaded = 0
+  for (const g of guests) {
+    let remoteId: string | null = idMap[g.localId] ?? (g.prop.sourceUrl ? byUrl.get(g.prop.sourceUrl) ?? null : null)
+    if (!remoteId) {
+      remoteId = await insertProperty(propertyToInput(g.prop, isUuid(g.localId) ? g.localId : undefined))
+      if (!remoteId) continue // no se pudo (corte, sin sesión): sigue en este navegador y se reintenta en la próxima carga
+      uploaded++
+      if (g.prop.sourceUrl) byUrl.set(g.prop.sourceUrl, remoteId)
+      // El estado del candidato (en análisis, favorito, notas…) viaja con la propiedad. Dos intentos: es lo único que no se puede reconstruir.
+      if (g.candidate && hasCandidateState(g.candidate)) {
+        const { status, userNotes, discardReason, promotedAt } = g.candidate
+        for (let attempt = 0; attempt < 2; attempt++) {
+          if (await updateCandidate(remoteId, { status, userNotes, discardReason, promotedAt }).catch(() => null)) break
+          if (attempt === 1) log.warn('property.migrate.candidate_state_failed', 'No se pudo copiar el estado del candidato a la cuenta.', { propertyId: remoteId })
+        }
+      }
+    }
+    idMap[g.localId] = remoteId
+    writeMap(PROPS_IDMAP_KEY, idMap) // antes de sacarla del navegador: si algo se corta acá, el reintento no la vuelve a subir
+    if (g.candidate?.promotedOperationId) {
+      links[remoteId] = g.candidate.promotedOperationId
+      writeMap(PROMO_LINKS_KEY, links)
+    }
+    removeGuestProperty(g)
+  }
+  return uploaded
+}
+
+/** Un solo migrador a la vez y las llamadas simultáneas comparten la misma ejecución. */
+export const migratePropertiesToSupabase = singleFlight(() => withGuestMigrationLock(runPropertyMigration))
+
+/**
+ * Una operación ya está en la cuenta: enlaza con ella al candidato que la había promovido (promoted_operation_id).
+ * Si el enlace falla queda pendiente y se reintenta.
+ */
+export async function linkPromotedProperties(opLocalId: string, opRemoteId: string): Promise<void> {
+  const links = readMap(PROMO_LINKS_KEY)
+  const pending = Object.entries(links).filter(([, local]) => local === opLocalId)
+  if (pending.length === 0) return
+  const { updateCandidate } = await remoteCandidates()
+  for (const [propRemoteId] of pending) {
+    if (await updateCandidate(propRemoteId, { promotedOperationId: opRemoteId }).catch(() => null)) delete links[propRemoteId]
+  }
+  writeMap(PROMO_LINKS_KEY, links)
+}
+
+/** Enlaces que quedaron pendientes cuya operación ya está en la cuenta con el mismo id (UUID conservado). */
+export async function sweepPromotedLinks(remoteOperationIds: Set<string>): Promise<void> {
+  const links = readMap(PROMO_LINKS_KEY)
+  for (const [, opLocalId] of Object.entries(links)) {
+    if (isUuid(opLocalId) && remoteOperationIds.has(opLocalId)) await linkPromotedProperties(opLocalId, opLocalId)
+  }
+}
+
+export function hasPendingPromotedLinks(): boolean {
+  return Object.keys(readMap(PROMO_LINKS_KEY)).length > 0
+}
+
+/** Fuente única de propiedades: la cuenta si hay sesión (con lo que todavía no se pudo subir), el navegador si no. */
 export async function loadUserProperties(): Promise<UserProperty[]> {
   try {
-    const { hasSession, fetchUserProperties } = await import('./supabase/properties')
+    const { hasSession, fetchUserProperties } = await remoteProperties()
     if (await hasSession()) {
-      await migrateLocalToSupabase()
-      return (await fetchUserProperties()).map(applyOverrides)
+      await migratePropertiesToSupabase()
+      const remote = (await fetchUserProperties()).map(applyOverrides)
+      // Lo que no se pudo subir sigue siendo del usuario: no debe desaparecer.
+      const pending = collectGuestProperties()
+        .map(g => applyOverrides(g.prop))
+        .filter(p => !remote.some(r => r.id === p.id || (p.sourceUrl && r.sourceUrl === p.sourceUrl)))
+      return [...remote, ...pending]
     }
   } catch {
     // Si Supabase falla, no dejamos al usuario sin sus datos.
@@ -293,10 +435,11 @@ export async function loadUserProperties(): Promise<UserProperty[]> {
 
 export async function loadUserPropertyById(id: string): Promise<UserProperty | null> {
   try {
-    const { hasSession, fetchUserPropertyById } = await import('./supabase/properties')
+    const { hasSession, fetchUserPropertyById } = await remoteProperties()
     if (await hasSession()) {
-      const remote = await fetchUserPropertyById(id)
-      return remote ? applyOverrides(remote) : null
+      // Un link viejo (`imported-…`, `cand_…`) sigue funcionando: se traduce al id que tiene hoy en la cuenta.
+      const remote = await fetchUserPropertyById(mapPropertyId(id) ?? id)
+      if (remote) return applyOverrides(remote)
     }
   } catch {}
   return getUserPropertyById(id)

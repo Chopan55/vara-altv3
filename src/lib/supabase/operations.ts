@@ -1,5 +1,6 @@
 import { tryCreateClient } from './client'
 import { log } from '@/lib/observability/logger'
+import { isUuid } from '@/lib/operationIds'
 import type { OperationRow } from './types'
 import type { StoredOperation } from '@/lib/userOperations'
 
@@ -13,6 +14,11 @@ export function isMissingColumnError(error: unknown, column: string): boolean {
   if (!error || typeof error !== 'object') return false
   const e = error as { code?: unknown; message?: unknown }
   return e.code === 'PGRST204' && typeof e.message === 'string' && e.message.includes(`'${column}'`)
+}
+
+/** Postgres 23505: la fila ya existe (p. ej. se había subido y se cortó antes de limpiar el navegador). */
+export function isDuplicateKeyError(error: unknown): boolean {
+  return !!error && typeof error === 'object' && (error as { code?: unknown }).code === '23505'
 }
 
 export function rowToStored(r: OperationRow): StoredOperation {
@@ -61,7 +67,14 @@ export async function insertOperation(op: StoredOperation): Promise<string | nul
   const userId = u.user?.id
   if (!userId) return null
 
+  // property_id es uuid en la base: un id local de propiedad (no UUID) haría fallar toda la operación y no se migraría nunca.
+  const propertyId = op.propertyId && isUuid(op.propertyId) ? op.propertyId : null
+  if (op.propertyId && !propertyId) {
+    log.warn('operation.insert.property_id_not_uuid', 'La propiedad vinculada todavía es local: la operación se sube sin ese vínculo.', { operationId: op.id })
+  }
   const payload = {
+    // Misma identidad que en el navegador (UUID): no cambia la selección ni el estado de las tareas.
+    ...(isUuid(op.id) ? { id: op.id } : {}),
     user_id: userId,
     type: (op.type === 'SELL' ? 'SELL_PROPERTY' : 'BUY_PROPERTY') as OperationRow['type'],
     status: op.status,
@@ -69,7 +82,7 @@ export async function insertOperation(op: StoredOperation): Promise<string | nul
     province: op.province,
     province_code: op.provinceCode,
     city: op.city || null,
-    property_id: op.propertyId ?? null,
+    property_id: propertyId,
   }
   let { data, error } = await supabase
     .from('operations')
@@ -81,6 +94,12 @@ export async function insertOperation(op: StoredOperation): Promise<string | nul
   if (error && isMissingColumnError(error, 'country')) {
     log.warn('operation.insert.country_column_missing', 'La tabla operations no tiene la columna country: se guarda sin ella. Aplicar la migración 20261012000000_operations_country_hotfix.sql.', { operationId: op.id })
     ;({ data, error } = await supabase.from('operations').insert(payload).select('id').single())
+  }
+
+  // Ya estaba subida (reintento tras un corte): no se duplica. Se verifica que sea del usuario antes de darla por buena (RLS).
+  if (error && isDuplicateKeyError(error) && isUuid(op.id)) {
+    const { data: existing } = await supabase.from('operations').select('id').eq('id', op.id).maybeSingle()
+    return existing?.id ?? null
   }
 
   if (error || !data) {

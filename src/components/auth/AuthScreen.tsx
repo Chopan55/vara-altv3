@@ -2,7 +2,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { isEnabled } from '@/lib/flags'
+import { postLoginTarget } from '@/lib/auth/entryJourney'
 import { Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle2, Calculator, ShieldCheck, Sparkles, Eye, EyeOff, Briefcase, ClipboardCheck, KeyRound, MapPin, Scale, Layers, Compass } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { VaraVisitLogo } from '@/components/ui/VaraVisitLogo'
@@ -42,12 +42,6 @@ function translateError(raw: string): string {
   if (m.includes('email rate limit')) return 'Se alcanzó el límite de mails de confirmación por hora. Probá de nuevo más tarde.'
   if (m.includes('rate limit') || m.includes('too many')) return 'Demasiados intentos. Esperá un minuto.'
   if (m.includes('error sending') && m.includes('email')) return 'No pudimos enviar el mail de confirmación. Es un problema del servicio de mail, no de tus datos.'
-  return raw
-}
-
-/** Un `next` externo mandaría al usuario a un dominio ajeno después de loguearse. */
-function safeNext(raw: string | null, fallback = '/dashboard'): string {
-  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return fallback
   return raw
 }
 
@@ -92,10 +86,12 @@ const TITLES: Titles = {
 function LoginForm({ audience }: { audience: AuthAudience }) {
   const router = useRouter()
   const params = useSearchParams()
-  const next = safeNext(params.get('next'), audience === 'partner' ? '/partner' : isEnabled('conversationalEntry') ? '/empezar' : '/dashboard')
+  // Después de entrar: el cliente va a /dashboard y el partner a /partner (o a un `next` seguro). /empezar queda como flujo experimental.
+  const next = postLoginTarget(audience, params.get('next'))
   const th = THEME[audience]
   const field = `${FIELD_BASE} ${th.focus}`
-  const [mode, setMode] = useState<Mode>('login')
+  // `?mode=signup` abre directo "Crear cuenta" (la invitación "Guardá tu operación" del dashboard).
+  const [mode, setMode] = useState<Mode>(params.get('mode') === 'signup' ? 'signup' : 'login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -189,6 +185,12 @@ function LoginForm({ audience }: { audience: AuthAudience }) {
             <span className="font-semibold text-slate-700">{sentTo.email}</span>.{' '}
             {isReset ? 'Tocalo y elegís una nueva.' : 'Tocalo y entrás directo.'}
           </p>
+          {/* Confirmar el mail puede tardar y la operación del invitado vive en este navegador: se lo decimos para que no la dé por perdida. */}
+          {!isReset && audience === 'client' && (
+            <p className="mt-3 rounded-xl bg-brand-50 px-3 py-2 text-xs leading-relaxed text-brand-800" data-testid="guest-kept-note">
+              Tu operación sigue guardada en este dispositivo. Abrí el link desde acá y la sumamos a tu cuenta.
+            </p>
+          )}
         </div>
         <p className="text-xs text-slate-400">
           ¿No te llegó? Mirá en spam o promociones, o{' '}
