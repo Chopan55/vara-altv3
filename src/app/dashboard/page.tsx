@@ -20,6 +20,7 @@ import {
   fetchSellerTasks, toggleSellerTask, setSellerTaskDueDate,
   type SellerTaskState,
 } from '@/lib/supabase/sellerTasks'
+import { SaveOperationBanner } from '@/components/account/SaveOperationBanner'
 import { fetchActivity, getLastSeen, markSeen } from '@/lib/supabase/activity'
 import { newSince, isMilestone, familyOf } from '@/lib/activity/model'
 
@@ -859,7 +860,17 @@ function RightRail({
 
 const RETURN_THRESHOLD_MS = 60 * 60 * 1000 // 1 hora
 
+/** El dashboard funciona como invitado; la franja invita a guardar la operación sin interrumpir. */
 export default function Dashboard() {
+  return (
+    <>
+      <SaveOperationBanner />
+      <DashboardContent />
+    </>
+  )
+}
+
+function DashboardContent() {
   const vara = useVaraState()
   const { operations, journey, activeOperation, activeOperationId, getTransactionData, usingDemo, deleteOperation } = useOperations()
   const globalAlerts = useGlobalNextBestAction()
