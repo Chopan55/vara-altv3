@@ -1,0 +1,21 @@
+{
+  "name": "vara-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "VARA Agent Bridge V1: Manager (OpenAI) + implementador (Claude Code) con aprobación humana. No toca producción.",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --root ../.. tools/vara-agent/tests"
+  },
+  "dependencies": {
+    "@openai/agents": "^0.20.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  }
+}

@@ -19,6 +19,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
+    // tools/vara-agent: tests del bridge de agentes; usan dobles, sin red ni dependencias propias.
+    include: ['tests/**/*.test.ts', 'tools/vara-agent/tests/**/*.test.ts'],
   },
 })
