@@ -1,6 +1,10 @@
 import type { UserOperationSummary, CountryCode } from '@/types'
 import { log } from '@/lib/observability/logger'
+import { lazyModule, singleFlight, withGuestMigrationLock } from '@/lib/guestLock'
 import { newOperationId } from '@/lib/operationIds'
+import {
+  hasPendingPromotedLinks, isPendingGuestProperty, linkPromotedProperties, mapPropertyId, runPropertyMigration, sweepPromotedLinks,
+} from '@/lib/userProperties'
 
 /**
  * Operaciones REALES del usuario.
@@ -121,16 +125,9 @@ export function hasRealOperations(): boolean {
 /** Id local → id en la base, para las operaciones viejas (ids no UUID) que ya se subieron pero siguen en este navegador. */
 const IDMAP_KEY = 'vara_ops_idmap'
 
-/**
- * Import perezoso y compartido: las llamadas simultáneas (varios componentes pidiendo operaciones a la vez) esperan
- * UNA sola carga del módulo en vez de disparar un import() cada una. Si la carga falla no queda cacheada.
- */
-function lazy<T>(load: () => Promise<T>): () => Promise<T> {
-  let p: Promise<T> | null = null
-  return () => (p ??= load().catch(err => { p = null; throw err }))
-}
-const sessionModule = lazy(() => import('@/lib/supabase/properties'))
-const remoteOperations = lazy(() => import('@/lib/supabase/operations'))
+// Imports perezosos y compartidos: las llamadas simultáneas esperan UNA sola carga del módulo.
+const sessionModule = lazyModule(() => import('@/lib/supabase/properties'))
+const remoteOperations = lazyModule(() => import('@/lib/supabase/operations'))
 
 async function hasSession(): Promise<boolean> {
   try {
@@ -161,22 +158,31 @@ function carryOperationState(oldId: string, newId: string): void {
   } catch {}
 }
 
-/** Un solo migrador a la vez: entre pestañas (Web Locks, si el navegador los tiene) y dentro de la misma página. */
-function withMigrationLock<T>(fn: () => Promise<T>): Promise<T> {
-  const locks = typeof navigator !== 'undefined' ? (navigator as { locks?: { request: <R>(name: string, cb: () => Promise<R>) => Promise<R> } }).locks : undefined
-  return locks ? locks.request('vara-ops-migration', fn) : fn()
-}
-
-let migrationInFlight: Promise<number> | null = null
-
 async function runMigration(): Promise<number> {
-  if (read().length === 0) return 0
+  // Primero las propiedades: así las operaciones se suben ya con el id real de su propiedad y no pierden el vínculo.
+  await runPropertyMigration()
+  if (read().length === 0) {
+    await finishPromotedLinks()
+    return 0
+  }
   const { insertOperation } = await remoteOperations()
   const idMap = readIdMap()
   let uploaded = 0
   // Se relee dentro del lock: otra pestaña pudo haber subido algunas mientras esperábamos.
-  for (const op of read()) {
-    if (isDemoOperation(op.id)) continue
+  for (const original of read()) {
+    if (isDemoOperation(original.id)) continue
+    let op = original
+    if (op.propertyId) {
+      const mapped = mapPropertyId(op.propertyId)
+      if (mapped !== op.propertyId) {
+        // La propiedad ya está en la cuenta con otro id: la operación apunta al nuevo (también la copia local, por si esta subida falla).
+        op = { ...op, propertyId: mapped }
+        write(read().map(o => (o.id === op.id ? op : o)))
+      } else if (isPendingGuestProperty(op.propertyId)) {
+        // Su propiedad todavía no se pudo subir: esperar. Subir la operación ahora la dejaría sin vínculo para siempre.
+        continue
+      }
+    }
     let remoteId: string | null = idMap[op.id] ?? null
     if (!remoteId) {
       remoteId = await insertOperation(op)
@@ -186,12 +192,23 @@ async function runMigration(): Promise<number> {
       uploaded++
     }
     carryOperationState(op.id, remoteId)
+    await linkPromotedProperties(op.id, remoteId) // el candidato que la promovió vuelve a apuntar a ella
     // Ya vive en la cuenta: sale de este navegador. Es lo que hace que la migración ocurra una sola vez y sin duplicados.
     write(read().filter(o => o.id !== op.id))
     delete idMap[op.id]
     writeIdMap(idMap)
   }
+  await finishPromotedLinks()
   return uploaded
+}
+
+/** Enlaces candidato ↔ operación que quedaron pendientes y cuya operación ya está en la cuenta con el mismo id. */
+async function finishPromotedLinks(): Promise<void> {
+  if (!hasPendingPromotedLinks()) return
+  try {
+    const { fetchOperations } = await remoteOperations()
+    await sweepPromotedLinks(new Set((await fetchOperations()).map(o => o.id)))
+  } catch (err) { log.error('operations.migrate.links.failed', err) }
 }
 
 /**
@@ -201,12 +218,7 @@ async function runMigration(): Promise<number> {
  * - Corre también al entrar a una cuenta que ya tenía operaciones: lo que hizo el invitado no se pierde.
  * Devuelve cuántas se subieron en esta pasada.
  */
-export function migrateOperationsToSupabase(): Promise<number> {
-  if (!migrationInFlight) {
-    migrationInFlight = withMigrationLock(runMigration).finally(() => { migrationInFlight = null })
-  }
-  return migrationInFlight
-}
+export const migrateOperationsToSupabase = singleFlight(() => withGuestMigrationLock(runMigration))
 
 /** Fuente única de operaciones. */
 export async function loadOperations(): Promise<StoredOperation[]> {
