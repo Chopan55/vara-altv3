@@ -13,9 +13,10 @@ describe('rutas de la app', () => {
   })
 
   for (const [path, load] of Object.entries(pages)) {
+    // Importar una pantalla grande (p. ej. /analizar) tarda 3 s en la suite completa y a veces pasa los 5 s por defecto.
     it(`carga ${path.replace('/src/app', '') || '/'}`, async () => {
       const mod = (await load()) as { default?: unknown }
       expect(typeof mod.default).toBe('function')
-    })
+    }, 30_000)
   }
 })
