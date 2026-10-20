@@ -4,7 +4,6 @@ import { Section } from '@/components/ui/Section'
 import { Eyebrow } from '@/components/ui/Eyebrow'
 import { ButtonLink } from '@/components/ui/Button'
 import { ProductFrame } from '@/components/ui/ProductFrame'
-import { HeroInteractive } from '@/components/home/HeroInteractive'
 import { ContactForm } from '@/components/home/ContactForm'
 import { FaqAssistant } from '@/components/home/FaqAssistant'
 import {
@@ -31,8 +30,7 @@ export default function LandingPage() {
             <Link href="/planes" className="transition-colors hover:text-ink">Planes</Link>
           </nav>
           <div className="flex items-center gap-2">
-            <Link href="/login" className="hidden px-3 py-2 text-sm font-semibold text-ink-soft transition-colors hover:text-ink sm:inline">Entrar</Link>
-            <ButtonLink href="/onboarding">Empezar</ButtonLink>
+            <ButtonLink href="/login">Entrar</ButtonLink>
           </div>
         </div>
       </header>
@@ -48,7 +46,7 @@ export default function LandingPage() {
             Más libertad para decidir. Más control para avanzar. Menos costos innecesarios.
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <ButtonLink href="/onboarding" size="lg">Empezar</ButtonLink>
+            <ButtonLink href="/login" size="lg">Entrar</ButtonLink>
             <ButtonLink href="#como-funciona" variant="secondary" size="lg">Ver cómo funciona</ButtonLink>
           </div>
         </div>
@@ -89,12 +87,12 @@ export default function LandingPage() {
         <FaqAssistant />
       </Section>
 
-      {/* CTA final: elegir por dónde empezar. */}
-      <Section id="empezar" tone="brand" width="narrow">
-        <h2 className="font-display text-center text-3xl font-extrabold text-white text-balance md:text-5xl">Empezá por donde estás.</h2>
-        <p className="mb-10 mt-4 text-center text-lg text-brand-200">Contanos qué querés hacer y VARA arma tu recorrido.</p>
-        <div className="rounded-[var(--radius-card)] bg-white p-5 text-ink md:p-7">
-          <HeroInteractive />
+      {/* CTA final: el único acceso para clientes es entrar con su cuenta. */}
+      <Section id="entrar" tone="brand" width="narrow">
+        <h2 className="font-display text-center text-3xl font-extrabold text-white text-balance md:text-5xl">Tu operación, en un solo lugar.</h2>
+        <p className="mb-10 mt-4 text-center text-lg text-brand-200">Entrá con tu cuenta y seguí con tu compra o tu venta.</p>
+        <div className="flex justify-center">
+          <ButtonLink href="/login" size="lg" variant="secondary">Entrar a VARA</ButtonLink>
         </div>
       </Section>
 
