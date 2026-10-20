@@ -1,14 +1,16 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Send, User, ChevronDown, ChevronUp, Sparkles, Handshake, Volume2, VolumeX, Square, Loader2 } from 'lucide-react'
+import { ArrowLeft, Send, User, ChevronDown, ChevronUp, Sparkles, Handshake, Volume2, VolumeX, Square, Loader2, Mic } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
 import { useOperations } from '@/hooks/useOperations'
 import { useAssistantVoice } from '@/hooks/useAssistantVoice'
+import { useRealtimeVoice } from '@/hooks/useRealtimeVoice'
 import { VaraOrb } from '@/components/buy-v3/VaraOrb'
 import { apiErrorMessage, safeJson } from '@/lib/api/client'
 import { isErrorMessage, isSpeakable, moodLabel, orbMoodFor } from '@/lib/assistant/voice'
+import { liveErrorMessage, liveLabel, liveOrbMood } from '@/lib/assistant/realtime'
 
 const BUYER_FAQS = [
   '¿Qué documentos le pido al vendedor?',
@@ -53,8 +55,26 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
   const [showFaqs, setShowFaqs] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const voice = useAssistantVoice()
+  // Conversación de voz en tiempo real: lo que se dice queda en el mismo chat, en orden.
+  const messagesRef = useRef<Message[]>([])
+  useEffect(() => { messagesRef.current = messages }, [messages])
+  const live = useRealtimeVoice({
+    onFinal: entries => setMessages(prev => [...prev, ...entries.map(e => ({ role: e.role, content: e.text, time: nowTime() }))]),
+    getHistory: () => messagesRef.current.slice(1).map(m => ({ role: m.role, content: m.content })),
+    isError: isErrorMessage,
+  })
+  const liveMood = liveOrbMood(live.status)
+  const liveActive = live.status !== 'off' && live.status !== 'error'
   // El avatar refleja lo que pasa de verdad; un error vuelve a reposo sin animación falsa.
-  const mood = orbMoodFor({ chatLoading: loading, voice: voice.status })
+  const mood = liveMood ?? orbMoodFor({ chatLoading: loading, voice: voice.status })
+  const statusText = liveMood ? liveLabel(live.status) : moodLabel(mood as 'idle' | 'thinking' | 'speaking')
+
+  function toggleLive() {
+    if (liveActive) { live.stop(); return }
+    voice.stop() // la lectura de una respuesta no se pisa con la conversación
+    setChatError(null)
+    void live.start()
+  }
 
   useEffect(() => {
     if (ready || !vara.loaded) return
@@ -75,7 +95,7 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, live.partial])
 
   async function sendMessage(text?: string) {
     const msg = text ?? input.trim()
@@ -112,7 +132,7 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
         const reply = data.reply as string
         setMessages(prev => [...prev, { role: 'assistant', content: reply, time: nowTime() }])
         // "Leer respuestas": solo respuestas reales, nunca errores (esos no llegan acá). Si la voz falla, el texto ya está.
-        if (voice.autoRead) void voice.play(String(updatedMessages.length), reply, { silent: true })
+        if (voice.autoRead && !liveActive) void voice.play(String(updatedMessages.length), reply, { silent: true })
       }
     } catch {
       setMessages(messages)
@@ -133,12 +153,12 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
             </Link>
           {/* VARA es el protagonista: el avatar vive acá, compacto, y refleja lo que pasa de verdad. */}
           <div className="flex items-center gap-4">
-            <VaraOrb state={mood} size={72} levelRef={voice.levelRef} audio={voice.status === 'speaking'} />
+            <VaraOrb state={mood} size={72} levelRef={liveActive ? live.levelRef : voice.levelRef} audio={liveActive ? live.status === 'speaking' : voice.status === 'speaking'} />
             <div className="min-w-0 flex-1">
               <h1 className="font-bold text-slate-900 text-lg leading-tight">Asistente VARA</h1>
               {/* El estado también está escrito: no depende de la animación. */}
               <p role="status" aria-live="polite" data-testid="assistant-status" className="text-sm text-brand-700 font-medium mt-0.5">
-                {moodLabel(mood)}
+                {statusText}
               </p>
               <p className="text-[11px] text-slate-400 mt-0.5">Especializado en operaciones inmobiliarias AR</p>
             </div>
@@ -158,6 +178,24 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
             Leer respuestas
             <span className="font-normal text-slate-500">{voice.autoRead ? '· activado' : '· desactivado'}</span>
           </button>
+
+          {/* Conversación de voz: micrófono solo mientras la sesión está activa. */}
+          <button
+            type="button"
+            onClick={toggleLive}
+            aria-pressed={liveActive}
+            disabled={live.status === 'connecting'}
+            className={cn(
+              'mt-3 ml-2 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:opacity-60',
+              liveActive ? 'bg-slate-900 text-white hover:bg-slate-700' : 'bg-brand-600 text-white hover:bg-brand-700',
+            )}
+          >
+            {liveActive ? <Square size={12} aria-hidden="true" /> : live.status === 'connecting' ? <Loader2 size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : <Mic size={13} aria-hidden="true" />}
+            {liveActive ? 'Terminar conversación' : live.status === 'connecting' ? 'Conectando…' : 'Hablar con VARA'}
+          </button>
+          {live.status === 'error' && live.errorCode && (
+            <p role="status" className="mt-2 text-xs text-amber-800">{liveErrorMessage(live.errorCode)}</p>
+          )}
         </div>
       </header>
 
@@ -247,6 +285,13 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
                   <User size={14} className="text-slate-600" />
                 </div>
               )}
+            </div>
+          ))}
+          {live.partial.map(p => (
+            <div key={p.id} className={cn('flex gap-3', p.role === 'user' ? 'justify-end' : 'justify-start')}>
+              <div className={cn('max-w-[80%] rounded-2xl px-4 py-3 opacity-80', p.role === 'user' ? 'bg-slate-900 text-white rounded-tr-sm' : 'bg-white shadow-card text-slate-800 rounded-tl-sm')}>
+                <p className="text-sm leading-relaxed whitespace-pre-line">{p.text}</p>
+              </div>
             </div>
           ))}
           {loading && (
