@@ -8,7 +8,8 @@
  * Todas las coordenadas del shader están en "espacio de imagen" (0..1, y hacia abajo).
  */
 
-export type OrbState = 'idle' | 'thinking' | 'speaking'
+/** `listening`: la persona está hablando y VARA la escucha (mira al frente, atenta). */
+export type OrbState = 'idle' | 'thinking' | 'speaking' | 'listening'
 
 export interface OrbDebug {
   level?: number
@@ -238,6 +239,7 @@ export function startOrb(canvas: HTMLCanvasElement, opts: OrbOptions): (() => vo
       nextGaze = t + rand(1.4, 3.4)
       gazeTarget = state === 'thinking' ? [0.75, -0.85]
         : state === 'speaking' ? [rand(-0.15, 0.15), rand(-0.05, 0.12)]
+        : state === 'listening' ? [rand(-0.08, 0.08), rand(-0.04, 0.08)]
         : [rand(-0.9, 0.9), rand(-0.5, 0.45)]
     }
     gaze = [lerp(gaze[0], gazeTarget[0], 1 - Math.exp(-dt * 7)), lerp(gaze[1], gazeTarget[1], 1 - Math.exp(-dt * 7))]
