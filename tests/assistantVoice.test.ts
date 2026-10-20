@@ -247,7 +247,7 @@ describe('la pantalla /asistente', () => {
     expect(page.match(/<VaraOrb/g)).toHaveLength(1)
     expect(page).not.toMatch(/\bBot\b/)
     expect(page).toContain('state={mood}')
-    expect(page).toContain('levelRef={voice.levelRef}')
+    expect(page).toContain('levelRef={liveActive ? live.levelRef : voice.levelRef}')
   })
 
   it('el chat sigue igual: texto como fuente principal, historial, FAQs y errores', () => {
@@ -271,11 +271,11 @@ describe('la pantalla /asistente', () => {
   })
 
   it('el autoplay solo lee respuestas reales, en silencio si falla; y se corta al enviar otra pregunta', () => {
-    expect(page).toContain('if (voice.autoRead) void voice.play(')
+    expect(page).toContain('if (voice.autoRead && !liveActive) void voice.play(')
     expect(page).toContain('{ silent: true }')
     expect(page).toMatch(/voice\.stop\(\)[^\n]*\n/)
     // el autoplay está en la rama de éxito: nunca después de un error
-    const ok = page.indexOf('if (voice.autoRead)')
+    const ok = page.indexOf('if (voice.autoRead && !liveActive)')
     const err = page.indexOf('setChatError({ auth: res.status === 401')
     expect(err).toBeLessThan(ok)
   })
@@ -285,9 +285,10 @@ describe('la pantalla /asistente', () => {
     expect(read('src/components/buy-v3/VaraOrb.tsx')).toContain('prefers-reduced-motion')
   })
 
-  it('usa la voz existente y no abre frentes nuevos (sin Realtime, sin micrófono, sin STT)', () => {
+  it('la lectura de respuestas usa la voz existente (sin Realtime ni micrófono propios)', () => {
     expect(read('src/components/buy-v3/useVaraVoice.ts')).toContain('/api/v3/speak')
-    const all = page + read('src/hooks/useAssistantVoice.ts') + read('src/lib/assistant/voice.ts')
+    // La lectura de respuestas (TTS) no usa Realtime ni micrófono; eso vive aparte, en useRealtimeVoice.
+    const all = read('src/hooks/useAssistantVoice.ts') + read('src/lib/assistant/voice.ts')
     expect(all).not.toMatch(/getUserMedia|SpeechRecognition|webkitSpeechRecognition|MediaRecorder|realtime|WebSocket/i)
   })
 })

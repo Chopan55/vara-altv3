@@ -45,7 +45,7 @@ export function VaraOrb({ state = 'idle', size = 96, levelRef, audio = false, de
     return stop
   }, [size, levelRef, debugRef])
 
-  if (failed) return <VaraAvatar state={state} size={size} />
+  if (failed) return <VaraAvatar state={state === 'listening' ? 'idle' : state} size={size} />
   return (
     <canvas ref={canvas} aria-hidden="true"
       style={{ width: size, height: size, flex: 'none', filter: 'drop-shadow(0 10px 18px rgba(99,102,216,.38))' }} />
