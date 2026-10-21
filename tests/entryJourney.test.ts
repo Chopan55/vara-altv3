@@ -1,8 +1,8 @@
 /**
- * Entry journey: Home → Entrar → /login → /dashboard · Home → Empezar → /onboarding ·
+ * Entry journey: Home → Entrar → /login → /dashboard · Home sin accesos a /onboarding ·
  * /login con sesión redirige · el login de Visit Partners no se rompe.
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { createElement, isValidElement, type ReactElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -36,13 +36,12 @@ import LandingPage from '@/app/page'
 import LoginPage from '@/app/login/page'
 import PartnerEntryPage from '@/app/partner/entrar/page'
 import { AuthScreen } from '@/components/auth/AuthScreen'
-import { ENTRY, loginRedirect, postLoginTarget, safeNext } from '@/lib/auth/entryJourney'
+import { loginRedirect, postLoginTarget, safeNext } from '@/lib/auth/entryJourney'
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')
 
-/** Enlaces de la home: texto visible → href. */
-function homeLinks() {
-  const html = renderToStaticMarkup(createElement(LandingPage))
+/** Enlaces de un HTML: texto visible → href. */
+function linksOf(html: string) {
   const links: { text: string; href: string }[] = []
   for (const m of html.matchAll(/<a\b[^>]*?href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)) {
     links.push({ href: m[1], text: m[2].replace(/<[^>]+>/g, '').trim() })
@@ -50,33 +49,64 @@ function homeLinks() {
   return links
 }
 
-describe('home pública', () => {
-  it('"Entrar" va a /login', () => {
-    const entrar = homeLinks().filter(l => l.text === 'Entrar')
-    expect(entrar.length).toBeGreaterThan(0)
+/** Enlaces de la home: texto visible → href. */
+function homeLinks() {
+  return linksOf(renderToStaticMarkup(createElement(LandingPage)))
+}
+
+/** Las secciones reales (el resto de este archivo las reemplaza por un doble para probar solo header y hero). */
+async function productLinks() {
+  const actual = await vi.importActual<typeof import('@/components/home/HomeSections')>('@/components/home/HomeSections')
+  return linksOf(renderToStaticMarkup(createElement(actual.ProductsSection)))
+}
+
+describe('home pública: el único acceso de clientes es Entrar → /login', () => {
+  it('todos los "Entrar" y "Entrar a VARA" van a /login (header, hero y cierre)', () => {
+    const entrar = homeLinks().filter(l => /^Entrar/.test(l.text))
+    expect(entrar.map(l => l.text)).toEqual(['Entrar', 'Entrar', 'Entrar a VARA'])
     expect(entrar.every(l => l.href === '/login')).toBe(true)
   })
 
-  it('"Empezar" del header va a /onboarding', () => {
-    const header = renderToStaticMarkup(createElement(LandingPage)).split('</header>')[0]
-    const empezar = [...header.matchAll(/<a\b[^>]*?href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].filter(m => m[2].replace(/<[^>]+>/g, '').trim() === 'Empezar')
-    expect(empezar).toHaveLength(1)
-    expect(empezar[0][1]).toBe('/onboarding')
-  })
-
-  it('el CTA principal del hero también va a /onboarding (no baja a una sección)', () => {
+  it('el header tiene un botón visible "Entrar" y el CTA principal del hero también es "Entrar"', () => {
     const html = renderToStaticMarkup(createElement(LandingPage))
-    const hero = html.split('</header>')[1].split('Ver cómo funciona')[0]
-    const empezar = [...hero.matchAll(/<a\b[^>]*?href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].filter(m => m[2].replace(/<[^>]+>/g, '').trim() === 'Empezar')
-    expect(empezar).toHaveLength(1)
-    expect(empezar[0][1]).toBe('/onboarding')
+    const [header, rest] = html.split('</header>')
+    expect(linksOf(header).filter(l => l.text === 'Entrar')).toEqual([{ text: 'Entrar', href: '/login' }])
+    expect(header).not.toMatch(/hidden[^"]*sm:inline/) // ya no se esconde en el celular
+    const hero = rest.split('Ver cómo funciona')[0]
+    expect(linksOf(hero).filter(l => l.text === 'Entrar')).toEqual([{ text: 'Entrar', href: '/login' }])
   })
 
-  it('ningún botón "Empezar" navega a un ancla: siempre inicia el journey', () => {
-    const empezar = homeLinks().filter(l => l.text === 'Empezar')
-    expect(empezar.length).toBeGreaterThanOrEqual(2)
-    expect(empezar.every(l => l.href === ENTRY.start)).toBe(true)
-    expect(empezar.some(l => l.href.startsWith('#'))).toBe(false)
+  it('la portada no enlaza a /onboarding (ni con intent)', async () => {
+    expect(homeLinks().some(l => l.href.includes('/onboarding'))).toBe(false)
+    expect((await productLinks()).some(l => l.href.includes('/onboarding'))).toBe(false)
+    expect(renderToStaticMarkup(createElement(LandingPage))).not.toContain('onboarding')
+    // las secciones reales tampoco lo mencionan
+    expect(read('src/components/home/HomeSections.tsx')).not.toContain('/onboarding')
+    expect(read('src/app/page.tsx')).not.toContain('/onboarding')
+  })
+
+  it('no hay CTAs "Empezar"', async () => {
+    expect(homeLinks().filter(l => /^Empezar/i.test(l.text))).toEqual([])
+    expect((await productLinks()).filter(l => /^Empezar/i.test(l.text))).toEqual([])
+    expect(read('src/app/page.tsx')).not.toMatch(/>\s*Empezar\b/)
+  })
+
+  it('VARA Comprar y VARA Vender muestran "Entrar a VARA" → /login; VARA Visit no cambia', async () => {
+    const links = await productLinks()
+    expect(links.filter(l => l.text === 'Entrar a VARA')).toEqual([
+      { text: 'Entrar a VARA', href: '/login' },
+      { text: 'Entrar a VARA', href: '/login' },
+    ])
+    expect(links.find(l => l.text === 'Ver cómo funciona')?.href).toBe('/vara-visit')
+  })
+
+  it('"Ver cómo funciona" conserva su navegación informativa (ancla de la propia home)', () => {
+    const link = homeLinks().find(l => l.text === 'Ver cómo funciona')
+    expect(link?.href).toBe('#como-funciona')
+  })
+
+  it('la ruta /onboarding sigue existiendo: solo dejó de ser un acceso de la portada', () => {
+    expect(existsSync(new URL('../src/app/onboarding/page.tsx', import.meta.url))).toBe(true)
   })
 })
 
