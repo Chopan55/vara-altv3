@@ -221,8 +221,8 @@ export function AiSection() {
 }
 
 const PRODUCTS = [
-  { t: 'VARA Comprar', d: 'Analizá, compará y avanzá con criterio.', href: '/onboarding?intent=BUY', cta: 'Empezar a comprar' },
-  { t: 'VARA Vender', d: 'Preparate, publicá y negociá con control.', href: '/onboarding?intent=SELL', cta: 'Empezar a vender' },
+  { t: 'VARA Comprar', d: 'Analizá, compará y avanzá con criterio.', href: '/login', cta: 'Entrar a VARA' },
+  { t: 'VARA Vender', d: 'Preparate, publicá y negociá con control.', href: '/login', cta: 'Entrar a VARA' },
   { t: 'VARA Visit', d: 'Presencia verificada en la propiedad.', href: '/vara-visit', cta: 'Ver cómo funciona' },
 ]
 
