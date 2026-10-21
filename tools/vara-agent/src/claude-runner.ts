@@ -8,7 +8,7 @@ import { extractJson, redactSecrets } from './validations'
 import { BridgeError, type CommandRunner, type Usage } from './types'
 
 export interface ClaudeClient {
-  run(task: string, opts: { readOnly: boolean; maxTurns: number }): Promise<{ raw: unknown; usage?: Usage; numTurns?: number }>
+  run(task: string, opts: { readOnly: boolean }): Promise<{ raw: unknown; usage?: Usage; numTurns?: number }>
 }
 
 export const READ_ONLY_TOOLS = ['Read', 'Glob', 'Grep', 'Bash(git status *)', 'Bash(git diff *)', 'Bash(git log *)', 'Bash(git ls-files *)']
@@ -159,15 +159,13 @@ export function sanitizeSchemaForClaude(schemaText: string): string {
   return JSON.stringify(strip(JSON.parse(schemaText)))
 }
 
-export function buildClaudeArgs(cfg: ClaudeRunnerConfig, opts: { readOnly: boolean; maxTurns: number }): string[] {
+export function buildClaudeArgs(cfg: ClaudeRunnerConfig, opts: { readOnly: boolean }): string[] {
   return [
     '-p',
     '--output-format',
     'json',
     '--model',
     cfg.model,
-    '--max-turns',
-    String(opts.maxTurns),
     '--permission-mode',
     'dontAsk',
     '--allowedTools',

@@ -278,7 +278,7 @@ describe('entorno de Claude por allowlist', () => {
       return { code: 0, stdout: JSON.stringify({ subtype: 'success', is_error: false, structured_output: claudeResult(), num_turns: 2 }), stderr: '', timedOut: false }
     }
     const claude = createClaudeRunner(run, { model: 'sonnet', resultSchema: '{}', systemPrompt: 's', sourceEnv: source })
-    await claude.run('hacé algo', { readOnly: true, maxTurns: 5 })
+    await claude.run('hacé algo', { readOnly: true })
     expect(Object.keys(seen ?? {}).sort()).toEqual(['ANTHROPIC_API_KEY', 'HOME', 'PATH'])
   })
 })
