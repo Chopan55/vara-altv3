@@ -1,1389 +1,154 @@
 'use client'
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { ArrowRight, MapPin, AlertTriangle, FileText, DollarSign, MessageSquare, Clock, ChevronRight, TrendingUp, ShieldAlert, CheckCircle2, CircleDot, Users, Sparkles, Plus, Link2, Home, CheckSquare, BarChart2, ShoppingCart, Tag, Building2, Trash2, Zap, Briefcase, Shield, Calendar, Loader2 } from 'lucide-react'
-import { Progress } from '@/components/ui/Progress'
-import { InfoTip } from '@/components/ui/InfoTip'
-import { generateChecklist } from '@/lib/regulations'
-import type { ProvinceCode } from '@/data/regulations/types'
-import { priceRef } from '@/lib/market/priceReference'
-import { formatPrice } from '@/lib/utils'
-import { cn } from '@/lib/utils'
+import { useEffect, useState } from 'react'
 import { useVaraState } from '@/hooks/useVaraState'
-import { useOperations, useGlobalNextBestAction } from '@/hooks/useOperations'
-import { GuidanceBanner } from '@/components/guidance/GuidanceBanner'
-import { loadUserProperties, type UserProperty } from '@/lib/userProperties'
-import type { UserOperationSummary, Transaction } from '@/types'
-import { computeNextActions, primaryAction, CATEGORY_LABELS } from '@/lib/nba/engine'
+import { useOperations } from '@/hooks/useOperations'
+import { SaveOperationBanner } from '@/components/account/SaveOperationBanner'
 import { NextStepAgent } from '@/components/operation/NextStepAgent'
 import {
-  fetchSellerTasks, toggleSellerTask, setSellerTaskDueDate,
-  type SellerTaskState,
-} from '@/lib/supabase/sellerTasks'
-import { fetchActivity, getLastSeen, markSeen } from '@/lib/supabase/activity'
-import { newSince, isMilestone, familyOf } from '@/lib/activity/model'
+  AttentionCard, CostsCard, DashboardLoading, DocsRow, EmptyDashboard, NovedadesWidget, OperationHeader, OperationsPanel,
+  PropertyCard, SellerChecklist, SellerReferences, UncertaintyNotice, UpNextList, estimatedDueDate,
+} from '@/components/dashboard/DashboardParts'
+import { loadUserProperties, loadUserPropertyById, type UserProperty } from '@/lib/userProperties'
+import { buildFirstValue, pickDashboardProperty, shouldShowEmptyState, type OperationKind, type PlanStep } from '@/lib/dashboard/firstValue'
+import { fetchSellerTasks, setSellerTaskDueDate, toggleSellerTask, type SellerTaskState } from '@/lib/supabase/sellerTasks'
+import type { Transaction, UserOperationSummary } from '@/types'
 
-function NovedadesWidget({ operationId }: { operationId: string }) {
-  const [events, setEvents] = useState<ReturnType<typeof newSince>>(null)
-  const [seen, setSeen] = useState(false)
+/**
+ * Dashboard — primer valor.
+ *
+ * En menos de 5 segundos: qué operación, en qué estado, qué hacer ahora, por qué y la acción concreta.
+ * Una sola acción principal; después el detalle. Toda la lógica vive en `lib/dashboard/firstValue`
+ * y no mira la sesión: invitado y cuenta ven lo mismo. Ver docs/DASHBOARD_FIRST_VALUE.md.
+ */
 
+/** Propiedad que corresponde a la operación: la vinculada, o la que el usuario viene mirando. */
+function useDashboardProperty(op: UserOperationSummary, kind: OperationKind) {
+  const [state, setState] = useState<{ ready: boolean; property: UserProperty | null }>({ ready: false, property: null })
   useEffect(() => {
     let alive = true
-    const lastSeen = getLastSeen(operationId)
-    // Marcar como visto ahora para que la próxima visita no lo muestre de nuevo
-    markSeen(operationId)
-    fetchActivity(operationId).then(all => {
-      if (!alive) return
-      const fresh = newSince(all.filter(isMilestone), lastSeen)
-      setEvents(fresh)
-      setSeen(true)
-    })
+    ;(async () => {
+      const linked = op.propertyId ? await loadUserPropertyById(op.propertyId) : null
+      const all = linked ? [] : await loadUserProperties()
+      if (alive) setState({ ready: true, property: pickDashboardProperty(kind, linked, all) })
+    })().catch(() => { if (alive) setState({ ready: true, property: null }) })
     return () => { alive = false }
-  }, [operationId])
-
-  if (!seen || !events || events.length === 0) return null
-
-  const familyIcon = (e: (typeof events)[0]) => {
-    const f = familyOf(e.kind)
-    if (f === 'DOCUMENT') return <FileText size={12} className="text-blue-500" />
-    if (f === 'OFFER') return <DollarSign size={12} className="text-green-500" />
-    if (f === 'PROPERTY') return <Home size={12} className="text-brand-500" />
-    return <Clock size={12} className="text-slate-400" />
-  }
-
-  return (
-    <div className="bg-white rounded-2xl border border-brand-100 shadow-card overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50 bg-brand-50/40">
-        <div className="flex items-center gap-2">
-          <Sparkles size={13} className="text-brand-500" />
-          <h3 className="text-sm font-semibold text-slate-800">
-            {events.length === 1
-              ? 'Una novedad desde tu última visita'
-              : `${events.length} novedades desde tu última visita`}
-          </h3>
-        </div>
-        <span className="rounded-full bg-brand-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center flex-shrink-0">
-          {events.length}
-        </span>
-      </div>
-      <div className="divide-y divide-slate-50">
-        {events.slice(0, 5).map(e => (
-          <div key={e.id} className="flex items-start gap-3 px-5 py-3">
-            <div className="w-6 h-6 bg-slate-50 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              {familyIcon(e)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-slate-700 leading-snug">{e.summary}</p>
-            </div>
-            <span className="text-[11px] text-slate-300 flex-shrink-0 mt-0.5 whitespace-nowrap">
-              {new Date(e.createdAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+  }, [op.propertyId, kind])
+  return state
 }
 
-function computeIntelligence(txn: Transaction) {
-  const allTasks = txn.stages.flatMap(s => s.tasks)
-  const blockedTasks = allTasks.filter(t => t.status === 'BLOCKED')
-  const pendingDocs = txn.documents.filter(d => d.status === 'PENDING')
-  const currentStage = txn.stages.find(s => s.id === txn.currentStageId)
-  const nextTask = currentStage?.tasks.find(t => t.status === 'IN_PROGRESS' || t.status === 'TODO')
-
-  const propertyPrice = txn.property?.price ?? 0
-  const checklist = generateChecklist(txn.provinceCode as ProvinceCode, txn.type, propertyPrice)
-  const totalBuyerMin = checklist.costs.totalBuyer.min
-  const totalBuyerMax = checklist.costs.totalBuyer.max
-
-  const risks = [
-    blockedTasks.length > 0 && { severity: 'HIGH' as const, label: 'Tareas bloqueadas', detail: `${blockedTasks.length} tarea${blockedTasks.length > 1 ? 's' : ''} no puede${blockedTasks.length > 1 ? 'n' : ''} avanzar` },
-    pendingDocs.filter(d => ['ESCRITURA', 'PLANOS'].includes(d.category)).length > 0 && { severity: 'HIGH' as const, label: 'Documentación crítica pendiente', detail: 'Escritura y/o planos sin recibir' },
-    pendingDocs.length > 0 && { severity: 'MEDIUM' as const, label: `${pendingDocs.length} documento${pendingDocs.length > 1 ? 's' : ''} pendiente${pendingDocs.length > 1 ? 's' : ''}`, detail: 'Requeridos para avanzar a negociación' },
-  ].filter(Boolean) as { severity: 'HIGH' | 'MEDIUM' | 'LOW'; label: string; detail: string }[]
-
-  const operationStatus: 'ON_TRACK' | 'ATTENTION' | 'BLOCKED' =
-    blockedTasks.length > 0 ? 'BLOCKED' :
-    pendingDocs.length >= 3 ? 'ATTENTION' : 'ON_TRACK'
-
-  return { blockedTasks, pendingDocs, currentStage, nextTask, risks, totalBuyerMin, totalBuyerMax, propertyPrice, operationStatus, checklist }
-}
-
-function greeting() {
-  const h = new Date().getHours()
-  if (h < 12) return 'Buenos días'
-  if (h < 19) return 'Buenas tardes'
-  return 'Buenas noches'
-}
-
-function EmptyState({ userName, propertyUrl }: { userName: string; propertyUrl: string }) {
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="px-4 lg:px-6 pt-8 pb-3">
-        <div className="max-w-2xl mx-auto">
-          <p className="text-sm text-slate-400 mb-0.5">{greeting()}, {userName.split(' ')[0]}</p>
-          <h1 className="text-xl font-bold text-slate-900">Bienvenido a VARA</h1>
-        </div>
-      </header>
-
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
-        {/* Hero CTA */}
-        <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center">
-          <div className="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Plus size={24} className="text-brand-500" />
-          </div>
-          <h2 className="text-lg font-bold text-slate-900 mb-2">Empezá tu operación</h2>
-          <p className="text-sm text-slate-400 mb-6 max-w-sm mx-auto">
-            VARA te guía en cada paso — desde la primera visita hasta la escritura. Sin sorpresas.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href="/onboarding"
-              className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-3 rounded-xl transition-colors"
-            >
-              Crear mi operación <ArrowRight size={16} />
-            </Link>
-            <Link
-              href="/operacion/txn-001"
-              className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-6 py-3 rounded-xl transition-colors text-sm"
-            >
-              Ver demo →
-            </Link>
-          </div>
-        </div>
-
-        {/* Si tiene URL de propiedad */}
-        {propertyUrl && (
-          <div className="bg-white rounded-2xl shadow-card p-5">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 bg-brand-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Link2 size={16} className="text-brand-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800 mb-0.5">Propiedad en análisis</p>
-                <a href={propertyUrl} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-brand-600 hover:underline truncate block max-w-full">
-                  {propertyUrl}
-                </a>
-              </div>
-              <Link href="/propiedades" className="text-xs text-brand-600 font-semibold hover:underline flex-shrink-0">
-                Analizar →
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* Quick access */}
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { href: '/costos', icon: DollarSign, label: 'Calculá tus costos', sub: 'Sellos, escribano y más' },
-            { href: '/asistente', icon: MessageSquare, label: 'Preguntale a VARA', sub: 'Cualquier duda inmobiliaria' },
-            { href: '/propiedades', icon: FileText, label: 'Analizar una propiedad', sub: 'Riesgos y potencial con IA' },
-            { href: '/vara-labs', icon: Sparkles, label: 'VARA Labs', sub: 'Lo que viene próximamente' },
-          ].map(({ href, icon: Icon, label, sub }) => (
-            <Link key={href} href={href}
-              className="bg-white rounded-2xl p-4 shadow-card hover:shadow-elevated transition-shadow flex items-center gap-3">
-              <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Icon size={14} className="text-slate-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-semibold text-slate-800 text-xs leading-tight truncate">{label}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-
-/** Días estimados desde hoy para cada paso de una venta típica en Argentina. */
-const ESTIMATED_DAYS: Record<string, number> = {
-  docs: 7, price: 3, photos: 10, publish: 14,
-  visits: 30, offer: 60, escritura: 120,
-}
-
-function isoDate(daysFromNow: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() + daysFromNow)
-  return d.toISOString().slice(0, 10)
-}
-
-function fmtDueDate(iso: string): string {
-  const [y, m, day] = iso.split('-').map(Number)
-  return new Date(y, m - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
-}
-
-function SellerDashboard({ userName, province, operationId }: { userName: string; province: string; operationId: string }) {
+/** Plan de venta: pasos de la cuenta si existen; si no, el dashboard usa las tareas del motor regulatorio. */
+function useSellerPlan(operationId: string, enabled: boolean) {
   const [tasks, setTasks] = useState<SellerTaskState[]>([])
-  const [loaded, setLoaded] = useState(false)
-  const [editingDateId, setEditingDateId] = useState<string | null>(null)
-  const [m2Input, setM2Input] = useState('')
+  const [loaded, setLoaded] = useState(!enabled)
 
   useEffect(() => {
+    if (!enabled) return
     let alive = true
-    fetchSellerTasks(operationId).then(result => {
-      if (!alive) return
-      if (result) setTasks(result)
-      setLoaded(true)
-    })
+    fetchSellerTasks(operationId)
+      .then(result => { if (alive && result) setTasks(result) })
+      .catch(() => {})
+      .finally(() => { if (alive) setLoaded(true) })
     return () => { alive = false }
-  }, [operationId])
+  }, [operationId, enabled])
 
-  const toggleItem = async (key: string) => {
+  const toggle = async (key: string) => {
     const task = tasks.find(t => t.key === key)
     if (!task) return
     const next = !task.done
-    setTasks(prev => prev.map(t => t.key === key ? { ...t, done: next } : t))
+    setTasks(prev => prev.map(t => (t.key === key ? { ...t, done: next } : t)))
     await toggleSellerTask(operationId, key, next)
   }
-
-  const setItemDate = async (key: string, date: string) => {
-    setTasks(prev => prev.map(t => t.key === key ? { ...t, dueDate: date || undefined } : t))
+  const setDate = async (key: string, date: string) => {
+    setTasks(prev => prev.map(t => (t.key === key ? { ...t, dueDate: date || undefined } : t)))
     await setSellerTaskDueDate(operationId, key, date || null)
   }
-
-  const estimateDates = async () => {
-    const updated = tasks.map(t => ({
-      ...t,
-      dueDate: t.done ? t.dueDate : isoDate(ESTIMATED_DAYS[t.key] ?? 30),
-    }))
+  const estimate = async () => {
+    const updated = tasks.map(t => ({ ...t, dueDate: t.done ? t.dueDate : estimatedDueDate(t.key) }))
     setTasks(updated)
-    await Promise.all(
-      updated
-        .filter(t => !t.done && t.dueDate)
-        .map(t => setSellerTaskDueDate(operationId, t.key, t.dueDate!))
-    )
+    await Promise.all(updated.filter(t => !t.done && t.dueDate).map(t => setSellerTaskDueDate(operationId, t.key, t.dueDate!)))
   }
-
-  const done = tasks.filter(t => t.done).length
-  const progress = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0
-
-  const sellerCosts = [
-    { label: 'Comisión inmobiliaria', value: '3–4% del precio' },
-    { label: 'Honorarios escribano', value: '~1% del precio' },
-    { label: 'ITI / Ganancia', value: '1.5–3% según caso' },
-    { label: 'Plusvalía municipal', value: 'Varía por provincia' },
-  ]
-
-  if (!loaded) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 size={20} className="animate-spin text-slate-300" />
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="px-4 lg:px-6 pt-8 pb-3">
-        <div className="max-w-2xl mx-auto">
-          <p className="text-sm text-slate-400 mb-0.5">{greeting()}, {userName.split(' ')[0]}</p>
-          <h1 className="text-xl font-bold text-slate-900">Tu operación de venta</h1>
-          <p className="text-sm text-slate-400 mt-0.5 flex items-center gap-1">
-            <MapPin size={11} /> {province}
-          </p>
-        </div>
-      </header>
-
-      <div className="max-w-2xl mx-auto px-4 py-5 space-y-4">
-
-        {/* PROGRESS CARD */}
-        <div className="bg-white rounded-2xl shadow-card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="font-semibold text-slate-800 text-sm flex items-center gap-1.5">
-                Progreso de venta
-                <InfoTip label="Cómo se calcula el progreso">
-                  Es el porcentaje de tareas completadas sobre el total de la operación.
-                  No mide tiempo ni plata: mide cuántos pasos del proceso ya resolviste.
-                </InfoTip>
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">{done} de {tasks.length} pasos completados</p>
-            </div>
-            <span className="text-2xl font-extrabold text-slate-900">{progress}%</span>
-          </div>
-          <Progress value={progress} showLabel={false} />
-        </div>
-
-        {/* NEXT BEST ACTION */}
-        {(() => {
-          const next = tasks.find(t => !t.done)
-          if (!next) return null
-          return (
-            <div className="bg-amber-500 rounded-2xl p-5 text-slate-900">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp size={13} className="opacity-50" />
-                <p className="text-xs font-bold opacity-50 uppercase tracking-widest">Próximo paso</p>
-              </div>
-              <h3 className="font-extrabold text-base mb-1 leading-tight">{next.title}</h3>
-              <p className="text-sm opacity-70 leading-relaxed mb-4">{next.description}</p>
-              <button
-                onClick={() => toggleItem(next.key)}
-                className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors"
-              >
-                Marcar como hecho <ArrowRight size={14} />
-              </button>
-            </div>
-          )
-        })()}
-
-        {/* CHECKLIST */}
-        <div className="bg-white rounded-2xl shadow-card overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center">
-                <CheckSquare size={15} className="text-amber-500" />
-              </div>
-              <h3 className="font-semibold text-slate-800 text-sm">Checklist de venta</h3>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={estimateDates}
-                className="flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:text-brand-700 transition-colors"
-              >
-                <Sparkles size={10} /> Estimar fechas
-              </button>
-              <span className="text-xs text-slate-400">{done}/{tasks.length}</span>
-            </div>
-          </div>
-          <div className="divide-y divide-slate-50">
-            {tasks.map(task => (
-              <div key={task.key} className="flex items-center gap-2 px-5 py-3 hover:bg-slate-50 transition-colors">
-                <button
-                  onClick={() => toggleItem(task.key)}
-                  className="flex items-center gap-3 flex-1 text-left min-w-0"
-                >
-                  <div className={cn(
-                    'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                    task.done ? 'bg-brand-600 border-brand-600' : 'border-slate-200'
-                  )}>
-                    {task.done && <CheckCircle2 size={12} className="text-white" strokeWidth={3} />}
-                  </div>
-                  <div className="min-w-0">
-                    <p className={cn('text-sm font-medium leading-tight', task.done ? 'text-slate-400 line-through' : 'text-slate-800')}>
-                      {task.title}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5 truncate">{task.description}</p>
-                  </div>
-                </button>
-                <div className="flex-shrink-0">
-                  {editingDateId === task.key ? (
-                    <input
-                      type="date"
-                      autoFocus
-                      value={task.dueDate ?? ''}
-                      onChange={e => setItemDate(task.key, e.target.value)}
-                      onBlur={() => setEditingDateId(null)}
-                      className="text-xs border border-brand-300 rounded-lg px-2 py-1 text-slate-700 outline-none focus:border-brand-500 bg-white"
-                    />
-                  ) : (
-                    <button
-                      onClick={() => setEditingDateId(task.key)}
-                      title={task.dueDate ? 'Cambiar fecha' : 'Fijar fecha'}
-                      className={cn(
-                        'text-[11px] px-2 py-1 rounded-lg transition-colors flex items-center gap-1',
-                        task.dueDate
-                          ? 'text-brand-600 bg-brand-50 hover:bg-brand-100 font-semibold'
-                          : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'
-                      )}
-                    >
-                      {task.dueDate ? fmtDueDate(task.dueDate) : <Calendar size={11} />}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* PRICING INTELLIGENCE */}
-        {(() => {
-          const ref = priceRef(province)
-          const m2n = parseFloat(m2Input)
-          const hasM2 = !isNaN(m2n) && m2n > 0
-          const estMin = hasM2 ? Math.round(m2n * ref.min / 1000) * 1000 : null
-          const estMax = hasM2 ? Math.round(m2n * ref.max / 1000) * 1000 : null
-          return (
-            <div className="bg-white rounded-2xl shadow-card p-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center">
-                  <BarChart2 size={15} className="text-amber-500" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-800 text-sm">Inteligencia de precio</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{ref.label} · Referencia histórica 2024–2025</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-amber-50 rounded-xl p-3">
-                  <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wide mb-0.5">Mínimo mercado</p>
-                  <p className="text-lg font-extrabold text-slate-900">USD {ref.min.toLocaleString('es-AR')}</p>
-                  <p className="text-[10px] text-slate-400">por m²</p>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-3">
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-0.5">Máximo mercado</p>
-                  <p className="text-lg font-extrabold text-slate-900">USD {ref.max.toLocaleString('es-AR')}</p>
-                  <p className="text-[10px] text-slate-400">por m²</p>
-                </div>
-              </div>
-              <div className="mb-3">
-                <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
-                  ¿Cuántos m² tiene tu propiedad?
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={m2Input}
-                    onChange={e => setM2Input(e.target.value)}
-                    placeholder="Ej: 75"
-                    className="flex-1 border-2 border-slate-100 focus:border-brand-400 rounded-xl px-3 py-2.5 text-sm text-slate-700 outline-none"
-                  />
-                  <div className="flex items-center px-3 bg-slate-50 rounded-xl border-2 border-slate-100 text-xs text-slate-400 font-medium">
-                    m²
-                  </div>
-                </div>
-              </div>
-              {hasM2 && estMin && estMax && (
-                <div className="bg-brand-50 border border-brand-100 rounded-xl p-3 mb-3">
-                  <p className="text-[10px] font-bold text-brand-600 uppercase tracking-wide mb-0.5">[ESTIMADO] Rango de publicación</p>
-                  <p className="text-base font-extrabold text-slate-900">
-                    USD {estMin.toLocaleString('es-AR')} – {estMax.toLocaleString('es-AR')}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    Basado en {m2Input} m² × referencia {ref.label}. Verificá con comparables reales.
-                  </p>
-                </div>
-              )}
-              <Link href="/asistente" className="flex items-center gap-2 text-xs font-semibold text-amber-600 hover:underline">
-                Analizar mi propiedad con IA → <ArrowRight size={12} />
-              </Link>
-            </div>
-          )
-        })()}
-
-        {/* SELLER COSTS */}
-        <div className="bg-white rounded-2xl shadow-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-800 text-sm">Costos del vendedor</h3>
-            <Link href="/costos" className="text-xs text-amber-600 font-semibold hover:underline">Calculadora →</Link>
-          </div>
-          <div className="space-y-2">
-            {sellerCosts.map((c, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <p className="text-xs text-slate-500">{c.label}</p>
-                <p className="text-xs font-semibold text-slate-700">{c.value}</p>
-              </div>
-            ))}
-          </div>
-          <div className="h-px bg-slate-100 mt-3 mb-3" />
-          <p className="text-xs text-slate-300">Varían según precio, provincia y tipo de inmueble.</p>
-        </div>
-
-        {/* QUICK ACCESS */}
-        <div className="grid grid-cols-2 gap-2.5">
-          {[
-            { href: '/asistente', icon: MessageSquare, label: 'Asistente VARA', sub: 'Preguntá lo que necesitás' },
-            { href: '/propiedades', icon: Sparkles, label: 'Transformar fotos', sub: 'Renovación virtual con IA' },
-            { href: '/costos', icon: DollarSign, label: 'Calculá tus costos', sub: 'Costos del vendedor' },
-            { href: '/profesionales', icon: Users, label: 'Profesionales', sub: 'Escribanos e inmobiliarias' },
-          ].map(({ href, icon: Icon, label, sub }) => (
-            <Link key={href} href={href}
-              className="bg-white rounded-2xl p-4 shadow-card hover:shadow-elevated transition-shadow flex items-center gap-3">
-              <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Icon size={14} className="text-slate-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-semibold text-slate-800 text-xs leading-tight truncate">{label}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-      </div>
-    </div>
-  )
+  const steps: PlanStep[] | undefined = tasks.length > 0 ? tasks.map(t => ({ key: t.key, title: t.title, description: t.description, done: t.done })) : undefined
+  return { loaded, tasks, steps, toggle, setDate, estimate }
 }
 
-function OperationCard({ op, isActive, onSelect, getTransactionData, onDelete, isDemo }: {
+function OperationView({ op, operations, onSelect, onDelete, getTransactionData }: {
   op: UserOperationSummary
-  isActive: boolean
-  onSelect: (id: string) => void
-  getTransactionData: (id: string) => import('@/types').Transaction | null
-  onDelete?: (id: string) => void
-  isDemo?: boolean
-}) {
-  const txn = getTransactionData(op.id)
-  const blockedCount = txn ? txn.stages.flatMap(s => s.tasks).filter(t => t.status === 'BLOCKED').length : 0
-  const pendingDocs = txn ? txn.documents.filter(d => d.status === 'PENDING').length : 0
-
-  const typeLabel = op.type === 'BUY' ? 'Compra' : 'Venta'
-  const TypeIcon = op.type === 'BUY' ? ShoppingCart : Tag
-
-  const stageLabel = txn?.stages.find(s => s.id === txn.currentStageId)?.label ?? 'Sin etapa'
-  // La próxima acción sale del motor NBA, no de una lectura directa del stage.
-  // Así es coherente con el RightRail y con la vista de operación.
-  const primaryNba = txn ? computeNextActions({ transaction: txn }).find(a => a.id !== 'all_clear') : undefined
-  const cover = txn?.property?.images?.[0]
-
-  const urgency = blockedCount > 0
-    ? { label: 'Urgente', className: 'bg-red-50 text-red-600 border-red-100' }
-    : pendingDocs > 0
-      ? { label: 'Media', className: 'bg-amber-50 text-amber-700 border-amber-100' }
-      : { label: 'Baja', className: 'bg-green-50 text-green-700 border-green-100' }
-
-  return (
-    <div
-      className={cn(
-        'bg-white rounded-2xl shadow-card overflow-hidden border transition-all',
-        isActive ? 'border-brand-300 ring-1 ring-brand-100' : 'border-slate-200/70'
-      )}
-    >
-      <div className="flex flex-col sm:flex-row">
-        {/* Foto de la propiedad. Si todavía no hay ninguna cargada no inventamos
-            una imagen de stock: dejamos un lugar neutro que se nota vacío. */}
-        <div className="relative sm:w-44 sm:flex-shrink-0 h-36 sm:h-auto bg-slate-100">
-          {cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={cover} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Building2 size={26} className="text-slate-300" aria-hidden="true" />
-            </div>
-          )}
-          <span className={cn(
-            'absolute top-2.5 left-2.5 rounded-lg px-2 py-0.5 text-[10px] font-bold',
-            op.type === 'BUY' ? 'bg-white/95 text-blue-600' : 'bg-white/95 text-amber-600'
-          )}>
-            <TypeIcon size={9} className="inline mr-1 -mt-0.5" aria-hidden="true" />
-            {typeLabel}
-          </span>
-        </div>
-
-        <div className="flex-1 min-w-0 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <button onClick={() => onSelect(op.id)} className="text-left min-w-0">
-              <h3 className="font-bold text-slate-900 text-base leading-tight truncate">{op.title}</h3>
-              <p className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
-                <MapPin size={10} aria-hidden="true" />{op.city}{op.province ? `, ${op.province}` : ''}
-                {op.country && op.country !== 'AR' && (
-                  <span className="ml-1 text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">
-                    {op.country}
-                  </span>
-                )}
-              </p>
-            </button>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <span className={cn('rounded-lg border px-2 py-0.5 text-[10px] font-bold', urgency.className)}>
-                {urgency.label}
-              </span>
-              {isDemo ? (
-                <span className="text-[10px] font-semibold text-slate-400">Ejemplo</span>
-              ) : onDelete && (
-                <button
-                  onClick={() => { if (confirm(`¿Borrar "${op.title}"? No se puede deshacer.`)) onDelete(op.id) }}
-                  title="Borrar operación"
-                  aria-label={`Borrar ${op.title}`}
-                  className="text-slate-300 hover:text-red-500 p-1 rounded-lg transition-colors"
-                >
-                  <Trash2 size={13} />
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-3.5">
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="text-xs font-semibold text-slate-600">{stageLabel}</p>
-              <span className="text-xs font-bold text-slate-700 tabular-nums">{op.progress}%</span>
-            </div>
-            <Progress value={op.progress} showLabel={false} />
-          </div>
-
-          <div className={cn(
-            'mt-3.5 flex items-center gap-3 rounded-xl px-3 py-2.5',
-            primaryNba?.blocking ? 'bg-red-50' : 'bg-slate-50'
-          )}>
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <Zap size={14} className={cn('flex-shrink-0', primaryNba?.blocking ? 'text-red-500' : 'text-brand-600')} aria-hidden="true" />
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Próxima acción</p>
-                <p className={cn('text-xs truncate', primaryNba?.blocking ? 'text-red-700 font-medium' : 'text-slate-700')}>
-                  {primaryNba?.title ?? 'Revisá el detalle de la operación'}
-                </p>
-              </div>
-            </div>
-            <Link
-              href={primaryNba?.cta.href ?? `/operacion/${op.id}`}
-              className="flex-shrink-0 rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-300 hover:text-slate-900 transition-colors"
-            >
-              {primaryNba?.cta.label ?? 'Ver operación'}
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/**
- * Columna derecha del diseño nuevo: lo que hay que mirar hoy, siempre a la vista.
- * Es la respuesta al "no sé dónde están las cosas" — en vez de buscar en el menú,
- * la pantalla te dice qué sigue.
- *
- * Todo lo que muestra sale de las operaciones reales del usuario. Si no hay nada
- * pendiente, lo dice; no llenamos la columna con avisos inventados.
- */
-type GlobalAlert = ReturnType<typeof useGlobalNextBestAction>[number]
-
-/**
- * Una fila por TIPO de aviso, no por operación. Con varias operaciones en el mismo
- * estado (y el mismo nombre por defecto), listarlas una por una repetía la misma
- * línea seis veces sin decir nada nuevo.
- */
-function groupAlerts(alerts: GlobalAlert[]) {
-  const groups = new Map<string, { label: string; severity: GlobalAlert['severity']; items: GlobalAlert[] }>()
-  for (const a of alerts) {
-    const g = groups.get(a.label) ?? { label: a.label, severity: a.severity, items: [] }
-    g.items.push(a)
-    if (a.severity === 'HIGH') g.severity = 'HIGH'
-    groups.set(a.label, g)
-  }
-  return [...groups.values()].sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'HIGH' ? -1 : 1))
-}
-
-/** "Mi compra ×3 · Mi venta": agrupa los nombres repetidos en vez de repetirlos. */
-function summarizeTitles(titles: string[]): string {
-  const counts = new Map<string, number>()
-  for (const title of titles) counts.set(title, (counts.get(title) ?? 0) + 1)
-  return [...counts].map(([title, n]) => (n > 1 ? `${title} ×${n}` : title)).join(' · ')
-}
-
-function RightRail({
-  alerts,
-  operations,
-  getTransactionData,
-}: {
-  alerts: ReturnType<typeof useGlobalNextBestAction>
   operations: UserOperationSummary[]
-  getTransactionData: (id: string) => import('@/types').Transaction | null
+  onSelect: (id: string) => void
+  onDelete: (id: string) => void
+  getTransactionData: (id: string) => Transaction | null
 }) {
-  /*
-   * Los proximos pasos salen del motor de Next Best Action, no de una
-   * heuristica escrita aca. Asi el consejo del dashboard, el de la operacion
-   * y el del asistente son el mismo, y cambian juntos cuando cambia el estado.
-   *
-   * Sin fechas: el modelo de tareas no las tiene e inventarlas seria peor que
-   * no mostrarlas.
-   */
-  const allSteps = operations
-    .flatMap(op => {
-      const txn = getTransactionData(op.id)
-      if (!txn) return []
-      return computeNextActions({ transaction: txn })
-        .filter(a => a.id !== 'all_clear')
-        .map(action => ({ opTitle: op.title, action }))
-    })
-    .sort((a, b) => a.action.priority - b.action.priority)
+  const kind: OperationKind = op.type === 'SELL' ? 'SELL' : 'BUY'
+  const { ready, property } = useDashboardProperty(op, kind)
+  const seller = useSellerPlan(op.id, kind === 'SELL')
 
-  // Un paso por acción, no por operación: varias compras en el mismo punto pedían
-  // "Conseguí escritura anterior" una vez cada una, y las claves de React chocaban.
-  const stepsByAction = new Map<string, { action: (typeof allSteps)[number]['action']; titles: string[] }>()
-  for (const { opTitle, action } of allSteps) {
-    const found = stepsByAction.get(action.id)
-    if (found) found.titles.push(opTitle)
-    else stepsByAction.set(action.id, { action, titles: [opTitle] })
-  }
-  const nextSteps = [...stepsByAction.values()].slice(0, 4)
+  // Hasta saber qué propiedad corresponde no se decide nada: evita mostrar "cargá la propiedad" y corregirlo un segundo después.
+  if (!ready || !seller.loaded) return <DashboardLoading />
 
-  const alertGroups = groupAlerts(alerts)
-  const hasUrgent = alertGroups.some(g => g.severity === 'HIGH')
+  const fv = buildFirstValue({ kind, operationId: op.id, transaction: getTransactionData(op.id), property, steps: seller.steps })
+  const refs = operations.map(o => ({ id: o.id, title: o.title, type: o.type, progress: o.progress }))
+  const place = [op.city, op.province].filter(Boolean).join(', ')
 
   return (
-    <aside className="space-y-4 lg:sticky lg:top-20">
-      <section className="rounded-2xl bg-white border border-slate-200/70 shadow-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-slate-900">Qué requiere atención hoy</h2>
-          {alertGroups.length > 0 && (
-            <span className={cn(
-              'rounded-full text-[10px] font-bold w-5 h-5 flex items-center justify-center',
-              hasUrgent ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700',
-            )}>
-              {alertGroups.length}
-            </span>
-          )}
-        </div>
+    <>
+      <OperationHeader fv={fv} title={op.title} place={place} operations={refs} activeId={op.id} onSelect={onSelect} />
 
-        {alerts.length === 0 ? (
-          <div className="flex items-start gap-2.5 rounded-xl bg-green-50 px-3 py-2.5">
-            <CheckCircle2 size={14} className="text-green-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-            <p className="text-xs text-green-800">No hay nada bloqueado. Seguí con los próximos pasos.</p>
-          </div>
-        ) : (
-          <ul className="space-y-1.5">
-            {alertGroups.map(group => {
-              const urgent = group.severity === 'HIGH'
-              return (
-                <li key={group.label}>
-                  <Link
-                    href={`/operacion/${group.items[0].operationId}`}
-                    className="flex items-start gap-2.5 rounded-xl px-3 py-2.5 hover:bg-slate-50 transition-colors"
-                  >
-                    <AlertTriangle
-                      size={13}
-                      className={cn('flex-shrink-0 mt-0.5', urgent ? 'text-red-500' : 'text-amber-500')}
-                      aria-hidden="true"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-slate-800">{group.label}</p>
-                      <p className="text-[11px] text-slate-500 truncate">{summarizeTitles(group.items.map(i => i.title))}</p>
-                    </div>
-                    <span className={cn(
-                      'flex-shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold',
-                      urgent ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700',
-                    )}>
-                      {urgent ? 'Urgente' : 'Pendiente'}
-                    </span>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
+      {/* La única acción principal. */}
+      <NextStepAgent key={`${op.id}-${fv.primary.id}`} action={fv.primary} operationId={op.id} kind={kind} province={op.province} />
 
-      <section className="rounded-2xl bg-white border border-slate-200/70 shadow-card p-4">
-        <h2 className="text-sm font-bold text-slate-900 mb-3">Próximos pasos</h2>
-        {nextSteps.length === 0 ? (
-          <p className="text-xs text-slate-500">Cuando avances en la operación, acá aparece lo que sigue.</p>
-        ) : (
-          <ul className="space-y-0.5">
-            {nextSteps.map(({ titles, action }) => (
-              <li key={action.id}>
-                <Link
-                  href={action.cta.href}
-                  className="flex items-start gap-2.5 rounded-xl px-2 py-2 hover:bg-slate-50 transition-colors"
-                >
-                  <CircleDot
-                    size={12}
-                    className={cn('flex-shrink-0 mt-1', action.blocking ? 'text-red-500' : 'text-brand-500')}
-                    aria-hidden="true"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-slate-800 leading-snug">{action.title}</p>
-                    <p className="text-[11px] text-slate-400 truncate">
-                      {summarizeTitles(titles)} · {CATEGORY_LABELS[action.category]}
-                    </p>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <UncertaintyNotice items={fv.uncertainties} />
+      <UpNextList actions={fv.upNext} />
+      <AttentionCard items={fv.attention} />
 
-      <section className="rounded-2xl bg-brand-600 text-white p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles size={14} aria-hidden="true" />
-          <h2 className="text-sm font-bold">VARA AI</h2>
-        </div>
-        <p className="text-xs text-brand-100 leading-relaxed mb-3.5">
-          Preguntale cualquier duda sobre tu operación: seña, boleto, sellos, escritura.
-          Responde con la información de VARA, no con lo que encuentre por ahí.
-        </p>
-        <Link
-          href="/asistente"
-          className="block rounded-xl bg-white/15 hover:bg-white/25 px-3 py-2.5 text-center text-xs font-bold transition-colors"
-        >
-          Hacer una consulta →
-        </Link>
-      </section>
+      {kind === 'BUY' ? (
+        <>
+          {property && <PropertyCard property={property} label="La propiedad que estás mirando" />}
+          <CostsCard costs={fv.costs} />
+          <DocsRow pending={fv.pendingDocs} operationId={op.id} />
+        </>
+      ) : (
+        <>
+          <SellerChecklist tasks={seller.tasks} onToggle={seller.toggle} onDate={seller.setDate} onEstimate={seller.estimate} />
+          {property && <PropertyCard property={property} label="Tu propiedad" />}
+          <SellerReferences province={op.province} />
+        </>
+      )}
 
-      <section className="rounded-2xl bg-white border border-slate-200/70 shadow-card p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles size={14} className="text-amber-500" aria-hidden="true" />
-          <h2 className="text-sm font-bold text-slate-900">VARA Labs</h2>
-        </div>
-        <p className="text-xs text-slate-500 leading-relaxed mb-3">
-          Negociación inteligente, simuladores, análisis IA y lo que viene.
-        </p>
-        <Link
-          href="/vara-labs"
-          className="block rounded-xl bg-amber-50 hover:bg-amber-100 px-3 py-2.5 text-center text-xs font-bold text-amber-700 transition-colors"
-        >
-          Explorar Labs →
-        </Link>
-      </section>
-    </aside>
+      <NovedadesWidget operationId={op.id} />
+      <OperationsPanel operations={refs} activeId={op.id} onSelect={onSelect} onDelete={onDelete} />
+    </>
   )
 }
 
-const RETURN_THRESHOLD_MS = 60 * 60 * 1000 // 1 hora
-
-export default function Dashboard() {
+function DashboardContent() {
   const vara = useVaraState()
-  const { operations, activeOperationId, getTransactionData, usingDemo, deleteOperation } = useOperations()
-  const globalAlerts = useGlobalNextBestAction()
-  const activeTxnData = activeOperationId ? getTransactionData(activeOperationId) : null
-  // Sin datos reales no se cae a `mockTransaction`: el panel de la operacion
-  // simplemente no se muestra. Antes VARA mostraba una casa inventada en Pilar
-  // como si fuera la del usuario (P0-1 de VARA_ALT_MASTER_AUDIT.md).
-  const txn = activeTxnData
-  const couldNotLoadOperation = operations.length > 0 && !activeTxnData
+  const { operations, activeOperation, getTransactionData, deleteOperation, loaded } = useOperations()
 
-  const [isReturning, setIsReturning] = useState(false)
-  const [returnDismissed, setReturnDismissed] = useState(false)
-  useEffect(() => {
-    try {
-      const last = Number(localStorage.getItem('vara_last_visit') ?? '0')
-      const now = Date.now()
-      if (last > 0 && now - last > RETURN_THRESHOLD_MS) setIsReturning(true)
-      localStorage.setItem('vara_last_visit', String(now))
-    } catch {}
-  }, [])
-
-  const [importedProp, setImportedProp] = useState<UserProperty | null>(null)
-  useEffect(() => {
-    let alive = true
-    loadUserProperties().then(list => {
-      if (alive) setImportedProp(list.find(p => p.source === 'imported') ?? null)
-    })
-    return () => { alive = false }
-  }, [])
-  const intel = txn ? computeIntelligence(txn) : null
-  const [expandRisks, setExpandRisks] = useState(false)
-
-  const statusConfig = intel ? {
-    ON_TRACK: { label: 'En curso', color: 'text-green-600', dot: 'bg-green-500', bg: 'bg-green-50 border-green-100' },
-    ATTENTION: { label: 'Requiere atención', color: 'text-amber-600', dot: 'bg-amber-500', bg: 'bg-amber-50 border-amber-100' },
-    BLOCKED: { label: 'Acción requerida', color: 'text-red-600', dot: 'bg-red-500', bg: 'bg-red-50 border-red-100' },
-  }[intel.operationStatus] : null
-
-  // Sin operaciones propias no caemos en la demo: mostramos el estado vacío real.
-  if (vara.loaded && (!vara.onboardingDone || operations.length === 0)) {
-    return <EmptyState userName={vara.userName} propertyUrl={vara.propertyUrl} />
-  }
-
-  if (vara.loaded && vara.journeyType === 'SELL_PROPERTY') {
-    const sellOp = operations.find(o => o.type === 'SELL')
-    if (sellOp) {
-      return <SellerDashboard userName={vara.userName} province={vara.province} operationId={sellOp.id} />
-    }
-  }
-
-  const displayName = vara.loaded && vara.userName ? vara.userName.split(' ')[0] : ''
-  const buyCount = operations.filter(o => o.type === 'BUY').length
-  const sellCount = operations.filter(o => o.type === 'SELL').length
+  // El estado vacío depende solo de que no haya operaciones: con cuenta o sin cuenta, en este dispositivo o en otro.
+  if (shouldShowEmptyState({ loaded, operationCount: operations.length })) return <EmptyDashboard />
+  const op = activeOperation ?? operations[0]
+  if (!op) return <DashboardLoading />
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6">
-        {/* RESUME EXPERIENCE — banner de retorno cuando el usuario vuelve tras >1h */}
-        {isReturning && !returnDismissed && !usingDemo && operations.length > 0 && (() => {
-          const op = operations[0]
-          const firstTxn = getTransactionData(op.id)
-          const action = primaryAction({ transaction: firstTxn ?? null })
-          const opTitle = op.title ?? (op.type === 'SELL' ? 'Tu venta' : 'Tu compra')
-          return (
-            <div className="rounded-2xl bg-slate-900 text-white p-4 flex items-start gap-3 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
-                <Sparkles size={16} className="text-brand-300" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">
-                  Bienvenido de vuelta{displayName ? `, ${displayName}` : ''}
-                </p>
-                <p className="text-sm font-bold text-white leading-snug">
-                  {opTitle}
-                  {action && action.id !== 'no_operation' ? ` — ${action.title}` : ''}
-                </p>
-                {action?.why && (
-                  <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{action.why}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {action && action.id !== 'no_operation' && (
-                  <Link href={action.cta.href}
-                    className="text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white px-3 py-2 rounded-xl transition-colors">
-                    {action.cta.label}
-                  </Link>
-                )}
-                <button onClick={() => setReturnDismissed(true)}
-                  className="text-slate-500 hover:text-slate-300 p-1 transition-colors" aria-label="Cerrar">
-                  ✕
-                </button>
-              </div>
-            </div>
-          )
-        })()}
+    <main className="mx-auto max-w-3xl space-y-4 px-4 py-5 pb-12">
+      <OperationView
+        key={op.id}
+        op={op}
+        operations={operations}
+        onSelect={vara.setOperationId}
+        onDelete={deleteOperation}
+        getTransactionData={getTransactionData}
+      />
+    </main>
+  )
+}
 
-        {/* Saludo + promesa del producto, uno al lado del otro como en el diseño nuevo. */}
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              {isReturning ? `Hola de nuevo${displayName ? `, ${displayName}` : ''}` : `Hola${displayName ? `, ${displayName}` : ''}`} <span aria-hidden="true">👋</span>
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">Todo en un solo lugar. Avanzá con tranquilidad.</p>
-          </div>
-          <div className="flex items-start gap-2.5 rounded-2xl bg-brand-50 border border-brand-100 px-4 py-3 lg:max-w-sm">
-            <Shield size={15} className="text-brand-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-            <div>
-              <p className="text-xs font-bold text-slate-800">VARA te acompaña en todas tus operaciones</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">Más claridad. Mejores decisiones. Menos estrés.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Resumen de cartera: cuántas operaciones y de qué tipo, antes del detalle. */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl bg-white border border-slate-200/70 shadow-card px-4 py-4 mb-6">
-          <div className="w-11 h-11 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0">
-            <Briefcase size={19} className="text-brand-600" aria-hidden="true" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-slate-900">
-              Tenés {operations.length} {operations.length === 1 ? 'operación activa' : 'operaciones activas'}
-            </p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {[
-                buyCount > 0 && `${buyCount} ${buyCount === 1 ? 'compra' : 'compras'}`,
-                sellCount > 0 && `${sellCount} ${sellCount === 1 ? 'venta' : 'ventas'}`,
-              ].filter(Boolean).join(' · ') || 'Sin clasificar'}
-            </p>
-          </div>
-          <Link
-            href="/propiedades"
-            className="flex-shrink-0 rounded-xl bg-brand-50 hover:bg-brand-100 px-4 py-2.5 text-sm font-semibold text-brand-700 transition-colors text-center"
-          >
-            Ver todas mis propiedades →
-          </Link>
-        </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
-      <div className="space-y-4 min-w-0">
-
-        {/* RESUME EXPERIENCE — la acción más urgente del momento, bien visible */}
-        {(() => {
-          const firstTxn = operations[0] ? getTransactionData(operations[0].id) : null
-          const action = primaryAction({ transaction: firstTxn ?? null })
-          if (!action || action.id === 'no_operation' || !operations[0]) return null
-          return (
-            <NextStepAgent
-              key={`${operations[0].id}-${action.id}`}
-              action={action}
-              operationId={operations[0].id}
-              kind={operations[0].type === 'SELL' ? 'SELL' : 'BUY'}
-              province={operations[0].province}
-            />
-          )
-        })()}
-
-        {/* GUIDANCE BANNER — NBA contextual */}
-        <GuidanceBanner />
-
-        {/* NOVEDADES — qué cambió desde la última visita (milestones de activity_events) */}
-        {activeOperationId && <NovedadesWidget operationId={activeOperationId} />}
-
-        {/* Las alertas entre operaciones viven solo en el panel "Qué requiere atención hoy".
-            Antes también estaban acá, en rojo: la misma lista dos veces en la misma pantalla. */}
-
-        {/* Con operaciones propias siempre mostramos la lista: ahí vive el botón de borrar. */}
-        {(operations.length > 1 || !usingDemo) && (
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <p className="text-sm font-bold text-slate-700">
-                {usingDemo ? 'Operaciones de ejemplo' : 'Tus operaciones activas'}
-              </p>
-              <span className="text-xs text-slate-400">
-                {usingDemo ? 'no son tuyas' : `${operations.length} ${operations.length === 1 ? 'activa' : 'activas'}`}
-              </span>
-            </div>
-            {usingDemo && (
-              <div className="flex items-start gap-2 bg-slate-100 rounded-xl px-3 py-2.5 mb-3">
-                <AlertTriangle size={12} className="text-slate-500 flex-shrink-0 mt-0.5" />
-                <p className="text-[11px] text-slate-600 flex-1">
-                  Estas operaciones son un ejemplo para que veas cómo funciona. Cuando crees la tuya, las reemplaza.
-                </p>
-                <Link href="/onboarding" className="text-[11px] font-bold text-brand-600 whitespace-nowrap hover:underline">
-                  Crear la mía →
-                </Link>
-              </div>
-            )}
-            <div className="grid grid-cols-1 gap-3">
-              {operations.map(op => (
-                <OperationCard
-                  key={op.id}
-                  op={op}
-                  isActive={op.id === activeOperationId}
-                  onSelect={vara.setOperationId}
-                  getTransactionData={getTransactionData}
-                  isDemo={usingDemo}
-                  onDelete={deleteOperation}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* No pudimos resolver los datos de la operacion activa. Lo decimos:
-            antes se rellenaba con una operacion ficticia. */}
-        {couldNotLoadOperation && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
-            <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
-            <p className="text-xs text-amber-800 flex-1">
-              No pudimos cargar el detalle de esta operación. Tus datos están guardados;
-              abrí la operación para verlos.
-            </p>
-          </div>
-        )}
-
-        {/* PROPIEDAD IMPORTADA — el aviso que el usuario trajo de un portal */}
-        {importedProp && (
-          <div className="bg-white rounded-2xl shadow-card overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-50">
-              <div className="flex items-center gap-2">
-                <Building2 size={14} className="text-brand-500" />
-                <h3 className="font-semibold text-slate-800 text-sm">La propiedad que estás mirando</h3>
-              </div>
-              {importedProp.portal && (
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full">
-                  {importedProp.portal}
-                </span>
-              )}
-            </div>
-            <div className="flex gap-3 p-4">
-              {importedProp.images[0] ? (
-                <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={importedProp.images[0]} alt={importedProp.title} className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <div className="w-20 h-20 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0">
-                  <Building2 size={20} className="text-slate-300" />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-slate-900 text-sm leading-tight truncate">{importedProp.title}</p>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {[importedProp.neighborhood, importedProp.city].filter(Boolean).join(', ') || 'Ubicación sin cargar'}
-                </p>
-                <div className="flex items-center gap-3 mt-1.5">
-                  {importedProp.price > 0 && (
-                    <p className="text-sm font-extrabold text-slate-900">
-                      {formatPrice(importedProp.price, importedProp.currency)}
-                    </p>
-                  )}
-                  {importedProp.surface > 0 && (
-                    <p className="text-xs text-slate-400">{importedProp.surface} m²</p>
-                  )}
-                  {importedProp.rooms > 0 && (
-                    <p className="text-xs text-slate-400">{importedProp.rooms} amb.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-            {importedProp.incompleteFields.length > 0 && (
-              <div className="mx-4 mb-3 flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-                <AlertTriangle size={11} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                <p className="text-[10px] text-amber-700">
-                  Falta cargar: {importedProp.incompleteFields.join(', ')}. Con esos datos el cálculo de costos se vuelve exacto.
-                </p>
-              </div>
-            )}
-            <div className="flex items-center justify-between px-4 pb-4">
-              {importedProp.sourceUrl ? (
-                <a href={importedProp.sourceUrl} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-slate-400 hover:text-slate-600">Ver aviso original</a>
-              ) : <span />}
-              <Link href={`/propiedades/${importedProp.id}`}
-                className="text-xs font-semibold text-brand-600 hover:underline">Ver ficha completa →</Link>
-            </div>
-          </div>
-        )}
-
-        {txn && intel && statusConfig && (<>
-        {/* OPERATION CORE CARD */}
-        <Link href={`/operacion/${txn.id}`} className="block bg-white rounded-2xl shadow-card p-5 hover:shadow-elevated transition-shadow">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{txn.type === 'BUY_PROPERTY' ? 'Compra' : 'Venta'}</span>
-                <span className={cn('flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full border', statusConfig.bg, statusConfig.color)}>
-                  <span className={cn('w-1.5 h-1.5 rounded-full', statusConfig.dot)} />
-                  {statusConfig.label}
-                </span>
-              </div>
-              <h2 className="font-bold text-slate-900 text-lg leading-tight">{txn.title}</h2>
-              <p className="text-sm text-slate-400 flex items-center gap-1 mt-0.5">
-                <MapPin size={11} /> {txn.city}, {txn.province}
-              </p>
-            </div>
-            <ChevronRight size={18} className="text-slate-300 flex-shrink-0 mt-1" />
-          </div>
-
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-slate-400">{intel.currentStage?.label}</span>
-              <span className="text-xs font-bold text-slate-700">{txn.progress}% avance</span>
-            </div>
-            <Progress value={txn.progress} showLabel={false} />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 border-t border-slate-50 pt-4">
-            <div className="text-center">
-              <p className="text-lg font-bold text-slate-900">{intel.risks.length}</p>
-              <p className="text-xs text-slate-400">riesgo{intel.risks.length !== 1 ? 's' : ''}</p>
-            </div>
-            <div className="text-center border-x border-slate-100">
-              <p className="text-lg font-bold text-slate-900">{intel.pendingDocs.length}</p>
-              <p className="text-xs text-slate-400">docs pendientes</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-slate-900">~{Math.round((intel.totalBuyerMin + intel.totalBuyerMax) / 2 / 1000)}K</p>
-              <p className="text-xs text-slate-400">gastos USD</p>
-            </div>
-          </div>
-        </Link>
-
-        {/* NEXT BEST ACTION */}
-        {intel.nextTask && (
-          <div className="bg-brand-600 rounded-2xl p-5 text-white">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp size={13} className="opacity-50" />
-              <p className="text-xs font-bold opacity-50 uppercase tracking-widest">Próxima acción</p>
-            </div>
-            <h3 className="font-extrabold text-base mb-1 leading-tight">{intel.nextTask.title}</h3>
-            <p className="text-sm opacity-70 leading-relaxed mb-4">{intel.nextTask.why}</p>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs opacity-60">
-                <Users size={12} />
-                <span>{intel.nextTask.responsibleRole}</span>
-              </div>
-              <Link href={`/operacion/${txn.id}`}
-                className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors">
-                Resolver ahora <ArrowRight size={14} />
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* RISKS */}
-        {intel.risks.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-card overflow-hidden">
-            <button
-              onClick={() => setExpandRisks(o => !o)}
-              className="w-full flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-red-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <ShieldAlert size={15} className="text-red-500" />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-slate-800">
-                    {intel.risks.filter(r => r.severity === 'HIGH').length > 0
-                      ? `${intel.risks.filter(r => r.severity === 'HIGH').length} riesgo${intel.risks.filter(r => r.severity === 'HIGH').length > 1 ? 's' : ''} alto${intel.risks.filter(r => r.severity === 'HIGH').length > 1 ? 's' : ''}`
-                      : `${intel.risks.length} aviso${intel.risks.length > 1 ? 's' : ''}`}
-                  </p>
-                  <p className="text-xs text-slate-400">Pueden afectar el avance de tu operación</p>
-                </div>
-              </div>
-              <ChevronRight size={16} className={cn('text-slate-300 transition-transform', expandRisks && 'rotate-90')} />
-            </button>
-            {expandRisks && (
-              <div className="border-t border-slate-50 divide-y divide-slate-50">
-                {intel.risks.map((risk, i) => (
-                  <div key={i} className="flex items-start gap-3 px-5 py-3.5">
-                    <AlertTriangle size={14} className={cn('flex-shrink-0 mt-0.5', risk.severity === 'HIGH' ? 'text-red-500' : 'text-amber-500')} />
-                    <div>
-                      <p className="text-sm font-medium text-slate-800">{risk.label}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{risk.detail}</p>
-                    </div>
-                  </div>
-                ))}
-                <div className="px-5 py-3">
-                  <Link href={`/operacion/${txn.id}`} className="text-xs font-semibold text-brand-600 hover:underline">
-                    Ver tareas pendientes →
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* COST SUMMARY */}
-        <div className="bg-white rounded-2xl shadow-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-semibold text-slate-800 text-sm">Costos de tu operación</h3>
-              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                {intel.checklist.provinceName} · {intel.checklist.dataConfidence === 'VERIFIED' ? 'VERIFICADO' : intel.checklist.dataConfidence === 'PARTIAL' ? 'PARCIAL' : 'ESTIMADO'}
-                <InfoTip label="Qué significa la confianza del dato" align="right">
-                  <strong>VERIFICADO</strong>: alícuotas tomadas del organismo oficial (ARBA, AGIP) y contrastadas.{' '}
-                  <strong>PARCIAL</strong>: parte de fuente oficial, parte de fuente secundaria.{' '}
-                  <strong>ESTIMADO</strong>: sin fuente oficial confirmada — tomalo como referencia y validá con tu escribano.
-                </InfoTip>
-              </p>
-            </div>
-            <Link href="/costos" className="text-xs text-brand-600 font-semibold hover:underline">Calculadora →</Link>
-          </div>
-          <div className="flex items-end justify-between mb-3">
-            <div>
-              <p className="text-xs text-slate-400 mb-0.5">Precio de la propiedad</p>
-              <p className="text-xl font-extrabold text-slate-900">{formatPrice(intel.propertyPrice)}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-slate-400 mb-0.5">Gastos del comprador</p>
-              <p className="text-lg font-bold text-slate-700">
-                {formatPrice(intel.totalBuyerMin)} – {formatPrice(intel.totalBuyerMax)}
-              </p>
-            </div>
-          </div>
-          <div className="space-y-1.5 mb-3">
-            {[
-              intel.checklist.costs.stampTaxBuyer,
-              intel.checklist.costs.notaryFeeBuyer,
-              intel.checklist.costs.registryFee,
-              intel.checklist.costs.certificates,
-            ].map((c, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <p className="text-xs text-slate-400">{c.label}</p>
-                <p className="text-xs font-medium text-slate-600">
-                  {c.minAmount === c.maxAmount ? formatPrice(c.minAmount, c.currency) : `${formatPrice(c.minAmount, c.currency)} – ${formatPrice(c.maxAmount, c.currency)}`}
-                </p>
-              </div>
-            ))}
-          </div>
-          <div className="h-px bg-slate-100 mb-3" />
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500 font-medium">Total estimado</p>
-            <p className="text-sm font-extrabold text-slate-900">
-              {formatPrice(intel.propertyPrice + intel.totalBuyerMin)} – {formatPrice(intel.propertyPrice + intel.totalBuyerMax)}
-            </p>
-          </div>
-          <p className="text-xs text-slate-300 mt-2">
-            +{intel.checklist.costs.totalBuyer.percentMin.toFixed(1)}%–{intel.checklist.costs.totalBuyer.percentMax.toFixed(1)}% sobre el precio · Fuente: {intel.checklist.costs.stampTaxBuyer.source}
-          </p>
-        </div>
-
-        {/* DOCS SNAPSHOT */}
-        <div className="bg-white rounded-2xl shadow-card overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
-            <h3 className="font-semibold text-slate-800 text-sm">Documentación</h3>
-            <Link href={`/operacion/${txn.id}`} className="text-xs text-brand-600 font-semibold hover:underline">Ver todo →</Link>
-          </div>
-          <div className="divide-y divide-slate-50">
-            {txn.documents.slice(0, 4).map(doc => {
-              const statusMap = {
-                PENDING: { label: 'Pendiente', color: 'text-amber-600 bg-amber-50', icon: <CircleDot size={11} /> },
-                RECEIVED: { label: 'Recibido', color: 'text-blue-600 bg-blue-50', icon: <Clock size={11} /> },
-                IN_REVIEW: { label: 'En revisión', color: 'text-blue-600 bg-blue-50', icon: <Clock size={11} /> },
-                APPROVED: { label: 'Aprobado', color: 'text-green-600 bg-green-50', icon: <CheckCircle2 size={11} /> },
-                REJECTED: { label: 'Rechazado', color: 'text-red-600 bg-red-50', icon: <AlertTriangle size={11} /> },
-                EXPIRED: { label: 'Vencido', color: 'text-red-600 bg-red-50', icon: <AlertTriangle size={11} /> },
-              }[doc.status] ?? { label: doc.status, color: 'text-slate-500 bg-slate-100', icon: null }
-              return (
-                <div key={doc.id} className="flex items-center justify-between px-5 py-3">
-                  <div className="flex items-center gap-3">
-                    <FileText size={14} className="text-slate-300 flex-shrink-0" />
-                    <p className="text-sm text-slate-700">{doc.name}</p>
-                  </div>
-                  <span className={cn('flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full', statusMap.color)}>
-                    {statusMap.icon}{statusMap.label}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* TIMELINE ESTIMATE */}
-        <div className="bg-white rounded-2xl shadow-card p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Clock size={15} className="text-slate-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-800">Tiempo estimado</p>
-              <p className="text-xs text-slate-400">Desde hoy hasta escritura</p>
-            </div>
-            <p className="ml-auto text-sm font-semibold text-slate-400">Depende de la etapa</p>
-          </div>
-          <div className="flex gap-1.5">
-            {['Docs', 'Negociación', 'Reserva', 'Títulos', 'Escritura'].map((step, i) => (
-              <div key={step} className="flex-1 text-center">
-                <div className={cn('h-1.5 rounded-full mb-1.5', i === 0 ? 'bg-brand-500' : 'bg-slate-100')} />
-                <p className="text-[10px] text-slate-400 leading-tight">{step}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-slate-300 mt-3">
-            Resolver bloqueantes actuales puede reducir el plazo estimado.
-          </p>
-        </div>
-
-        {/* WHAT CHANGED */}
-        <div className="bg-white rounded-2xl shadow-card overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
-            <h3 className="font-semibold text-slate-800 text-sm">Qué cambió</h3>
-            <Link href={`/operacion/${txn.id}`} className="text-xs text-brand-600 font-semibold hover:underline">Ver timeline →</Link>
-          </div>
-          <div className="divide-y divide-slate-50">
-            {[...txn.timeline].reverse().slice(0, 4).map(event => {
-              const iconMap = {
-                TASK_COMPLETED: <CheckCircle2 size={12} className="text-green-500" />,
-                DOCUMENT_ADDED: <FileText size={12} className="text-blue-500" />,
-                STAGE_CHANGED: <TrendingUp size={12} className="text-brand-500" />,
-                PROFESSIONAL_ADDED: <Users size={12} className="text-purple-500" />,
-                NOTE: <MessageSquare size={12} className="text-slate-400" />,
-                SYSTEM: <Clock size={12} className="text-slate-400" />,
-              }[event.type] ?? <Clock size={12} className="text-slate-400" />
-              const d = new Date(event.date)
-              const dateStr = d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
-              return (
-                <div key={event.id} className="flex items-start gap-3 px-5 py-3">
-                  <div className="w-6 h-6 bg-slate-50 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    {iconMap}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-700 font-medium leading-tight">{event.title}</p>
-                    {event.description && <p className="text-xs text-slate-400 mt-0.5 truncate">{event.description}</p>}
-                  </div>
-                  <span className="text-[11px] text-slate-300 flex-shrink-0 mt-0.5">{dateStr}{event.actor ? ` · ${event.actor}` : ''}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        </>)}
-        {/* QUICK ACCESS */}
-        <div className="grid grid-cols-2 gap-2.5">
-          {[
-            { href: '/costos', icon: DollarSign, label: 'Calculadora de costos', sub: 'Buenos Aires Prov.' },
-            { href: '/asistente', icon: MessageSquare, label: 'Asistente VARA', sub: 'Preguntá lo que necesitás' },
-            { href: '/profesionales', icon: Users, label: 'Profesionales', sub: 'Escribanos, abogados y más' },
-            { href: '/propiedades', icon: FileText, label: 'Propiedades', sub: 'Explorar opciones' },
-          ].map(({ href, icon: Icon, label, sub }) => (
-            <Link key={href} href={href}
-              className="bg-white rounded-2xl p-4 shadow-card hover:shadow-elevated transition-shadow flex items-center gap-3">
-              <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Icon size={14} className="text-slate-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-semibold text-slate-800 text-xs leading-tight truncate">{label}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-      </div>
-
-      <RightRail alerts={globalAlerts} operations={operations} getTransactionData={getTransactionData} />
-      </div>
-    </div>
-    </div>
+/** El dashboard funciona como invitado; la franja invita a guardar la operación sin interrumpir. */
+export default function Dashboard() {
+  return (
+    <>
+      <SaveOperationBanner />
+      <DashboardContent />
+    </>
   )
 }

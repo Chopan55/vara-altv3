@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { findKnowledge, type Audience } from '@/data/knowledge'
-import { requireAuth } from '@/lib/api/requireAuth'
+import { requireAiAccess } from '@/lib/api/aiAccess'
+import { cleanChatReply } from '@/lib/ai/cleanReply'
 
 
 /** Carga el contexto verificado de una operación desde Supabase (H18). */
@@ -88,10 +89,12 @@ CÓMO RESPONDÉS:
 - Etiquetá según certeza: [HECHO], [ESTIMADO], [RECOMENDACIÓN], [CONSULTAR PROFESIONAL].
 - Nunca inventes números impositivos: si no los tenés precisos, dá el rango y la fuente.
 - Cuando corresponda, cerrá diciendo a qué sección de VARA ir.
-- Si el usuario menciona su operación, usá ese contexto.`
+- Si el usuario menciona su operación, usá ese contexto.
+- Texto plano: sin asteriscos, sin títulos con # ni tablas. Para listas usá guiones o números.
+- Si no hay una operación verificada en el contexto, NO asumas que el usuario compra, vende o tiene una operación en marcha. Si hace falta saberlo, preguntalo en una línea.`
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth()
+  const auth = await requireAiAccess('text')
   if (auth.error) return auth.error
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -153,7 +156,7 @@ export async function POST(req: NextRequest) {
     })
 
     const reply = completion.choices[0]?.message?.content ?? 'No pude generar una respuesta. Intentá de nuevo.'
-    return NextResponse.json({ reply })
+    return NextResponse.json({ reply: cleanChatReply(reply) })
 
   } catch (err) {
     console.error('[VARA Chat]', err)

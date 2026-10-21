@@ -30,7 +30,6 @@ import type {
 } from '@/types/varaVisit'
 import type { Currency } from '@/types'
 import { buildVisitCode } from '@/types/varaVisit'
-import { generatePin } from '@/lib/varaVisit/session'
 
 // ───────────────────────────── Mappers ─────────────────────────────
 
@@ -259,9 +258,8 @@ export async function createMyPartner(d: PartnerDraft): Promise<string | null> {
 
   if (error || !data) return null
 
-  // El rol cambia recién acá: alguien que empezó el alta ya es partner,
-  // aunque todavía no esté aprobado.
-  await supabase.from('profiles').update({ role: 'PARTNER' }).eq('id', uid)
+  // El rol PARTNER lo asigna la base (trigger) al crear el perfil: un usuario
+  // no puede tocar su propio rol, ni siquiera para hacerse partner.
   await supabase.from('partner_training').insert({ partner_id: data.id, user_id: uid })
   await supabase.from('partner_contacts').insert({ partner_id: data.id, user_id: uid })
 
@@ -418,9 +416,11 @@ export async function markModuleCompleted(partnerId: string, moduleId: string): 
 /**
  * Guarda el resultado del quiz.
  *
- * Aprobar el quiz marca `certified` en el perfil, pero NO activa al partner:
- * activar requiere entrevista, referencias y visitas supervisadas, y esa
- * decisión es de un admin.
+ * El quiz se corrige en el navegador, así que su resultado es evidencia y no
+ * una certificación: aprobar deja la capacitación en QUIZ_PENDING y un admin
+ * certifica (`adminCertifyPartner`). La base rechaza que el partner se
+ * certifique solo. Tampoco activa al partner: eso requiere entrevista,
+ * referencias y visitas supervisadas.
  */
 export async function saveQuizResult(
   partnerId: string, score: number, passed: boolean,
@@ -429,18 +429,14 @@ export async function saveQuizResult(
   if (!supabase) return false
   const current = await getMyTraining(partnerId)
   const attempts = (current?.quizAttempts ?? 0) + 1
+  const alreadyCertified = current?.certificationStatus === 'CERTIFIED'
 
   const { error } = await supabase.from('partner_training').update({
     quiz_score: score,
     quiz_attempts: attempts,
-    certification_status: passed ? 'CERTIFIED' : 'FAILED',
-    certification_date: passed ? new Date().toISOString() : null,
+    // Una certificación vigente no se baja por reintentar el quiz.
+    ...(alreadyCertified ? {} : { certification_status: passed ? 'QUIZ_PENDING' : 'FAILED' }),
   }).eq('partner_id', partnerId)
-
-  if (!error && passed) {
-    await supabase.from('visit_partners').update({ certified: true }).eq('id', partnerId)
-    await track('partner_certified', { partnerId })
-  }
   return !error
 }
 
@@ -497,10 +493,10 @@ export interface BookingDraft {
 /**
  * Crea la visita.
  *
- * El PIN se genera acá, al crear: el cliente lo tiene desde el momento cero y
- * no depende de que llegue una notificación. El número de secuencia del código
- * sale de Postgres — generarlo en el cliente produciría colisiones con dos
- * personas reservando a la vez.
+ * El PIN lo genera la base al crear la reserva (trigger) y solo el cliente dueño
+ * puede leerlo (`getBookingPin`): nunca viaja en la fila de la reserva. El número
+ * de secuencia del código sale de Postgres — generarlo en el cliente produciría
+ * colisiones con dos personas reservando a la vez.
  */
 export async function createBooking(d: BookingDraft): Promise<VisitBooking | null> {
   const supabase = tryCreateClient()
@@ -533,7 +529,6 @@ export async function createBooking(d: BookingDraft): Promise<VisitBooking | nul
       assignment_mode: d.assignmentMode,
       assigned_partner_id: d.chosenPartnerId ?? null,
       status: d.chosenPartnerId ? 'ASSIGNED' : 'SEARCHING_PARTNER',
-      confirmation_pin: generatePin(),
     })
     .select('*')
     .single()
@@ -567,13 +562,12 @@ export async function getBookingByCode(code: string): Promise<VisitBooking | nul
   return data ? rowToBooking(data) : null
 }
 
-/** El PIN solo lo puede leer el cliente dueño de la visita (RLS lo garantiza). */
+/** El PIN solo lo obtiene el cliente dueño de la visita: la RPC lo valida y deja registro. */
 export async function getBookingPin(bookingId: string): Promise<string | null> {
   const supabase = tryCreateClient()
   if (!supabase) return null
-  const { data } = await supabase.from('visit_bookings')
-    .select('confirmation_pin').eq('id', bookingId).maybeSingle()
-  return data?.confirmation_pin ?? null
+  const { data, error } = await supabase.rpc('get_booking_pin', { p_booking_id: bookingId })
+  return error ? null : (data ?? null)
 }
 
 export async function setBookingStatus(
@@ -618,12 +612,9 @@ export async function rejectAssignment(
 ): Promise<boolean> {
   const supabase = tryCreateClient()
   if (!supabase) return false
-  await supabase.from('visit_assignments')
-    .update({ rejected_at: new Date().toISOString(), rejection_reason: reason ?? null })
-    .eq('booking_id', bookingId).eq('partner_id', partnerId)
-  const { error } = await supabase.from('visit_bookings')
-    .update({ status: 'SEARCHING_PARTNER', assigned_partner_id: null })
-    .eq('id', bookingId)
+  // RPC y no update directo: al quedar sin partner, el partner deja de ver la
+  // reserva y Postgres rechazaba el update. La función valida y registra todo.
+  const { error } = await supabase.rpc('reject_assignment', { p_booking_id: bookingId, p_reason: reason })
   if (!error) await track('visit_rejected_by_partner', { bookingId, partnerId })
   return !error
 }
@@ -683,20 +674,6 @@ export async function checkIn(
     props: { hasLocation: location !== null },
   })
   return true
-}
-
-/** Registra el resultado del PIN. La verificación en sí vive en `session.ts`. */
-export async function recordPinResult(
-  bookingId: string, partnerId: string, ok: boolean, attempts: number,
-): Promise<boolean> {
-  const supabase = tryCreateClient()
-  if (!supabase) return false
-  const { error } = await supabase.from('visit_sessions').update({
-    confirmation_pin_status: ok ? 'CONFIRMED' : 'FAILED',
-    pin_attempts: attempts,
-  }).eq('booking_id', bookingId)
-  await track(ok ? 'visit_pin_confirmed' : 'visit_pin_failed', { bookingId, partnerId })
-  return !error
 }
 
 export async function startVisit(bookingId: string): Promise<boolean> {
@@ -803,15 +780,8 @@ export async function submitPartnerReview(
   })
   if (error) return false
 
-  // Acumulado: sumar una review es un UPDATE, no un recálculo de toda la tabla.
-  const p = await getPartnerById(r.partnerId)
-  if (p) {
-    await supabase.from('visit_partners').update({
-      rating_sum: (p.metrics.averageRating ?? 0) * p.metrics.reviewCount + r.overallRating,
-      review_count: p.metrics.reviewCount + 1,
-    }).eq('id', r.partnerId)
-    await supabase.rpc('recompute_partner_tier', { p_partner_id: r.partnerId })
-  }
+  // El acumulado de rating y el nivel los actualiza un trigger en la base: el
+  // cliente no puede escribir la reputación de otro (RLS lo rechazaba en silencio).
   await track('visit_reviewed_by_client', { bookingId: r.bookingId, partnerId: r.partnerId })
   return true
 }
@@ -911,7 +881,7 @@ export async function reportIncident(i: {
   })
   if (error) return false
 
-  if (i.bookingId) await setBookingStatus(i.bookingId, 'INCIDENT_REVIEW')
+  // Pasar la reserva a INCIDENT_REVIEW y suspender si es crítico lo hace un trigger.
   await track('visit_incident_reported', {
     bookingId: i.bookingId ?? undefined,
     props: { category: i.category, severity: i.severity },

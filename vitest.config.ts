@@ -4,9 +4,10 @@ import { fileURLToPath } from 'node:url'
 /**
  * Tests de la lógica de VARA Visit.
  *
- * Solo lógica pura: matching, precios, reglas de sesión. No levantan base ni
- * navegador a propósito — un test que necesita Supabase para correr termina
- * sin correrse nunca.
+ * Lógica pura (matching, precios, reglas de sesión) más `tests/db`: la suite de
+ * seguridad, que corre contra un Postgres real en memoria (PGlite). No necesita
+ * Supabase, Docker ni red, así que corre en cualquier máquina y en CI. Ningún
+ * test toca una base real.
  *
  * El alias `@` replica el `paths` de tsconfig.json, que vitest no lee solo.
  */
@@ -18,6 +19,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
+    // tools/vara-agent: tests del bridge de agentes; usan dobles, sin red ni dependencias propias.
+    include: ['tests/**/*.test.ts', 'tools/vara-agent/tests/**/*.test.ts'],
   },
 })

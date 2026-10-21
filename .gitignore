@@ -1,5 +1,6 @@
 # dependencies
 node_modules/
+.agent-runs/
 .pnp
 .pnp.js
 
@@ -28,3 +29,5 @@ yarn-error.log*
 next-env.d.ts
 
 .env*
+.data/
+.vercel

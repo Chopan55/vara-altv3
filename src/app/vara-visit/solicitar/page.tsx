@@ -17,7 +17,22 @@ import {
   listActivePartners, createBooking, requestCoverage, hasSession,
 } from '@/lib/supabase/visits'
 import { loadUserProperties, type UserProperty } from '@/lib/userProperties'
+import { loadKnownLocation } from '@/lib/knownLocation'
 import { PartnerCard } from '@/components/visit/PartnerCard'
+import { useVaraState } from '@/hooks/useVaraState'
+import { journeyToStored } from '@/lib/journey'
+
+const VALID_SERVICES: VisitServiceType[] = ['SHOW_PROPERTY', 'ACCOMPANY_VISIT']
+const CHECK_OPTIONS = [
+  'Humedad', 'Estado general', 'Ruido', 'Luz natural', 'Entorno',
+  'Documentación visible', 'Amenities', 'Gastos', 'Señales de riesgo',
+]
+
+const inputCls = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm'
+const labelCls = 'text-xs font-semibold text-slate-600 block mb-1.5'
+
+function Opt() { return <span className="font-normal text-slate-400">(opcional)</span> }
+function Req() { return <span className="text-rose-500" aria-label="obligatorio"> *</span> }
 
 /**
  * Reserva de una visita.
@@ -47,9 +62,9 @@ const STEPS: { id: Step; label: string }[] = [
 function StepBar({ current }: { current: Step }) {
   const idx = STEPS.findIndex(s => s.id === current)
   return (
-    <ol className="flex items-center gap-2 sm:gap-3 my-5">
+    <ol className="flex flex-wrap items-center gap-x-3 gap-y-2 my-5">
       {STEPS.map((s, i) => (
-        <li key={s.id} className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <li key={s.id} className="flex items-center gap-2 sm:gap-3">
           <span className={cn(
             'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold',
             i === idx ? 'bg-brand-600 text-white'
@@ -59,7 +74,7 @@ function StepBar({ current }: { current: Step }) {
             {i < idx ? <Check size={13} aria-hidden="true" /> : i + 1}
           </span>
           <span className={cn(
-            'text-sm truncate',
+            'text-sm whitespace-nowrap',
             i === idx ? 'font-semibold text-slate-900' : 'text-slate-500',
           )}>
             {s.label}
@@ -92,10 +107,12 @@ function SolicitarInner() {
   const router = useRouter()
   const params = useSearchParams()
 
-  const [step, setStep] = useState<Step>('servicio')
-  const [serviceType, setServiceType] = useState<VisitServiceType | null>(
-    (params.get('servicio') as VisitServiceType) ?? null,
-  )
+  const vara = useVaraState()
+  // Si ya llegás con el servicio elegido (?servicio=…), arrancamos en el paso 2.
+  const presetService = VALID_SERVICES.find(v => v === params.get('servicio')) ?? null
+  const [step, setStep] = useState<Step>(presetService ? 'cuando' : 'servicio')
+  const [serviceType, setServiceType] = useState<VisitServiceType | null>(presetService)
+  const [touched, setTouched] = useState(false)
 
   // Cuándo y dónde
   const [properties, setProperties] = useState<UserProperty[]>([])
@@ -107,6 +124,20 @@ function SolicitarInner() {
   const [instructions, setInstructions] = useState('')
   const [accessInstructions, setAccessInstructions] = useState('')
   const [guests, setGuests] = useState('')
+  // Campos propios de cada servicio. Se guardan dentro de las indicaciones (texto libre).
+  const [listingLink, setListingLink] = useState('')
+  const [visitName, setVisitName] = useState('')
+  const [meetingPoint, setMeetingPoint] = useState('')
+  const [coordinator, setCoordinator] = useState('')
+  const [checks, setChecks] = useState<string[]>([])
+  const [reportType, setReportType] = useState<'BASICO' | 'DETALLADO'>('BASICO')
+  const [attending, setAttending] = useState<'SI' | 'NO'>('NO')
+  const [arrivesEarly, setArrivesEarly] = useState(false)
+  const [emergency, setEmergency] = useState('')
+  const [authorized, setAuthorized] = useState('')
+  const [ownerPresent, setOwnerPresent] = useState<'SI' | 'NO'>('NO')
+  const [doorman, setDoorman] = useState('')
+  const [photosAllowed, setPhotosAllowed] = useState<'SI' | 'NO'>('NO')
 
   // Quién
   const [partners, setPartners] = useState<PartnerPublicProfile[]>([])
@@ -123,6 +154,13 @@ function SolicitarInner() {
 
   useEffect(() => { void hasSession().then(setSignedIn) }, [])
 
+  // El servicio fija el contexto: mostrar mi propiedad = vendedor; acompañarme = comprador.
+  useEffect(() => {
+    if (!serviceType) return
+    vara.setJourneyType(journeyToStored(serviceType === 'SHOW_PROPERTY' ? 'SELL' : 'BUY'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceType])
+
   useEffect(() => {
     void loadUserProperties().then(list => {
       setProperties(list)
@@ -130,6 +168,9 @@ function SolicitarInner() {
       if (list.length === 1) {
         setPropertyId(list[0].id)
         setLocationLabel(list[0].city || list[0].neighborhood || '')
+      } else {
+        // Sin una propiedad que lo defina, partimos de la ciudad o provincia que ya contó.
+        void loadKnownLocation().then(k => { if (k.label) setLocationLabel(prev => prev || k.label) })
       }
     })
   }, [])
@@ -169,13 +210,50 @@ function SolicitarInner() {
     })
   }, [selectedMatch, date, time, duration])
 
-  const canContinue =
-    (step === 'servicio' && !!serviceType) ||
-    (step === 'cuando' && !!locationLabel.trim() && !!date && !!time) ||
-    (step === 'quien' && !!selectedMatch) ||
-    step === 'confirmar'
+  const missing: string[] = []
+  if (step === 'servicio' && !serviceType) missing.push('el servicio')
+  if (step === 'cuando') {
+    if (!locationLabel.trim()) missing.push('la zona')
+    if (!date) missing.push('la fecha')
+    if (!time) missing.push('la hora')
+    if (serviceType === 'ACCOMPANY_VISIT' && !meetingPoint.trim()) missing.push('el punto de encuentro')
+    if (serviceType === 'SHOW_PROPERTY' && !emergency.trim()) missing.push('un contacto de emergencia')
+  }
+  if (step === 'quien' && !selectedMatch) missing.push('un Visit Partner disponible')
+  const canContinue = missing.length === 0
+
+  /** Arma el texto que ve el partner con todo lo que completó la persona. */
+  function buildInstructions(): string | undefined {
+    const L: string[] = []
+    if (serviceType === 'ACCOMPANY_VISIT') {
+      if (visitName.trim()) L.push(`Visita: ${visitName.trim()}`)
+      if (listingLink.trim()) L.push(`Aviso: ${listingLink.trim()}`)
+      if (meetingPoint.trim()) L.push(`Punto de encuentro: ${meetingPoint.trim()}`)
+      if (coordinator.trim()) L.push(`Coordina la visita: ${coordinator.trim()}`)
+      if (checks.length) L.push(`Revisar: ${checks.join(', ')}`)
+      L.push(`Reporte: ${reportType === 'BASICO' ? 'básico' : 'detallado'}`)
+      L.push(`Estaré presente: ${attending === 'SI' ? 'sí' : 'no'}${arrivesEarly ? ' · pido llegar antes' : ''}`)
+    } else {
+      if (authorized.trim()) L.push(`Personas autorizadas: ${authorized.trim()}`)
+      L.push(`Propietario presente: ${ownerPresent === 'SI' ? 'sí' : 'no'}`)
+      if (doorman.trim()) L.push(`Portero/seguridad: ${doorman.trim()}`)
+      L.push(`Fotos/video permitidos: ${photosAllowed === 'SI' ? 'sí' : 'no'}`)
+      if (coordinator.trim()) L.push(`Coordina: ${coordinator.trim()}`)
+    }
+    if (instructions.trim()) L.push(`Notas: ${instructions.trim()}`)
+    return L.length ? L.join('\n') : undefined
+  }
+
+  function buildAccess(): string | undefined {
+    const L: string[] = []
+    if (accessInstructions.trim()) L.push(accessInstructions.trim())
+    if (emergency.trim()) L.push(`Contacto de emergencia: ${emergency.trim()}`)
+    return L.length ? L.join('\n') : undefined
+  }
 
   function next() {
+    if (!canContinue) { setTouched(true); return }
+    setTouched(false)
     if (step === 'servicio') setStep('cuando')
     else if (step === 'cuando') setStep('quien')
     else if (step === 'quien') setStep('confirmar')
@@ -197,9 +275,9 @@ function SolicitarInner() {
         date, time,
         durationMinutes: duration,
         locationLabel: locationLabel.trim(),
-        instructions: instructions.trim() || undefined,
-        accessInstructions: accessInstructions.trim() || undefined,
-        guestsExpected: guests ? Number(guests) : undefined,
+        instructions: buildInstructions(),
+        accessInstructions: buildAccess(),
+        guestsExpected: serviceType === 'SHOW_PROPERTY' && guests ? Number(guests) : undefined,
         price: priceBreakdown.total,
         currency: priceBreakdown.currency,
         assignmentMode: mode,
@@ -299,6 +377,22 @@ function SolicitarInner() {
               <Link href="/login" className="font-bold underline">Entrar o crear cuenta</Link>
             </p>
           </div>
+        )}
+
+        {serviceType && step !== 'servicio' && (
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 mb-4">
+            <p className="text-sm text-slate-800">
+              Servicio elegido: <strong>{SERVICE_LABELS[serviceType]}</strong>
+            </p>
+            <button onClick={() => { setStep('servicio'); setTouched(false) }}
+              className="text-xs font-bold text-brand-700 underline">Cambiar</button>
+          </div>
+        )}
+
+        {serviceType === 'ACCOMPANY_VISIT' && step !== 'servicio' && (
+          <p className="text-xs text-slate-500 mb-4 -mt-2">
+            Estás preparando una visita a una propiedad que querés comprar o alquilar.
+          </p>
         )}
 
         {/* ─────────── Paso 1: servicio ─────────── */}
@@ -419,42 +513,167 @@ function SolicitarInner() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200/70 p-4 space-y-3">
-              <div>
-                <label htmlFor="instr" className="text-xs font-semibold text-slate-600 block mb-1.5">
-                  Indicaciones para el partner <span className="font-normal text-slate-400">(opcional)</span>
-                </label>
-                <textarea id="instr" rows={2} value={instructions} maxLength={300}
-                  onChange={e => setInstructions(e.target.value)}
-                  placeholder="Qué destacar, qué mostrar primero…"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm resize-none" />
-              </div>
-              <div>
-                <label htmlFor="acceso" className="text-xs font-semibold text-slate-600 block mb-1.5">
-                  Cómo entrar <span className="font-normal text-slate-400">(opcional)</span>
-                </label>
-                <textarea id="acceso" rows={2} value={accessInstructions} maxLength={300}
-                  onChange={e => setAccessInstructions(e.target.value)}
-                  placeholder="Portería, código, con quién coordinar…"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm resize-none" />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Esto lo ve únicamente el partner asignado, después de confirmar la visita.
-                </p>
-              </div>
-              {serviceType === 'SHOW_PROPERTY' && (
+            {serviceType === 'ACCOMPANY_VISIT' ? (
+              <div className="bg-white rounded-2xl border border-slate-200/70 p-4 space-y-3">
+                <p className="text-sm font-bold text-slate-900">La propiedad que vas a visitar</p>
                 <div>
-                  <label htmlFor="guests" className="text-xs font-semibold text-slate-600 block mb-1.5">
-                    Cuántas personas esperás <span className="font-normal text-slate-400">(opcional)</span>
+                  <label htmlFor="link" className={labelCls}>Link del aviso o dirección aproximada <Opt /></label>
+                  <input id="link" value={listingLink} onChange={e => setListingLink(e.target.value)}
+                    placeholder="https://… o calle y altura aproximada" className={inputCls} />
+                </div>
+                <div>
+                  <label htmlFor="vname" className={labelCls}>Nombre o referencia <Opt /></label>
+                  <input id="vname" value={visitName} onChange={e => setVisitName(e.target.value)}
+                    placeholder="Ej: Depto 3 amb. Belgrano" className={inputCls} />
+                </div>
+                <div>
+                  <label htmlFor="punto" className={labelCls}>Punto de encuentro<Req /></label>
+                  <input id="punto" value={meetingPoint} onChange={e => setMeetingPoint(e.target.value)}
+                    placeholder="Ej: puerta del edificio, esquina…"
+                    aria-invalid={touched && !meetingPoint.trim()} className={inputCls} />
+                </div>
+                <div>
+                  <label htmlFor="coord" className={labelCls}>Quién coordina la visita y cómo contactarlo <Opt /></label>
+                  <input id="coord" value={coordinator} onChange={e => setCoordinator(e.target.value)}
+                    placeholder="Ej: Inmobiliaria Pérez, 11 5555 5555" className={inputCls} />
+                </div>
+                <div>
+                  <span className={labelCls}>Qué querés que revise</span>
+                  <div className="flex flex-wrap gap-2">
+                    {CHECK_OPTIONS.map(c => {
+                      const on = checks.includes(c)
+                      return (
+                        <button key={c} type="button" aria-pressed={on}
+                          onClick={() => setChecks(on ? checks.filter(x => x !== c) : [...checks, c])}
+                          className={cn('rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+                            on ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600 hover:border-slate-300')}>
+                          {c}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <span className={labelCls}>Tipo de reporte</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['BASICO', 'DETALLADO'] as const).map(t => (
+                      <button key={t} type="button" aria-pressed={reportType === t} onClick={() => setReportType(t)}
+                        className={cn('rounded-xl border px-3 py-2.5 text-sm font-semibold',
+                          reportType === t ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600')}>
+                        {t === 'BASICO' ? 'Básico' : 'Detallado'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className={labelCls}>¿Vas a estar presente?</span>
+                    <div className="flex gap-2">
+                      {(['SI', 'NO'] as const).map(v => (
+                        <button key={v} type="button" aria-pressed={attending === v} onClick={() => setAttending(v)}
+                          className={cn('flex-1 rounded-xl border px-3 py-2 text-sm font-semibold',
+                            attending === v ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600')}>
+                          {v === 'SI' ? 'Sí' : 'No'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <label className="flex items-end gap-2 text-xs text-slate-600 pb-2">
+                    <input type="checkbox" checked={arrivesEarly} onChange={e => setArrivesEarly(e.target.checked)} />
+                    Que llegue antes
                   </label>
+                </div>
+                <div>
+                  <label htmlFor="emerg" className={labelCls}>Contacto de emergencia <Opt /></label>
+                  <input id="emerg" value={emergency} onChange={e => setEmergency(e.target.value)}
+                    placeholder="Nombre y teléfono" className={inputCls} />
+                </div>
+                <div>
+                  <label htmlFor="instr" className={labelCls}>Notas <Opt /></label>
+                  <textarea id="instr" rows={2} value={instructions} maxLength={300}
+                    onChange={e => setInstructions(e.target.value)}
+                    placeholder="Algo más que el partner deba saber…"
+                    className={cn(inputCls, 'resize-none')} />
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-slate-200/70 p-4 space-y-3">
+                <p className="text-sm font-bold text-slate-900">Acceso y reglas de la visita</p>
+                <div>
+                  <label htmlFor="auth" className={labelCls}>Personas autorizadas a entrar <Opt /></label>
+                  <input id="auth" value={authorized} onChange={e => setAuthorized(e.target.value)}
+                    placeholder="Nombres de quienes vienen" className={inputCls} />
+                </div>
+                <div>
+                  <label htmlFor="guests" className={labelCls}>Cuántas personas esperás <Opt /></label>
                   <input id="guests" type="number" min={0} max={20} value={guests}
-                    onChange={e => setGuests(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+                    onChange={e => setGuests(e.target.value)} className={inputCls} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className={labelCls}>¿Está el propietario?</span>
+                    <div className="flex gap-2">
+                      {(['SI', 'NO'] as const).map(v => (
+                        <button key={v} type="button" aria-pressed={ownerPresent === v} onClick={() => setOwnerPresent(v)}
+                          className={cn('flex-1 rounded-xl border px-3 py-2 text-sm font-semibold',
+                            ownerPresent === v ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600')}>
+                          {v === 'SI' ? 'Sí' : 'No'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <span className={labelCls}>¿Fotos y video?</span>
+                    <div className="flex gap-2">
+                      {(['SI', 'NO'] as const).map(v => (
+                        <button key={v} type="button" aria-pressed={photosAllowed === v} onClick={() => setPhotosAllowed(v)}
+                          className={cn('flex-1 rounded-xl border px-3 py-2 text-sm font-semibold',
+                            photosAllowed === v ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600')}>
+                          {v === 'SI' ? 'Permitidos' : 'No'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="door" className={labelCls}>Portero o seguridad <Opt /></label>
+                  <input id="door" value={doorman} onChange={e => setDoorman(e.target.value)}
+                    placeholder="Ej: avisar en recepción" className={inputCls} />
+                </div>
+                <div>
+                  <label htmlFor="coord" className={labelCls}>Quién coordina y cómo contactarlo <Opt /></label>
+                  <input id="coord" value={coordinator} onChange={e => setCoordinator(e.target.value)}
+                    placeholder="Nombre y teléfono" className={inputCls} />
+                </div>
+                <div>
+                  <label htmlFor="acceso" className={labelCls}>Cómo se entra: llaves, alarma, mascotas <Opt /></label>
+                  <textarea id="acceso" rows={2} value={accessInstructions} maxLength={300}
+                    onChange={e => setAccessInstructions(e.target.value)}
+                    placeholder="Código de portería, alarma, mascotas…"
+                    className={cn(inputCls, 'resize-none')} />
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Si llegan más de las informadas, el partner lo registra antes de abrir.
+                    Lo ve únicamente el partner asignado, después de confirmar la visita.
                   </p>
                 </div>
-              )}
-            </div>
+                <div>
+                  <label htmlFor="emerg" className={labelCls}>Contacto de emergencia<Req /></label>
+                  <input id="emerg" value={emergency} onChange={e => setEmergency(e.target.value)}
+                    placeholder="Nombre y teléfono"
+                    aria-invalid={touched && !emergency.trim()} className={inputCls} />
+                </div>
+                <div>
+                  <label htmlFor="instr" className={labelCls}>Qué destacar <Opt /></label>
+                  <textarea id="instr" rows={2} value={instructions} maxLength={300}
+                    onChange={e => setInstructions(e.target.value)}
+                    placeholder="Qué mostrar primero…"
+                    className={cn(inputCls, 'resize-none')} />
+                </div>
+                <ul className="rounded-xl bg-slate-50 p-3 text-[11px] text-slate-600 space-y-1">
+                  <li>• Si llega alguien que no informaste, el partner no abre y te avisa.</li>
+                  <li>• La visita empieza solo cuando se ingresa el PIN.</li>
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
@@ -475,9 +694,14 @@ function SolicitarInner() {
                   Todavía no tenemos un Visit Partner disponible en {locationLabel}
                 </h2>
                 <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-                  Estamos armando la red. Preferimos decírtelo ahora y no después de que
-                  reserves y nadie aparezca.
+                  La cobertura es piloto y se activa por zonas. Preferimos decírtelo ahora y
+                  no después de que reserves y nadie aparezca.
                 </p>
+                <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
+                  <li>• Tu zona queda registrada y la priorizamos según cuántos pedidos tenga.</li>
+                  <li>• Si la visita es urgente, la coordinamos manualmente con el equipo de VARA.</li>
+                  <li>• No cobramos nada hasta que haya un Visit Partner asignado.</li>
+                </ul>
                 {waitlisted ? (
                   <p className="mt-4 flex items-center gap-2 text-sm text-emerald-700">
                     <Check size={14} aria-hidden="true" />
@@ -489,6 +713,16 @@ function SolicitarInner() {
                     Avisame cuando haya cobertura acá
                   </button>
                 )}
+                <div className="mt-2 grid sm:grid-cols-2 gap-2">
+                  <Link href="/#contacto"
+                    className="rounded-xl bg-white border border-slate-200 hover:border-slate-300 px-4 py-2.5 text-center text-sm font-semibold text-slate-700 transition-colors">
+                    Quiero que VARA me contacte
+                  </Link>
+                  <Link href="/partner"
+                    className="rounded-xl bg-white border border-slate-200 hover:border-slate-300 px-4 py-2.5 text-center text-sm font-semibold text-slate-700 transition-colors">
+                    Postularme como Visit Partner
+                  </Link>
+                </div>
               </div>
             )}
 
@@ -617,12 +851,18 @@ function SolicitarInner() {
                 : <>Confirmar visita <ArrowRight size={15} aria-hidden="true" /></>}
             </button>
           ) : (
-            <button onClick={next} disabled={!canContinue}
-              className="flex-1 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-200 disabled:text-slate-400 px-4 py-3 text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2">
+            <button onClick={next} aria-disabled={!canContinue}
+              className={cn('flex-1 rounded-xl px-4 py-3 text-sm font-semibold transition-colors flex items-center justify-center gap-2',
+                canContinue ? 'bg-brand-600 hover:bg-brand-700 text-white' : 'bg-slate-200 text-slate-500')}>
               Continuar <ArrowRight size={15} aria-hidden="true" />
             </button>
           )}
         </div>
+        {!canContinue && step !== 'confirmar' && (
+          <p role="status" className={cn('mt-2 text-xs', touched ? 'text-rose-600 font-semibold' : 'text-slate-500')}>
+            Para seguir completá {missing.join(', ')}.
+          </p>
+        )}
       </div>
     </div>
   )

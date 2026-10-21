@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { log } from '@/lib/observability/logger'
 import type { CountryCode } from '@/types'
-import { requireAuth } from '@/lib/api/requireAuth'
+import { requireAiAccess } from '@/lib/api/aiAccess'
 
 export type NegotiationMode =
   | 'prepare'
@@ -308,7 +308,7 @@ Devolvé JSON con:
 }
 
 export async function POST(req: Request) {
-  const auth = await requireAuth()
+  const auth = await requireAiAccess('text')
   if (auth.error) return auth.error
 
   const body = await req.json().catch(() => ({})) as {

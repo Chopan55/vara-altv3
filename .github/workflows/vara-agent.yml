@@ -1,0 +1,107 @@
+name: VARA Agent Bridge
+
+# Manager (OpenAI) + implementador (Claude Code) con aprobación humana.
+# No despliega a producción, no toca master y no corre migraciones.
+# Se lanza una vez a mano (workflow_dispatch). Si el agente necesita una decisión, abre un Issue por corrida;
+# cuando @Chopan55 comenta APPROVE / CONTINUE / REJECT / STOP en ese Issue, el workflow retoma solo (issue_comment).
+# Ver docs/VARA_AGENT_BRIDGE_V1.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      goal:
+        description: 'Objetivo en lenguaje natural'
+        required: false
+        type: string
+      max_rounds:
+        description: 'Rondas máximas (tope absoluto: 4)'
+        required: false
+        default: '4'
+        type: string
+      dry_run:
+        description: 'Prueba: sin rama, sin commit, sin PR, sin issue'
+        required: false
+        default: false
+        type: boolean
+      resume_issue:
+        description: 'Solo emergencias: número de un Issue ya respondido, para retomar a mano'
+        required: false
+        type: string
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+# Una corrida por Issue (o por lanzamiento manual); nunca se cancela una en curso.
+concurrency:
+  group: vara-agent-${{ github.event.issue.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  agent:
+    name: Correr agente
+    # Filtro barato; el bridge vuelve a validar todo (autor, tipo, Issue, estado y rama).
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.actor == 'Chopan55') ||
+      (github.event_name == 'issue_comment'
+        && github.event.issue.pull_request == null
+        && github.event.comment.user.login == 'Chopan55'
+        && github.event.comment.user.type != 'Bot'
+        && startsWith(github.event.issue.title, 'VARA Agent — Approval Required [run-')
+        && !startsWith(github.event.comment.body, '[vara-agent]'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout (integracion, nunca master)
+        uses: actions/checkout@v4
+        with:
+          ref: integracion
+          fetch-depth: 0
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Dependencias del proyecto (para las validaciones)
+        run: npm ci
+
+      - name: Dependencias del bridge
+        run: npm ci --prefix tools/vara-agent
+
+      - name: Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Correr el bridge
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.5' }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL || 'sonnet' }}
+          EVENT_NAME: ${{ github.event_name }}
+          GOAL: ${{ inputs.goal }}
+          MAX_AGENT_ROUNDS: ${{ inputs.max_rounds }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          RESUME_ISSUE: ${{ inputs.resume_issue }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+          COMMENT_AUTHOR_TYPE: ${{ github.event.comment.user.type }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          BASE_BRANCH: integracion
+        run: npm start --prefix tools/vara-agent
+
+      - name: Registro de la corrida
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vara-agent-run
+          path: .agent-runs/
+          if-no-files-found: ignore
+          retention-days: 14

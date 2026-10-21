@@ -262,6 +262,8 @@ export type PublishRequestRow = {
  */
 type Insert<T, Req extends keyof T> = Pick<T, Req> & Partial<Omit<T, Req>>
 
+type ContactRequestRow = { id: string; name: string; email: string; message: string; created_at: string }
+
 /** Supabase exige Row/Insert/Update/Relationships en cada tabla. Sin Relationships infiere `never`. */
 type Tbl<R, Req extends keyof R> = {
   Row: R
@@ -278,7 +280,19 @@ export type Database = {
     /** Funciones RPC declaradas en las migraciones. Sin esto, `.rpc()` infiere `never`. */
     Functions: {
       next_visit_code_seq: { Args: Record<string, never>; Returns: number }
-      recompute_partner_tier: { Args: { p_partner_id: string }; Returns: undefined }
+      /** Solo el cliente dueño de la visita. El PIN ya no se puede leer con un select. */
+      get_booking_pin: { Args: { p_booking_id: string }; Returns: string | null }
+      /** Solo el partner asignado. El contador de intentos vive en la base. */
+      verify_visit_pin: {
+        Args: { p_booking_id: string; p_pin: string }
+        Returns: { ok: boolean; reason?: string; attemptsLeft?: number }
+      }
+      admin_reset_pin: { Args: { p_booking_id: string }; Returns: undefined }
+      admin_approve_partner: {
+        Args: { p_partner_id: string }
+        Returns: { ok: boolean; missing?: string[] }
+      }
+      reject_assignment: { Args: { p_booking_id: string; p_reason?: string }; Returns: undefined }
     }
     Enums: Record<never, never>
     CompositeTypes: Record<never, never>
@@ -318,6 +332,7 @@ export type Database = {
       safety_incidents: Tbl<V.SafetyIncidentRow, 'reported_by_user_id' | 'category' | 'description'>
       coverage_requests: Tbl<V.CoverageRequestRow, 'user_id' | 'zone_label'>
       visit_events: Tbl<V.VisitEventRow, 'name'>
+      contact_requests: Tbl<ContactRequestRow, 'name' | 'email' | 'message'>
     }
   }
 }

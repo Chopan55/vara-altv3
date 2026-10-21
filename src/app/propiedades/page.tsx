@@ -7,6 +7,11 @@ import {
   Heart, Eye, Trash2, RotateCcw, Columns3, StickyNote, Check, Sparkles,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
+import { ManualPropertyForm } from '@/components/properties/ManualPropertyForm'
+import { MissingDataFix } from '@/components/properties/MissingDataFix'
+import { manualToResult, type ManualForm } from '@/lib/manualProperty'
+import { apiErrorMessage, safeJson } from '@/lib/api/client'
+import { DISCARD_REASONS, encodeDiscard, summarizeDiscards, type DiscardReason } from '@/lib/candidates/discard'
 import { formatPrice, formatSurface, getPropertyTypeLabel } from '@/lib/utils'
 import {
   CANDIDATE_STATUS_LABELS, buildComparison, missingForDecision, sortCandidates,
@@ -94,6 +99,14 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
   const [pasteText, setPasteText] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ScrapeResult | null>(null)
+  const [mode, setMode] = useState<'link' | 'manual'>('link')
+
+  const addManual = async (form: ManualForm) => {
+    const r = manualToResult(form)
+    setResult(r)
+    await saveImported(`manual:${Date.now()}`, r)
+    onImported()
+  }
 
   const run = useCallback(async (text?: string) => {
     if (!url.trim()) return
@@ -109,11 +122,12 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
         setResult({
           status: 'error', url, portal: null, method: 'none', data: {}, photos: [],
           missingFields: [],
-          errorMessage: res.status === 401 ? 'No autorizado. Cerrá sesión y volvé a entrar.' : 'El servidor devolvió un error. Probá de nuevo.',
+          errorMessage: apiErrorMessage(res.status),
         })
         return
       }
-      const data: ScrapeResult = await res.json()
+      const data = (await safeJson<ScrapeResult>(res)) as ScrapeResult
+      if (!data.status) { setResult({ status: 'error', url, portal: null, method: 'none', data: {}, photos: [], missingFields: [], errorMessage: apiErrorMessage(res.status) }); return }
       setResult(data)
       if (data.status !== 'error' && data.status !== 'blocked') {
         await saveImported(url, data)
@@ -136,12 +150,23 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100 sticky top-0 bg-white">
           <div>
             <p className="font-bold text-slate-900 text-sm">Sumar una propiedad</p>
-            <p className="text-xs text-slate-400 mt-0.5">Pegá el link de Zonaprop, Argenprop o MeLi</p>
+            <p className="text-xs text-slate-400 mt-0.5">Con el link de Zonaprop, Argenprop o MeLi, o cargándola a mano</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Cerrar"><X size={18} /></button>
         </div>
 
-        {ok ? (
+        {!ok && (
+          <div role="tablist" aria-label="Cómo sumar la propiedad" className="mx-5 mt-4 flex rounded-xl bg-slate-100 p-0.5 text-xs font-semibold">
+            {([['link', 'Con un link'], ['manual', 'Cargar a mano']] as const).map(([m, label]) => (
+              <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
+                className={`flex-1 rounded-[10px] px-3 py-2 transition-colors ${mode === m ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>{label}</button>
+            ))}
+          </div>
+        )}
+
+        {!ok && mode === 'manual' ? (
+          <ManualPropertyForm onSubmit={addManual} />
+        ) : ok ? (
           <div className="p-5 space-y-3">
             <div className="flex items-center gap-2">
               <CheckCircle2 size={20} className="text-emerald-500" />
@@ -509,6 +534,9 @@ export default function PropiedadesPage() {
   const [selected, setSelected] = useState<string[]>([])
   const [comparing, setComparing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [discarding, setDiscarding] = useState<string | null>(null)
+  const [dReasons, setDReasons] = useState<DiscardReason[]>([])
+  const [dNote, setDNote] = useState('')
 
   const refresh = useCallback(async () => {
     setCandidates(sortCandidates(await loadCandidates()))
@@ -532,10 +560,18 @@ export default function PropiedadesPage() {
 
   const changeStatus = async (id: string, to: CandidateStatus) => {
     setError(null)
-    const reason = to === 'DISCARDED'
-      ? window.prompt('¿Por qué la descartás? (opcional — te va a servir para acordarte)') ?? undefined
-      : undefined
-    const r = await setCandidateStatus(id, to, { discardReason: reason || undefined })
+    if (to === 'DISCARDED') { setDReasons([]); setDNote(''); setDiscarding(id); return }
+    const r = await setCandidateStatus(id, to, {})
+    if (!r.ok) setError(r.reason ?? 'No pudimos guardar el cambio.')
+    await refresh()
+  }
+
+  const confirmDiscard = async () => {
+    if (!discarding) return
+    const id = discarding
+    setDiscarding(null)
+    const reason = encodeDiscard(dReasons, dNote)
+    const r = await setCandidateStatus(id, 'DISCARDED', { discardReason: reason || undefined })
     if (!r.ok) setError(r.reason ?? 'No pudimos guardar el cambio.')
     await refresh()
   }
@@ -646,6 +682,37 @@ export default function PropiedadesPage() {
           </div>
         )}
 
+        {discarding && (
+          <div role="dialog" aria-modal="true" aria-label="Por qué la descartás" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/40 p-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+              <h2 className="text-base font-bold text-slate-900">¿Qué no te cerró?</h2>
+              <p className="mt-1 text-xs text-slate-500">Opcional. VARA lo recuerda para mostrarte qué se repite en lo que descartás.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {DISCARD_REASONS.map(r => {
+                  const on = dReasons.includes(r)
+                  return (
+                    <button key={r} type="button" aria-pressed={on}
+                      onClick={() => setDReasons(cur => on ? cur.filter(x => x !== r) : [...cur, r])}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600'}`}>{r}</button>
+                  )
+                })}
+              </div>
+              <input value={dNote} onChange={e => setDNote(e.target.value)} placeholder="Algo más que quieras recordar (opcional)" className="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              <div className="mt-4 flex justify-end gap-2">
+                <button type="button" onClick={() => setDiscarding(null)} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-500">Cancelar</button>
+                <button type="button" onClick={confirmDiscard} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white">Descartar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {filter === 'DISCARDED' && summarizeDiscards(candidates).length > 0 && (
+          <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+            <span className="font-semibold">Lo que se repite en lo que descartás:</span>{' '}
+            {summarizeDiscards(candidates).map(d => `${d.reason} (${d.count})`).join(' · ')}.
+          </p>
+        )}
+
         {visible.map(prop => {
           const missing = missingForDecision(prop)
           const isSelected = selected.includes(prop.id)
@@ -712,13 +779,8 @@ export default function PropiedadesPage() {
                   )}
                 </div>
 
-                {missing.length > 0 && (
-                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 mb-3">
-                    <AlertCircle size={11} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-[10px] text-amber-700">
-                      Falta {missing.join(' y ')}. Sin eso no se puede comparar contra las otras.
-                    </p>
-                  </div>
+                {missing.length > 0 && !closed && (
+                  <MissingDataFix candidateId={prop.id} title={prop.title} missing={missing} onSaved={refresh} />
                 )}
 
                 <div className="bg-slate-50 rounded-xl px-3 py-2 mb-3">
