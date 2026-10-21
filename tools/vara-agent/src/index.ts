@@ -91,7 +91,6 @@ export interface BridgeDeps {
   secrets?: string[]
   prices?: Prices
   validationEnv?: Record<string, string | undefined>
-  claudeMaxTurns?: number
   /** Verifica que el modelo de OpenAI exista para la cuenta. Obligatorio: corre antes de cualquier trabajo. */
   preflight: () => Promise<void>
   /** Espera máxima por el CI del PR (por defecto 30 min). */
@@ -307,10 +306,7 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
 
       let claudeRaw: { raw: unknown; usage?: Usage; numTurns?: number }
       try {
-        claudeRaw = await deps.claude.run(decision.task_for_claude, {
-          readOnly,
-          maxTurns: deps.claudeMaxTurns ?? (readOnly ? 15 : 30),
-        })
+        claudeRaw = await deps.claude.run(decision.task_for_claude, { readOnly })
       } catch (e) {
         const err = e instanceof BridgeError ? e : new BridgeError('CLAUDE_FAILURE', String(e))
         logger.error(`Claude falló: ${err.message}`)
