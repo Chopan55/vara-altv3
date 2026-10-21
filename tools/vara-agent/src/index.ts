@@ -97,6 +97,8 @@ export interface BridgeDeps {
   ciTimeoutMs?: number
   /** Tope de costo acumulado de la corrida en USD (MAX_AGENT_COST_USD, por defecto 8). Al superarlo se pausa y se le pregunta a Pancho. */
   maxCostUsd?: number
+  /** Texto para reanudar cuando el modo de ejecución no escucha comentarios automáticamente. */
+  approvalInstructions?: string
 }
 
 type Escalation = { reason: string; question: string; recommendation: string }
@@ -181,6 +183,7 @@ export async function runBridge(deps: BridgeDeps, config: RunConfig): Promise<Ru
         links: rec.branch ? [`Rama: ${rec.branch}`] : [],
         // Si se pausó por costo, aprobar otorga una ventana nueva de maxCost a partir de lo ya gastado.
         state: { ...toResumeState(rec, used), costUsd: spent(), costLimitUsd: overBudget() ? spent() + maxCost : costLimit },
+        howToRespond: deps.approvalInstructions,
       })
       const issue = await requestApproval(deps.gh, rec.run_id, body)
       rec.issue_url = issue.url
@@ -550,7 +553,7 @@ export function loadConfigFromEnv(env: NodeJS.ProcessEnv, argv: string[]): RunCo
   }
 }
 
-function writeSummary(rec: RunRecord): void {
+export function writeSummary(rec: RunRecord): void {
   const file = process.env.GITHUB_STEP_SUMMARY
   if (!file) return
   const lines = [

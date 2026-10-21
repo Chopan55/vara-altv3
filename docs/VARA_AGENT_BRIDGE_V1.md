@@ -2,6 +2,8 @@
 
 Guía para Pancho, en lenguaje simple. Actualizada: 2026-10-17 (hardening V1.1).
 
+> Para trabajar desde tu computadora usando los cupos incluidos en ChatGPT y Claude, sin descontar saldo de API, usá [VARA Duo local](./VARA_AGENT_BRIDGE_LOCAL.md). Esta guía describe el modo remoto de GitHub Actions, que sí usa APIs.
+
 ## En una frase
 
 Vos lanzás **un objetivo una sola vez**. GPT y Claude trabajan entre ellos. Si hace falta una decisión tuya, te llega un aviso de GitHub y **respondés `APPROVE` con un comentario**: el agente sigue **solo**, sin que vuelvas a lanzar nada.

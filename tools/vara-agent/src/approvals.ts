@@ -104,6 +104,8 @@ export function buildIssueBody(args: {
   problem: string
   links: string[]
   state: ResumeState
+  /** Instrucción alternativa para modos sin reanudación automática (por ejemplo, el Bridge local). */
+  howToRespond?: string
 }): string {
   const { record: r } = args
   return [
@@ -115,7 +117,10 @@ export function buildIssueBody(args: {
     `### Problema\n${args.problem}`,
     `### Recomendación\n${args.recommendation}`,
     `### Pregunta\n**${args.question}**`,
-    `### Cómo responder\nComentá en este issue, en la primera línea, una sola palabra: \`APPROVE\`, \`CONTINUE\`, \`REJECT\` o \`STOP\` (podés sumar una nota después). Solo vale lo que comenta @${AUTHORIZED_ACTOR}. El agente retoma solo: no hace falta lanzar nada a mano.`,
+    `### Cómo responder\n${
+      args.howToRespond ??
+      `Comentá en este issue, en la primera línea, una sola palabra: \`APPROVE\`, \`CONTINUE\`, \`REJECT\` o \`STOP\` (podés sumar una nota después). Solo vale lo que comenta @${AUTHORIZED_ACTOR}. El agente retoma solo: no hace falta lanzar nada a mano.`
+    }`,
     args.links.length ? `### Links\n${args.links.map(l => `- ${l}`).join('\n')}` : '',
     `<!-- vara-agent-state:${encodeState(args.state)} -->`,
   ]

@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "vara:duo": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/vara-agent/vara-local.ps1"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

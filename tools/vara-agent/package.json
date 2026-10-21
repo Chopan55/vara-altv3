@@ -6,6 +6,7 @@
   "description": "VARA Agent Bridge V1: Manager (OpenAI) + implementador (Claude Code) con aprobación humana. No toca producción.",
   "scripts": {
     "start": "tsx src/index.ts",
+    "local": "tsx src/local.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --root ../.. tools/vara-agent/tests"
   },

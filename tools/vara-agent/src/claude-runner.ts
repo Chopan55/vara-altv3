@@ -223,7 +223,11 @@ export function createClaudeRunner(run: CommandRunner, cfg: ClaudeRunnerConfig):
         throw new BridgeError('CLAUDE_FAILURE', redactSecrets(`Claude Code no devolvió JSON (código ${r.code}): ${(r.stderr || r.stdout).slice(0, 300)}`, secrets))
       }
       if (r.code !== 0 || out.is_error || (out.subtype && out.subtype !== 'success')) {
-        throw new BridgeError('CLAUDE_FAILURE', redactSecrets(`Claude Code terminó con error (${out.subtype ?? r.code}): ${(out.result ?? r.stderr).slice(0, 300)}`, secrets))
+        const detail = (out.result ?? r.stderr).slice(0, 300)
+        if (/oauth access token has expired|failed to authenticate|re-authenticate/i.test(detail)) {
+          throw new BridgeError('CLAUDE_FAILURE', 'La sesión de Claude venció. Ejecutá `claude auth login`; no hace falta comprar créditos de API.')
+        }
+        throw new BridgeError('CLAUDE_FAILURE', redactSecrets(`Claude Code terminó con error (${out.subtype ?? r.code}): ${detail}`, secrets))
       }
       const raw = out.structured_output ?? extractJson(out.result ?? '')
       return {
