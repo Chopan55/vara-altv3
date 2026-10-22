@@ -28,7 +28,7 @@ describe('esquema sanitizado para Claude Code', () => {
   })
 
   it('la copia que recibe --json-schema no los contiene', () => {
-    const args = buildClaudeArgs({ model: 'sonnet', resultSchema: original, systemPrompt: 's' }, { readOnly: true, maxTurns: 5 })
+    const args = buildClaudeArgs({ model: 'sonnet', resultSchema: original, systemPrompt: 's' }, { readOnly: true })
     const passed = args[args.indexOf('--json-schema') + 1]
     expect(passed).not.toContain('$schema')
     expect(passed).not.toContain('$id')
@@ -56,7 +56,7 @@ describe('esquema sanitizado para Claude Code', () => {
       seenArgs = args
       return { code: 0, stdout: JSON.stringify({ subtype: 'success', is_error: false, structured_output: claudeResult() }), stderr: '', timedOut: false }
     }
-    await createClaudeRunner(run, { model: 'sonnet', resultSchema: original, systemPrompt: 's', sourceEnv: {} }).run('t', { readOnly: true, maxTurns: 3 })
+    await createClaudeRunner(run, { model: 'sonnet', resultSchema: original, systemPrompt: 's', sourceEnv: {} }).run('t', { readOnly: true })
     expect(seenArgs[seenArgs.indexOf('--json-schema') + 1]).not.toMatch(/\$schema|\$id/)
   })
 })

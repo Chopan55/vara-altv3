@@ -48,12 +48,16 @@ describe('--max-budget-usd por llamada a Claude', () => {
   })
 
   it('cuando está configurado, cada llamada lleva --max-budget-usd con el valor', () => {
-    const args = buildClaudeArgs({ ...cfg, maxBudgetUsd: 2.5 }, { readOnly: true, maxTurns: 5 })
+    const args = buildClaudeArgs({ ...cfg, maxBudgetUsd: 2.5 }, { readOnly: true })
     expect(args[args.indexOf('--max-budget-usd') + 1]).toBe('2.5')
   })
 
   it('sin configurar no se pasa el flag', () => {
-    expect(buildClaudeArgs(cfg, { readOnly: true, maxTurns: 5 })).not.toContain('--max-budget-usd')
+    expect(buildClaudeArgs(cfg, { readOnly: true })).not.toContain('--max-budget-usd')
+  })
+
+  it('no pasa --max-turns: el presupuesto, el timeout y las rondas son los topes confiables', () => {
+    expect(buildClaudeArgs({ ...cfg, maxBudgetUsd: 2.5 }, { readOnly: false })).not.toContain('--max-turns')
   })
 
   it('el runner real lo pasa en cada llamada', async () => {
@@ -63,8 +67,8 @@ describe('--max-budget-usd por llamada a Claude', () => {
       return { code: 0, stdout: JSON.stringify({ subtype: 'success', is_error: false, structured_output: claudeResult() }), stderr: '', timedOut: false }
     }
     const claude = createClaudeRunner(run, { ...cfg, maxBudgetUsd: 1.5, sourceEnv: {} })
-    await claude.run('uno', { readOnly: true, maxTurns: 3 })
-    await claude.run('dos', { readOnly: false, maxTurns: 3 })
+    await claude.run('uno', { readOnly: true })
+    await claude.run('dos', { readOnly: false })
     expect(seen.map(a => a[a.indexOf('--max-budget-usd') + 1])).toEqual(['1.5', '1.5'])
   })
 })
@@ -148,7 +152,7 @@ describe('guarda de costo acumulado del bridge', () => {
 })
 
 describe('CI del proyecto', () => {
-  const ci = readFileSync(fileURLToPath(new URL('../../../.github/workflows/ci.yml', import.meta.url)), 'utf8')
+  const ci = readFileSync(fileURLToPath(new URL('../../../.github/workflows/ci.yml', import.meta.url)), 'utf8').replace(/\r\n/g, '\n')
 
   it('typecheckea el bridge además del proyecto, y el CI no continúa si falla', () => {
     const project = ci.indexOf('run: npm run typecheck\n')
