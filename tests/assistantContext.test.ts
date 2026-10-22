@@ -253,3 +253,85 @@ describe('acciones del chat', () => {
     expect(page).toContain('m.actions.filter(isSafeAction)')
   })
 })
+
+describe('sprint: casos de aceptación', () => {
+  const base = () => buyContext(prop(), { propertyId: 'prop-1' })
+  const withCosts = (confidence: 'VERIFIED' | 'PARTIAL' | 'ESTIMATED') => {
+    const { fv, transaction } = base()
+    const costs = { known: true as const, price: 150000, provinceName: 'Ciudad de Buenos Aires', confidence, min: 4000, max: 6000, percentMin: 2.7, percentMax: 4, lines: [{ label: 'Sellos', min: 2000, max: 3000 }], source: 'fuente' }
+    return buildAssistantContext({ op: summary(buyStored, { propertyId: 'prop-1' }), fv: { ...fv, costs }, property: prop(), transaction })
+  }
+
+  it('costos verificados vs parcialmente verificados vs estimados: siempre ESTIMATE, con su confianza dicha', () => {
+    const text = (c: ReturnType<typeof withCosts>) => c.lines.filter(l => l.certainty === 'ESTIMATE').map(l => l.text).join(' ')
+    expect(text(withCosts('VERIFIED'))).toContain('fuente verificada')
+    expect(text(withCosts('PARTIAL'))).toContain('parcialmente verificado')
+    expect(text(withCosts('ESTIMATED'))).toContain('sin fuente oficial confirmada')
+    for (const c of ['VERIFIED', 'PARTIAL', 'ESTIMATED'] as const) {
+      expect(withCosts(c).lines.some(l => l.certainty === 'FACT' && /USD 4/.test(l.text))).toBe(false)
+    }
+  })
+
+  it('un riesgo real y una tarea bloqueada entran como FACT, con su severidad', () => {
+    const { fv, transaction } = base()
+    const attention = [
+      { id: 'risk_r1', label: 'Inhibición del vendedor', detail: 'Pedir certificado de inhibiciones.', severity: 'HIGH' as const },
+      { id: 'task_t1', label: 'Certificado de dominio', detail: 'Bloqueada hasta tener el informe.', severity: 'HIGH' as const },
+    ]
+    const ctx = buildAssistantContext({ op: summary(buyStored, { propertyId: 'prop-1' }), fv: { ...fv, attention }, property: prop(), transaction })
+    const facts = ctx.lines.filter(l => l.certainty === 'FACT').map(l => l.text)
+    expect(facts.some(t => t.startsWith('Riesgo registrado (alto): Inhibición del vendedor'))).toBe(true)
+    expect(facts.some(t => t.startsWith('Tarea bloqueada: Certificado de dominio'))).toBe(true)
+  })
+
+  it('el precio es de publicación y no se presenta como cerrado; las reglas lo prohíben', () => {
+    const line = base().ctx.lines.find(l => /^(Datos leídos del aviso\. )?Propiedad:/.test(l.text))!
+    expect(line.text).toContain('Precio de publicación (no es precio cerrado)')
+    expect(CONTEXT_RULES).toMatch(/precio cerrado/)
+    expect(CONTEXT_RULES).toMatch(/no una obligación/)
+    expect(CONTEXT_RULES).toMatch(/conclusión[\s\S]*evidencia[\s\S]*no sabe[\s\S]*próxima acción/i)
+  })
+
+  it('una inferencia nunca queda como FACT', () => {
+    const { ctx } = buyContext(prop()) // sin vínculo explícito
+    const inference = ctx.lines.find(l => l.certainty === 'INFERENCE')!
+    expect(inference).toBeTruthy()
+    expect(ctx.lines.filter(l => l.certainty === 'FACT').some(l => l.text.includes(inference.text))).toBe(false)
+  })
+
+  it('"qué tengo que hacer ahora y por qué": una sola acción principal, la del motor', () => {
+    const { ctx, fv } = base()
+    const actions = suggestActions(ctx.actionContext, '¿Qué tengo que hacer ahora y por qué?')
+    expect(actions).toHaveLength(1)
+    expect(actions[0].href).toBe(fv.primary.cta.href)
+  })
+
+  it('"qué está frenando mi operación", "qué no sabemos" y "analizar" llevan a pantallas internas reales', () => {
+    const c: ActionContext = { operationId: 'op-1', kind: 'BUY', propertyId: 'prop-1', propertyIncomplete: true, primary: null }
+    expect(suggestActions(c, '¿Qué está frenando mi operación?').map(a => a.href)[0]).toBe('/operacion/op-1?tab=riesgos')
+    expect(suggestActions(c, '¿Qué no sabemos todavía?').map(a => a.href)).toEqual(['/propiedades/prop-1'])
+    expect(suggestActions(c, '¿Me conviene analizar esta propiedad?').map(a => a.href)).toContain('/analizar')
+  })
+
+  it('solo existen las acciones permitidas: ninguna envía, ofrece, reserva ni paga', () => {
+    const allowed = new Set(['next_step', 'view_costs', 'view_documents', 'view_risks', 'view_operation', 'open_property', 'complete_property', 'analyze_property', 'compare', 'prepare_sale', 'open_negotiation'])
+    const c: ActionContext = { operationId: 'op-1', kind: 'SELL', propertyId: 'prop-1', propertyIncomplete: true, primary: { label: 'Ver', href: '/operacion/op-1' } }
+    const qs = ['qué hago ahora', 'cuánto cuesta', 'documentos', 'riesgos', 'mi operación', 'propiedad', 'qué falta', 'analizar', 'comparar', 'vender', 'mensaje al vendedor', 'quiero hacer una oferta y reservar y pagar la seña']
+    for (const q of qs) {
+      const actions = suggestActions(c, q)
+      expect(actions.length).toBeLessThanOrEqual(MAX_ACTIONS)
+      for (const a of actions) {
+        expect(allowed.has(a.id)).toBe(true)
+        expect(isSafeAction(a)).toBe(true)
+        expect(a.id).not.toMatch(/send|offer|pay|reserve|delete/i)
+      }
+    }
+  })
+
+  it('venta y compra sin propiedad: el contexto sigue siendo honesto sobre lo que no sabe', () => {
+    const { ctx } = buyContext(null)
+    const unknown = ctx.lines.filter(l => l.certainty === 'UNKNOWN').map(l => l.text).join(' ')
+    expect(unknown).toMatch(/costos|precio/i)
+    expect(ctx.lines.some(l => l.certainty === 'FACT' && /precio de publicación/i.test(l.text))).toBe(false)
+  })
+})

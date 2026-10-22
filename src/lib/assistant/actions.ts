@@ -10,7 +10,7 @@ import type { ActionContext } from '@/lib/assistant/context'
 
 export type ActionId =
   | 'next_step' | 'view_costs' | 'view_documents' | 'view_risks' | 'view_operation'
-  | 'open_property' | 'complete_property' | 'compare' | 'prepare_sale' | 'open_negotiation'
+  | 'open_property' | 'complete_property' | 'analyze_property' | 'compare' | 'prepare_sale' | 'open_negotiation'
 
 export interface AssistantAction {
   id: ActionId
@@ -45,11 +45,11 @@ const RULES: Rule[] = [
     build: c => { const href = tab(c, 'documentos'); return href ? { id: 'view_documents', label: 'Ver documentos', href } : null },
   },
   {
-    test: /(riesgo|peligro|alerta|problema|bloquea)/,
+    test: /(riesgo|peligro|alerta|problema|bloque|fren)/,
     build: c => { const href = tab(c, 'riesgos'); return href ? { id: 'view_risks', label: 'Ver riesgos', href } : null },
   },
   {
-    test: /(que me falta|que falta|falta|complet|datos de la propiedad|ficha)/,
+    test: /(que me falta|que falta|falta|complet|datos de la propiedad|ficha|no sabemos|no sabes|desconoc)/,
     build: c => (c.propertyId && c.propertyIncomplete ? { id: 'complete_property', label: 'Completar la propiedad', href: `/propiedades/${c.propertyId}` } : null),
   },
   {
@@ -57,6 +57,10 @@ const RULES: Rule[] = [
     build: c => (c.propertyId
       ? { id: 'open_property', label: 'Abrir la propiedad', href: `/propiedades/${c.propertyId}` }
       : { id: 'open_property', label: 'Cargar la propiedad', href: '/propiedades' }),
+  },
+  {
+    test: /(analiz|vale la pena|buen precio|precio justo|conviene comprar)/,
+    build: () => ({ id: 'analyze_property', label: 'Analizar propiedad', href: '/analizar' }),
   },
   {
     test: /(compar|otra propiedad|otro (depto|departamento|aviso)|alternativa)/,

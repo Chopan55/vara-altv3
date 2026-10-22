@@ -83,9 +83,10 @@ export function buildAssistantContext({ op, fv, property, transaction }: BuildCo
   // ── Propiedad ──
   if (property) {
     const where = [property.address, property.neighborhood, property.city].filter(Boolean).join(', ')
+    // Es el precio con el que se publica: no es un precio cerrado ni de tasación.
     const price = property.price > 0 ? `${property.currency} ${money(property.price)}` : 'sin precio cargado'
     const specs = [property.surface > 0 ? `${property.surface} m²` : '', property.rooms > 0 ? `${property.rooms} amb.` : ''].filter(Boolean).join(', ')
-    const desc = `Propiedad: ${property.title || 'sin título'}${where ? `, ${where}` : ''}. Precio: ${price}${specs ? `. ${specs}` : ''}.`
+    const desc = `Propiedad: ${property.title || 'sin título'}${where ? `, ${where}` : ''}. Precio de publicación (no es precio cerrado): ${price}${specs ? `. ${specs}` : ''}.`
     const imported = (property as { source?: string }).source === 'imported'
     add(imported ? 'EXTRACTED' : 'FACT', imported ? `Datos leídos del aviso. ${desc}` : desc)
     if (!op.propertyId) add('INFERENCE', 'La propiedad no está vinculada explícitamente a la operación: VARA asume que es la última que la persona cargó o importó.')
@@ -144,6 +145,8 @@ export const CONTEXT_RULES = `CÓMO USAR EL CONTEXTO DE LA OPERACIÓN:
 - Riesgos y faltantes: resumí solo los que figuran en el contexto.
 - Mensajes (por ejemplo al vendedor): redactá un borrador listo para copiar, con los datos reales del contexto, y aclará que es un borrador y que no se envió nada. Nunca digas que enviaste algo, creaste una oferta o modificaste datos.
 - Comparar propiedades: decí que se hace en la sección Comparar de VARA; no armes la comparación sin datos de las dos propiedades.
+- El precio de la propiedad es de publicación: nunca lo presentes como precio cerrado ni como valor real de mercado. Una recomendación es una sugerencia, no una obligación: decí "te conviene", no "tenés que".
+- Cómo responder, corto: 1) conclusión en una frase; 2) la evidencia que la sostiene; 3) lo que VARA no sabe todavía y, si sirve, cómo completarlo; 4) la próxima acción. Sin relleno ni explicaciones genéricas.
 - No inventes nada que no esté en el contexto ni en el material de VARA.`
 
 /** Bloque completo que se agrega a las instrucciones del modelo. */
