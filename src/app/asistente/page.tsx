@@ -1,16 +1,18 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Send, User, ChevronDown, ChevronUp, Sparkles, Handshake, Volume2, VolumeX, Square, Loader2, Mic } from 'lucide-react'
+import { ArrowLeft, Send, User, ChevronDown, ChevronUp, Sparkles, Handshake, Volume2, VolumeX, Square, Loader2, Mic, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
 import { useOperations } from '@/hooks/useOperations'
 import { useAssistantVoice } from '@/hooks/useAssistantVoice'
 import { useRealtimeVoice } from '@/hooks/useRealtimeVoice'
+import { useAssistantContext } from '@/hooks/useAssistantContext'
 import { VaraOrb } from '@/components/buy-v3/VaraOrb'
 import { apiErrorMessage, safeJson } from '@/lib/api/client'
 import { isErrorMessage, isSpeakable, moodLabel, orbMoodFor } from '@/lib/assistant/voice'
 import { liveErrorMessage, liveLabel, liveOrbMood } from '@/lib/assistant/realtime'
+import { isSafeAction, suggestActions, type AssistantAction } from '@/lib/assistant/actions'
 
 const BUYER_FAQS = [
   '¿Qué documentos le pido al vendedor?',
@@ -30,6 +32,8 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   time: string
+  /** Botones de navegación sugeridos debajo de la respuesta (solo pantallas de VARA). */
+  actions?: AssistantAction[]
 }
 
 export default function AsistentePage() {
@@ -58,8 +62,20 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
   // Conversación de voz en tiempo real: lo que se dice queda en el mismo chat, en orden.
   const messagesRef = useRef<Message[]>([])
   useEffect(() => { messagesRef.current = messages }, [messages])
+  // Contexto real de la operación (el mismo para texto y voz) y acciones sugeridas.
+  const ac = useAssistantContext()
+  const acRef = useRef(ac)
+  useEffect(() => { acRef.current = ac }, [ac])
   const live = useRealtimeVoice({
-    onFinal: entries => setMessages(prev => [...prev, ...entries.map(e => ({ role: e.role, content: e.text, time: nowTime() }))]),
+    onFinal: entries => setMessages(prev => {
+      let lastUser = [...prev].reverse().find(m => m.role === 'user')?.content ?? ''
+      const added: Message[] = entries.map(e => {
+        if (e.role === 'user') { lastUser = e.text; return { role: 'user', content: e.text, time: nowTime() } }
+        return { role: 'assistant', content: e.text, time: nowTime(), actions: suggestActions(acRef.current.actionContext, lastUser) }
+      })
+      return [...prev, ...added]
+    }),
+    getContext: () => acRef.current.text,
     getHistory: () => messagesRef.current.slice(1).map(m => ({ role: m.role, content: m.content })),
     isError: isErrorMessage,
   })
@@ -82,7 +98,11 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
     try {
       const saved = sessionStorage.getItem('vara_chat_history')
       // Se descartan errores técnicos que quedaron guardados como si fueran respuestas.
-      if (saved) restored = (JSON.parse(saved) as Message[]).filter(m => !isErrorMessage(m.content))
+      if (saved) {
+        restored = (JSON.parse(saved) as Message[])
+          .filter(m => !isErrorMessage(m.content))
+          .map(m => ({ ...m, actions: Array.isArray(m.actions) ? m.actions.filter(isSafeAction) : undefined }))
+      }
     } catch {}
     setMessages(restored.length > 0 ? restored : [{ role: 'assistant', content: welcomeMsg, time: nowTime() }])
     setReady(true)
@@ -120,6 +140,7 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
         body: JSON.stringify({
           messages: updatedMessages.slice(1).map(m => ({ role: m.role, content: m.content })),
           context,
+          assistantContext: ac.text,
         }),
       })
       const data = await safeJson<{ reply?: string; error?: string }>(res)
@@ -130,7 +151,7 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
         setChatError({ auth: res.status === 401, text: res.status === 401 ? 'Tu sesión venció. Ingresá de nuevo para seguir conversando.' : apiErrorMessage(res.status, data.error) })
       } else {
         const reply = data.reply as string
-        setMessages(prev => [...prev, { role: 'assistant', content: reply, time: nowTime() }])
+        setMessages(prev => [...prev, { role: 'assistant', content: reply, time: nowTime(), actions: suggestActions(ac.actionContext, msg) }])
         // "Leer respuestas": solo respuestas reales, nunca errores (esos no llegan acá). Si la voz falla, el texto ya está.
         if (voice.autoRead && !liveActive) void voice.play(String(updatedMessages.length), reply, { silent: true })
       }
@@ -184,14 +205,14 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
             type="button"
             onClick={toggleLive}
             aria-pressed={liveActive}
-            disabled={live.status === 'connecting'}
+            disabled={live.status === 'connecting' || (!liveActive && !ac.ready)}
             className={cn(
               'mt-3 ml-2 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:opacity-60',
               liveActive ? 'bg-slate-900 text-white hover:bg-slate-700' : 'bg-brand-600 text-white hover:bg-brand-700',
             )}
           >
             {liveActive ? <Square size={12} aria-hidden="true" /> : live.status === 'connecting' ? <Loader2 size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : <Mic size={13} aria-hidden="true" />}
-            {liveActive ? 'Terminar conversación' : live.status === 'connecting' ? 'Conectando…' : 'Hablar con VARA'}
+            {liveActive ? 'Terminar conversación' : live.status === 'connecting' ? 'Conectando…' : !ac.ready ? 'Cargando tu operación…' : 'Hablar con VARA'}
           </button>
           {live.status === 'error' && live.errorCode && (
             <p role="status" className="mt-2 text-xs text-amber-800">{liveErrorMessage(live.errorCode)}</p>
@@ -279,6 +300,15 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
                     </div>
                   )
                 })()}
+                {msg.role === 'assistant' && msg.actions && msg.actions.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Acciones sugeridas">
+                    {msg.actions.map(a => (
+                      <Link key={a.id} href={a.href} className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500">
+                        {a.label} <ArrowRight size={12} aria-hidden="true" />
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
               {msg.role === 'user' && (
                 <div className="w-8 h-8 rounded-xl bg-slate-200 flex items-center justify-center flex-shrink-0 mt-0.5">

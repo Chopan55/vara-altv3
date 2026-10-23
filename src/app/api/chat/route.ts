@@ -6,6 +6,7 @@ import { cookies } from 'next/headers'
 import { findKnowledge, type Audience } from '@/data/knowledge'
 import { requireAiAccess } from '@/lib/api/aiAccess'
 import { cleanChatReply } from '@/lib/ai/cleanReply'
+import { contextBlock, sanitizeContextText } from '@/lib/assistant/context'
 
 
 /** Carga el contexto verificado de una operación desde Supabase (H18). */
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   try {
-    const { messages, context, operationId } = await req.json()
+    const { messages, context, operationId, assistantContext } = await req.json()
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: 'Mensajes inválidos' }, { status: 400 })
@@ -143,6 +144,9 @@ export async function POST(req: NextRequest) {
     if (typeof context === 'string' && context) {
       contextParts.push('', 'Contexto adicional de la pantalla actual (no verificado):', context)
     }
+    // Contexto de la operación armado por los motores de VARA (el mismo que usa la voz). Va acotado y sin dumps.
+    const opContext = sanitizeContextText(assistantContext)
+    if (opContext) contextParts.push('', contextBlock(opContext))
     const systemContent = contextParts.join('\n') + kb
 
     const completion = await openai.chat.completions.create({

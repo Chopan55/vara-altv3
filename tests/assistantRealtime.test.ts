@@ -174,8 +174,10 @@ describe('seguridad y limpieza', () => {
     expect(route).toContain('/v1/realtime/client_secrets')
     // al navegador solo vuelve el secreto efímero
     expect(route).toContain('NextResponse.json({ value: data.value }')
-    // el navegador no elige modelo ni instrucciones: la ruta no lee el cuerpo
-    expect(route).not.toMatch(/req\.(json|text)\(/)
+    // el navegador solo aporta el contexto de la operación (sanitizado y acotado): no elige modelo ni instrucciones
+    expect(route).not.toMatch(/req\.json\(/)
+    expect(route).toContain('sanitizeContextText(')
+    expect(route).toContain('raw.length > 12_000')
   })
 
   it('la clave de OpenAI no existe en el navegador', () => {
