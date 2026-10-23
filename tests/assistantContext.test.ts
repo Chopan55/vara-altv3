@@ -335,3 +335,11 @@ describe('sprint: casos de aceptación', () => {
     expect(ctx.lines.some(l => l.certainty === 'FACT' && /precio de publicación/i.test(l.text))).toBe(false)
   })
 })
+
+describe('voz sin contexto a medias', () => {
+  it('el botón "Hablar con VARA" espera a que el contexto de la operación esté cargado', () => {
+    const page = read('src/app/asistente/page.tsx')
+    expect(page).toContain("disabled={live.status === 'connecting' || (!liveActive && !ac.ready)}")
+    expect(page).toContain('Cargando tu operación…')
+  })
+})

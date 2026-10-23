@@ -205,14 +205,14 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
             type="button"
             onClick={toggleLive}
             aria-pressed={liveActive}
-            disabled={live.status === 'connecting'}
+            disabled={live.status === 'connecting' || (!liveActive && !ac.ready)}
             className={cn(
               'mt-3 ml-2 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:opacity-60',
               liveActive ? 'bg-slate-900 text-white hover:bg-slate-700' : 'bg-brand-600 text-white hover:bg-brand-700',
             )}
           >
             {liveActive ? <Square size={12} aria-hidden="true" /> : live.status === 'connecting' ? <Loader2 size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : <Mic size={13} aria-hidden="true" />}
-            {liveActive ? 'Terminar conversación' : live.status === 'connecting' ? 'Conectando…' : 'Hablar con VARA'}
+            {liveActive ? 'Terminar conversación' : live.status === 'connecting' ? 'Conectando…' : !ac.ready ? 'Cargando tu operación…' : 'Hablar con VARA'}
           </button>
           {live.status === 'error' && live.errorCode && (
             <p role="status" className="mt-2 text-xs text-amber-800">{liveErrorMessage(live.errorCode)}</p>
