@@ -15,7 +15,6 @@ import type { CandidateStatus, PropertyCandidate } from './model'
 import { canTransitionCandidate } from './model'
 import { log } from '@/lib/observability/logger'
 import { newEntityId } from '@/lib/operationIds'
-import { isSupabaseConfigured } from '@/lib/supabase/client'
 import {
   getUserProperties,
   getImportedProperties,
@@ -92,7 +91,6 @@ function adoptLegacyProperty(): PropertyCandidate[] {
 // ───────────────────────── Lectura ─────────────────────────
 
 export async function loadCandidates(): Promise<PropertyCandidate[]> {
-  if (!isSupabaseConfigured) return adoptLegacyProperty()
   try {
     const { hasSession, fetchCandidates } = await import('@/lib/supabase/candidates')
     if (await hasSession()) {
@@ -118,7 +116,7 @@ export async function loadCandidateById(id: string): Promise<PropertyCandidate |
 // ───────────────────────── Escritura ─────────────────────────
 
 export async function addCandidate(p: UserProperty): Promise<PropertyCandidate | null> {
-  if (isSupabaseConfigured) try {
+  try {
     const { hasSession, insertCandidate } = await import('@/lib/supabase/candidates')
     if (await hasSession()) return await insertCandidate(p)
   } catch (err) { log.error('candidate.add.supabase.failed', err) }
@@ -178,7 +176,7 @@ export async function patchCandidate(
   id: string,
   patch: Partial<PropertyCandidate>,
 ): Promise<PropertyCandidate | null> {
-  if (isSupabaseConfigured) try {
+  try {
     const { hasSession, updateCandidate } = await import('@/lib/supabase/candidates')
     if (await hasSession()) return await updateCandidate(id, patch)
   } catch (err) { log.error('candidate.patch.supabase.failed', err) }
@@ -195,7 +193,7 @@ export async function patchCandidate(
 }
 
 export async function removeCandidate(id: string): Promise<boolean> {
-  if (isSupabaseConfigured) try {
+  try {
     const { hasSession, deleteCandidate } = await import('@/lib/supabase/candidates')
     if (await hasSession()) return await deleteCandidate(id)
   } catch (err) { log.error('candidate.remove.supabase.failed', err) }
