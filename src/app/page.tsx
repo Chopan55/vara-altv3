@@ -46,8 +46,8 @@ export default function LandingPage() {
             Más libertad para decidir. Más control para avanzar. Menos costos innecesarios.
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <ButtonLink href="/login" size="lg">Entrar</ButtonLink>
-            <ButtonLink href="#como-funciona" variant="secondary" size="lg">Ver cómo funciona</ButtonLink>
+            <ButtonLink href="/empezar" size="lg">Empezar</ButtonLink>
+            <ButtonLink href="/login" variant="secondary" size="lg">Entrar</ButtonLink>
           </div>
         </div>
         <div className="mx-auto mt-14 max-w-6xl md:mt-20">
