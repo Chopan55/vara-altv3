@@ -46,7 +46,7 @@ export default function LandingPage() {
             Más libertad para decidir. Más control para avanzar. Menos costos innecesarios.
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <ButtonLink href="/login" size="lg">Entrar</ButtonLink>
+            <ButtonLink href="/empezar" size="lg">Empezar</ButtonLink>
             <ButtonLink href="#como-funciona" variant="secondary" size="lg">Ver cómo funciona</ButtonLink>
           </div>
         </div>
@@ -90,9 +90,10 @@ export default function LandingPage() {
       {/* CTA final: el único acceso para clientes es entrar con su cuenta. */}
       <Section id="entrar" tone="brand" width="narrow">
         <h2 className="font-display text-center text-3xl font-extrabold text-white text-balance md:text-5xl">Tu operación, en un solo lugar.</h2>
-        <p className="mb-10 mt-4 text-center text-lg text-brand-200">Entrá con tu cuenta y seguí con tu compra o tu venta.</p>
-        <div className="flex justify-center">
-          <ButtonLink href="/login" size="lg" variant="secondary">Entrar a VARA</ButtonLink>
+        <p className="mb-10 mt-4 text-center text-lg text-brand-200">Empezá ahora o entrá con tu cuenta para seguir donde dejaste.</p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <ButtonLink href="/empezar" size="lg" variant="secondary">Empezar</ButtonLink>
+          <ButtonLink href="/login" size="lg" variant="secondary">Ya tengo cuenta</ButtonLink>
         </div>
       </Section>
 
