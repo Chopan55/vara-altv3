@@ -16,6 +16,7 @@ import type { UserOperationSummary, Transaction } from '@/types'
 import { computeNextActions, primaryAction, CATEGORY_LABELS } from '@/lib/nba/engine'
 import {
   fetchSellerTasks, toggleSellerTask, setSellerTaskDueDate,
+  SELLER_TASK_DEFS,
   type SellerTaskState,
 } from '@/lib/supabase/sellerTasks'
 import { fetchActivity, getLastSeen, markSeen } from '@/lib/supabase/activity'
@@ -214,32 +215,56 @@ function fmtDueDate(iso: string): string {
   return new Date(y, m - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
 }
 
+const LOCAL_TASKS_KEY = (opId: string) => `vara_seller_tasks_${opId}`
+
+function defaultLocalTasks(): SellerTaskState[] {
+  return SELLER_TASK_DEFS.map(d => ({ id: d.key, key: d.key, title: d.title, description: d.description, done: false }))
+}
+
 function SellerDashboard({ userName, province, operationId }: { userName: string; province: string; operationId: string }) {
   const [tasks, setTasks] = useState<SellerTaskState[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [isLocal, setIsLocal] = useState(false)
   const [editingDateId, setEditingDateId] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
     fetchSellerTasks(operationId).then(result => {
       if (!alive) return
-      if (result) setTasks(result)
+      if (result) {
+        setTasks(result)
+      } else {
+        // No Supabase session — use localStorage with default task definitions
+        try {
+          const saved = localStorage.getItem(LOCAL_TASKS_KEY(operationId))
+          setTasks(saved ? JSON.parse(saved) as SellerTaskState[] : defaultLocalTasks())
+        } catch {
+          setTasks(defaultLocalTasks())
+        }
+        setIsLocal(true)
+      }
       setLoaded(true)
     })
     return () => { alive = false }
   }, [operationId])
+
+  // Persist local tasks to localStorage when there's no Supabase session
+  useEffect(() => {
+    if (!isLocal || !loaded) return
+    try { localStorage.setItem(LOCAL_TASKS_KEY(operationId), JSON.stringify(tasks)) } catch {}
+  }, [tasks, isLocal, loaded, operationId])
 
   const toggleItem = async (key: string) => {
     const task = tasks.find(t => t.key === key)
     if (!task) return
     const next = !task.done
     setTasks(prev => prev.map(t => t.key === key ? { ...t, done: next } : t))
-    await toggleSellerTask(operationId, key, next)
+    if (!isLocal) await toggleSellerTask(operationId, key, next)
   }
 
   const setItemDate = async (key: string, date: string) => {
     setTasks(prev => prev.map(t => t.key === key ? { ...t, dueDate: date || undefined } : t))
-    await setSellerTaskDueDate(operationId, key, date || null)
+    if (!isLocal) await setSellerTaskDueDate(operationId, key, date || null)
   }
 
   const estimateDates = async () => {
@@ -398,32 +423,23 @@ function SellerDashboard({ userName, province, operationId }: { userName: string
 
         {/* PRICING INTELLIGENCE */}
         <div className="bg-white rounded-2xl shadow-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center">
-                <BarChart2 size={15} className="text-slate-400" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-slate-800 text-sm">Inteligencia de precio</h3>
-                <p className="text-xs text-slate-400 mt-0.5">{province} · Referencia de mercado</p>
-              </div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center">
+              <BarChart2 size={15} className="text-slate-400" />
             </div>
-          </div>
-          <div className="bg-slate-50 rounded-xl p-4 mb-3 flex items-center justify-between">
             <div>
-              <p className="text-xs text-slate-400 mb-0.5">Rango estimado de publicación</p>
-              <p className="text-xl font-extrabold text-slate-900 text-sm text-slate-400">Pendiente de análisis</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-slate-400 mb-0.5">Zona</p>
-              <p className="text-sm font-bold text-slate-700">{province}</p>
+              <h3 className="font-semibold text-slate-800 text-sm">Inteligencia de precio</h3>
+              <p className="text-xs text-slate-400 mt-0.5">{province} · Análisis con IA</p>
             </div>
           </div>
-          <p className="text-xs text-slate-300">
-            Referencia estimada. Usá el Asistente VARA para un análisis más preciso de tu propiedad.
-          </p>
-          <Link href="/asistente" className="mt-3 flex items-center gap-2 text-xs font-semibold text-amber-600 hover:underline">
-            Analizar mi propiedad con IA <ArrowRight size={12} />
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-3">
+            <p className="text-xs font-semibold text-amber-700 mb-1">¿Cuánto vale tu propiedad?</p>
+            <p className="text-xs text-amber-600 leading-relaxed">
+              El Asistente VARA puede analizar el precio de mercado para tu propiedad en {province} en base a sus características y la zona.
+            </p>
+          </div>
+          <Link href="/asistente" className="flex items-center gap-2 text-xs font-semibold text-amber-600 hover:underline">
+            Analizar mi precio con IA <ArrowRight size={12} />
           </Link>
         </div>
 
