@@ -170,7 +170,7 @@ function SolicitarInner() {
   }, [selectedMatch, date, time, duration])
 
   const canContinue =
-    (step === 'servicio' && !!serviceType) ||
+    (step === 'servicio' && !!serviceType && signedIn !== false) ||
     (step === 'cuando' && !!locationLabel.trim() && !!date && !!time) ||
     (step === 'quien' && !!selectedMatch) ||
     step === 'confirmar'
@@ -616,6 +616,11 @@ function SolicitarInner() {
                 ? <><Loader2 size={15} className="animate-spin" aria-hidden="true" /> Registrando…</>
                 : <>Confirmar visita <ArrowRight size={15} aria-hidden="true" /></>}
             </button>
+          ) : step === 'servicio' && signedIn === false ? (
+            <Link href="/login"
+              className="flex-1 rounded-xl bg-brand-600 hover:bg-brand-700 px-4 py-3 text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2">
+              Iniciar sesión para continuar <ArrowRight size={15} aria-hidden="true" />
+            </Link>
           ) : (
             <button onClick={next} disabled={!canContinue}
               className="flex-1 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-200 disabled:text-slate-400 px-4 py-3 text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2">

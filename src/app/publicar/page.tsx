@@ -182,6 +182,7 @@ export default function PublicarPage() {
   const [highlights, setHighlights] = useState<string[]>([])
   const [inCloud, setInCloud] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [copiedPortal, setCopiedPortal] = useState<string | null>(null)
 
   // Recupera el borrador guardado; si no hay, pre-fill con datos reales de la operación.
   useEffect(() => {
@@ -242,19 +243,37 @@ export default function PublicarPage() {
     }))
 
   /**
-   * Guarda el borrador de solicitud de publicación localmente (H16).
-   * NO marca la tarea como DONE — eso requiere confirmación real (URL de publicación).
-   * El texto del botón dice exactamente qué hace.
+   * Abre el portal en pestaña nueva y copia el texto del aviso al portapapeles.
+   * No promete ningún "coordinador" que no existe: la publicación la hace el usuario.
    */
-  const handlePublish = (portalId: string) => {
-    setPublished(prev => prev.includes(portalId) ? prev : [...prev, portalId])
+  const handlePublish = useCallback(async (portal: typeof PORTALS[0]) => {
+    setPublished(prev => prev.includes(portal.id) ? prev : [...prev, portal.id])
+
+    // Armar el texto listo para pegar en el portal
+    const lines = [
+      form.title,
+      `Precio: ${form.currency} ${Number(form.price || 0).toLocaleString('es-AR')}`,
+      form.address
+        ? `Ubicación: ${[form.address, form.neighborhood, form.city].filter(Boolean).join(', ')}`
+        : form.city ? `Ciudad: ${form.city}` : null,
+      form.surface ? `Superficie: ${form.surface} m²` : null,
+      form.coveredSurface ? `Superficie cubierta: ${form.coveredSurface} m²` : null,
+      form.rooms ? `Ambientes: ${form.rooms}` : null,
+      form.bedrooms ? `Dormitorios: ${form.bedrooms}` : null,
+      form.bathrooms ? `Baños: ${form.bathrooms}` : null,
+      form.description ? `\n${form.description}` : null,
+      form.features.length > 0 ? `\nCaracterísticas: ${form.features.join(', ')}` : null,
+    ].filter((l): l is string => Boolean(l))
+    const adText = lines.join('\n')
+
     try {
-      const existing = JSON.parse(localStorage.getItem('vara_publish_requests') || '[]')
-      existing.push({ portalId, title: form.title, price: form.price, city: form.city, timestamp: Date.now(), status: 'DRAFT' })
-      localStorage.setItem('vara_publish_requests', JSON.stringify(existing))
-    } catch {}
-    // NO marcar tarea como DONE automáticamente: la publicación real requiere evidencia (URL).
-  }
+      await navigator.clipboard.writeText(adText)
+      setCopiedPortal(portal.id)
+      setTimeout(() => setCopiedPortal(p => p === portal.id ? null : p), 4000)
+    } catch { /* el usuario puede copiar el texto manualmente */ }
+
+    window.open(portal.url, '_blank', 'noopener,noreferrer')
+  }, [form])
 
   const formComplete = Boolean(form.title && form.price && form.address && form.description)
   const coverPhoto = photos.find(p => p.isCover) ?? photos[0] ?? null
@@ -785,18 +804,29 @@ export default function PublicarPage() {
 
                     {isPublished ? (
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-amber-600">
+                        <div className="flex items-center gap-2 text-emerald-600">
                           <CheckCircle2 size={14} />
-                          <span className="text-xs font-semibold">Solicitud registrada</span>
+                          <span className="text-xs font-semibold">
+                            {copiedPortal === portal.id ? 'Texto copiado — pegalo en el portal' : 'Abierto en nueva pestaña'}
+                          </span>
                         </div>
-                        <p className="text-xs text-slate-400">Modo piloto — un coordinador VARA procesará tu publicación en {portal.name} y te contactará para confirmar.</p>
+                        <p className="text-xs text-slate-500 leading-relaxed">
+                          Publicá directamente en {portal.name} con los datos que preparaste.
+                          Cuando tengas la URL del aviso, completá la tarea de publicación en tu operación.
+                        </p>
+                        <button
+                          onClick={() => handlePublish(portal)}
+                          className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1"
+                        >
+                          <ExternalLink size={11} /> Abrir {portal.name} de nuevo
+                        </button>
                       </div>
                     ) : (
                       <button
-                        onClick={() => handlePublish(portal.id)}
+                        onClick={() => handlePublish(portal)}
                         className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5"
                       >
-                        <ExternalLink size={12} /> Solicitar publicación en {portal.name}
+                        <ExternalLink size={12} /> Ir a publicar en {portal.name}
                       </button>
                     )}
                   </div>
@@ -805,15 +835,16 @@ export default function PublicarPage() {
             </div>
 
             {published.length > 0 && (
-              <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
+              <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
                 <div className="flex items-center gap-2 mb-1">
-                  <CheckCircle2 size={14} className="text-amber-600" />
-                  <p className="text-sm font-bold text-amber-800">
-                    {published.length === 1 ? 'Solicitud en 1 portal registrada' : `Solicitudes en ${published.length} portales registradas`}
+                  <CheckCircle2 size={14} className="text-emerald-600" />
+                  <p className="text-sm font-bold text-emerald-800">
+                    {published.length === 1 ? '1 portal abierto' : `${published.length} portales abiertos`}
                   </p>
                 </div>
-                <p className="text-xs text-amber-700 leading-relaxed">
-                  Borrador guardado localmente. La publicación en portales requiere coordinación manual — un coordinador VARA procesará tu solicitud y te contactará para confirmar. La tarea de publicación en tu operación se completa cuando tengás la URL del aviso publicado.
+                <p className="text-xs text-emerald-700 leading-relaxed">
+                  Publicaste directamente. La tarea de publicación en tu operación
+                  se completa cuando cargues la URL del aviso publicado.
                 </p>
                 <Link href="/asistente" className="mt-2 flex items-center gap-1 text-xs font-semibold text-green-700 hover:underline">
                   Estrategia de negociación con VARA →
