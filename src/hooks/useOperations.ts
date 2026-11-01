@@ -7,11 +7,14 @@ import {
 import type { UserOperationSummary, OperationRelation, Transaction } from '@/types'
 import type { StoredOperation } from '@/lib/userOperations'
 import { useVaraState } from '@/hooks/useVaraState'
+import { resolveOperationContext, type Journey } from '@/lib/journey'
 import { getOperations, toSummary, loadOperations, loadOperation, deleteOperationAnywhere } from '@/lib/userOperations'
 import { buildTransaction, clearTaskState } from '@/lib/operationFromChecklist'
 
 export interface OperationsState {
   operations: UserOperationSummary[]
+  /** Recorrido actual (compra o venta): una sola regla para menú, guía y Dashboard. */
+  journey: Journey
   activeOperationId: string | null
   activeOperation: UserOperationSummary | null
   activeTransactionData: Transaction | null
@@ -20,6 +23,8 @@ export interface OperationsState {
   relations: OperationRelation[]
   getRelatedOperations: (operationId: string) => UserOperationSummary[]
   getTransactionData: (operationId: string) => Transaction | null
+  /** Operación completa (local o de la cuenta) por id: una sola fuente para toda la app. */
+  getStoredOperation: (operationId: string) => StoredOperation | null
   /** true cuando no hay operaciones propias y se muestran las de demostración. */
   usingDemo: boolean
   loaded: boolean
@@ -40,7 +45,9 @@ export function useOperations(): OperationsState {
     const local = getOperations()
     setOwn(local.map(toSummary))
     setOwnRaw(local)
-    loadOperations()
+    // Con tiempo máximo: si la base no responde, se sigue con lo que hay en este dispositivo en vez de cargar para siempre.
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+    Promise.race([loadOperations(), timeout])
       .then(ops => { setOwn(ops.map(toSummary)); setOwnRaw(ops) })
       .catch(() => { setError(true) })
       .finally(() => setLoaded(true))
@@ -68,10 +75,10 @@ export function useOperations(): OperationsState {
     const operations = own
     // Tratar string vacío igual que null/undefined (H14)
     const selectedId = vara.operationId || null
-    const activeOperationId = selectedId && operations.some(op => op.id === selectedId)
-      ? selectedId
-      : operations[0]?.id ?? null
-    const activeOperation = operations.find(op => op.id === activeOperationId) ?? null
+    // Una sola regla (lib/journey): la operación activa siempre existe en la lista y es del recorrido actual.
+    const { journey, activeOperationId, activeOperation } = resolveOperationContext(operations, {
+      journeyType: vara.journeyType, selectedId,
+    })
     const activeTransactionData = activeOperationId ? resolveTxn(activeOperationId) : null
 
     const buyOperations = operations.filter(op => op.type === 'BUY')
@@ -85,9 +92,11 @@ export function useOperations(): OperationsState {
     }
 
     const getTransactionData = resolveTxn
+    const getStoredOperation = (id: string) => ownRaw.find(op => op.id === id) ?? null
 
     return {
       operations,
+      journey,
       activeOperationId,
       activeOperation,
       activeTransactionData,
@@ -96,18 +105,19 @@ export function useOperations(): OperationsState {
       relations: mockOperationRelations,
       getRelatedOperations,
       getTransactionData,
+      getStoredOperation,
       usingDemo,
     }
-  }, [vara.operationId, own, ownRaw])
+  }, [vara.operationId, vara.journeyType, own, ownRaw])
 
   return { ...state, loaded, error, deleteOperation }
 }
 
 export function useGlobalNextBestAction() {
-  const { operations, getTransactionData } = useOperations()
+  const { operations, getTransactionData, journey } = useOperations()
 
   return useMemo(() => {
-    const alerts: Array<{ operationId: string; title: string; label: string; severity: 'HIGH' | 'MEDIUM' }> = []
+    const alerts: Array<{ operationId: string; title: string; label: string; severity: 'HIGH' | 'MEDIUM'; opType: 'BUY' | 'SELL' }> = []
 
     for (const op of operations) {
       if (op.status !== 'ACTIVE') continue
@@ -118,15 +128,18 @@ export function useGlobalNextBestAction() {
       const pendingHighDocs = txn.documents.filter(d => d.status === 'PENDING' && ['ESCRITURA', 'PLANOS'].includes(d.category)).length
 
       if (blockedCount > 0) {
-        alerts.push({ operationId: op.id, title: op.title, label: `${blockedCount} tarea${blockedCount > 1 ? 's' : ''} bloqueada${blockedCount > 1 ? 's' : ''}`, severity: 'HIGH' })
+        alerts.push({ operationId: op.id, title: op.title, label: `${blockedCount} tarea${blockedCount > 1 ? 's' : ''} bloqueada${blockedCount > 1 ? 's' : ''}`, severity: 'HIGH', opType: op.type })
       } else if (pendingHighDocs > 0) {
         // Falta de escritura o planos es lo normal al empezar una compra: es una
         // tarea pendiente, no una emergencia. El rojo se reserva para lo bloqueado.
-        alerts.push({ operationId: op.id, title: op.title, label: 'Documentación crítica pendiente', severity: 'MEDIUM' })
+        alerts.push({ operationId: op.id, title: op.title, label: 'Documentación crítica pendiente', severity: 'MEDIUM', opType: op.type })
       }
     }
 
     const rank = { HIGH: 0, MEDIUM: 1 } as const
-    return alerts.sort((a, b) => rank[a.severity] - rank[b.severity])
-  }, [operations, getTransactionData])
+    // En Comprando mandan las alertas de compra y en Vendiendo las de venta; las del otro recorrido solo si son urgentes.
+    return alerts
+      .filter(a => a.opType === journey || a.severity === 'HIGH')
+      .sort((a, b) => (a.opType === journey ? 0 : 1) - (b.opType === journey ? 0 : 1) || rank[a.severity] - rank[b.severity])
+  }, [operations, getTransactionData, journey])
 }

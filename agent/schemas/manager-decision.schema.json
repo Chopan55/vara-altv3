@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vara.local/agent/manager-decision.schema.json",
+  "title": "ManagerDecision",
+  "description": "Respuesta del Manager (OpenAI) en cada ronda. Siempre este objeto, nada más.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision", "summary", "task_for_claude", "reason", "risks", "requires_human", "human_question", "confidence"],
+  "properties": {
+    "decision": {
+      "type": "string",
+      "enum": ["CONTINUE", "FIX", "ASK_PANCHO", "READY_FOR_REVIEW", "DONE"]
+    },
+    "summary": {
+      "type": "string",
+      "description": "Qué entendió y qué ve del estado actual, en pocas líneas."
+    },
+    "task_for_claude": {
+      "type": "string",
+      "description": "Tarea concreta para Claude con CONTINUE o FIX; cadena vacía en las demás decisiones."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Por qué tomó esta decisión."
+    },
+    "risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "requires_human": {
+      "type": "boolean",
+      "description": "true solo con ASK_PANCHO."
+    },
+    "human_question": {
+      "type": ["string", "null"],
+      "description": "Pregunta concreta y cerrada para Pancho con ASK_PANCHO; null en las demás."
+    },
+    "confidence": {
+      "type": "number",
+      "description": "Entre 0 y 1."
+    }
+  }
+}

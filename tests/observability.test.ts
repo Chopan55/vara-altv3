@@ -76,6 +76,8 @@ describe('mensajes de error', () => {
 
   it('acepta un string tal cual', () => {
     expect(messageOf('falló')).toBe('falló')
+    expect(messageOf({ message: 'new row violates row-level security policy', code: '42501', hint: 'revisá la política' })).toBe('[42501] new row violates row-level security policy (revisá la política)')
+    expect(messageOf({})).toBe('Error desconocido')
   })
 
   it('cualquier otra cosa no rompe', () => {

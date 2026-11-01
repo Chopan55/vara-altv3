@@ -1,26 +1,50 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  /* VARA Alt — sistema indigo sobre claro.
-     Probamos esta identidad en vara-alt para compararla con el amarillo del principal. */
-  --color-brand-50: #f2f3fd;
-  --color-brand-100: #e6e8fb;
-  --color-brand-200: #d1d4f7;
-  --color-brand-300: #b0b5f0;
-  --color-brand-400: #8b8fe6;
-  --color-brand-500: #6366d8;
-  --color-brand-600: #5350c9;
-  --color-brand-700: #4740ae;
-  --color-brand-800: #3b378c;
-  --color-brand-900: #333170;
-  --color-brand-950: #1f1d44;
+  /* Marca. 600 es el color de acción; 900 el navy de los titulares de marketing.
+     El violeta tiene que significar algo (acción, estado activo, un resaltado): no es el color de las superficies. */
+  --color-brand-50: #f3f3fe;
+  --color-brand-100: #e8e8fc;
+  --color-brand-200: #d3d4f9;
+  --color-brand-300: #b2b4f4;
+  --color-brand-400: #8a8cf0;
+  --color-brand-500: #6e6fed;
+  --color-brand-600: #5b5ceb;
+  --color-brand-700: #4748cf;
+  --color-brand-800: #363a8f;
+  --color-brand-900: #262a56;
+  --color-brand-950: #181a3a;
+
+  /* Acentos con función. teal = acompañamiento y VARA AI; ok = completo; warn = atención; danger = bloqueo. */
+  --color-accent: #14b8a6;
+  --color-accent-soft: #e6f7f5;
+  --color-ok: #22c55e;
+  --color-ok-soft: #e8f8ee;
+  --color-warn: #d98e04;
+  --color-warn-soft: #fdf4e1;
+  --color-danger: #d64545;
+  --color-danger-soft: #fceded;
+
+  /* Superficies y texto semánticos (usar estos, no hex sueltos). */
+  --color-surface: #fbfbfc;
+  --color-surface-alt: #f5f6f8;
+  --color-ink: #111827;
+  --color-ink-soft: #667085;
+  --color-line: #e6e8f0;
 
   --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-family-display: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
 
-  --shadow-soft: 0 1px 2px 0 rgba(15,23,42,0.04), 0 1px 3px 0 rgba(15,23,42,0.06);
-  --shadow-card: 0 1px 2px 0 rgba(15,23,42,0.05);
-  --shadow-elevated: 0 8px 24px -4px rgba(15,23,42,0.10);
+  /* Una sombra por nivel. */
+  --shadow-soft: 0 1px 2px 0 rgba(17,24,39,0.04), 0 1px 3px 0 rgba(17,24,39,0.06);
+  --shadow-card: 0 1px 2px 0 rgba(17,24,39,0.05);
+  --shadow-elevated: 0 8px 24px -4px rgba(17,24,39,0.10);
+  --shadow-product: 0 2px 4px rgba(17,24,39,0.04), 0 24px 64px -16px rgba(38,42,86,0.22);
+
+  /* Un radio para objetos, uno para controles. */
+  --radius-card: 14px;
+  --radius-control: 10px;
 }
 
 @layer base {
@@ -30,11 +54,11 @@
   }
 
   :root {
-    --background: #f7f8fc;
-    --foreground: #1e2233;
+    --background: #fbfbfc;
+    --foreground: #111827;
     --card: #ffffff;
     --border: #e6e8f0;
-    --muted: #f2f3f7;
+    --muted: #f5f6f8;
   }
 
   body {
@@ -42,11 +66,34 @@
     color: var(--foreground);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
+
+  /* Respeta a quien pidió menos movimiento. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .font-display {
+    font-family: var(--font-family-display);
+    letter-spacing: -0.02em;
+  }
+
+  /* Palabra resaltada de un titular (el degradé de marca, usado una vez por pantalla). */
+  .text-brand-gradient {
+    background: linear-gradient(120deg, #5b5ceb 0%, #7c7ff2 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 
   .no-scrollbar::-webkit-scrollbar {

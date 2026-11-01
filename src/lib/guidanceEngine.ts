@@ -37,7 +37,6 @@ export interface GuidanceContext {
   onboardingDone: boolean
   operationId: string
   dismissedGuidanceIds: string[]
-  // computados desde mockTransaction
   currentStageId: string
   pendingDocCategories: string[]
   blockedTaskCount: number
@@ -72,7 +71,7 @@ const GUIDANCE_RULES: GuidanceStep[] = [
     headline: 'Documentación crítica pendiente',
     subtext: 'Para avanzar en la operación necesitás la escritura y los planos. Sin ellos no se puede escriturar.',
     actions: [
-      { label: 'Ver documentación', type: 'navigate', payload: '/operacion/txn-001', primary: true },
+      { label: 'Ver documentación', type: 'navigate', payload: '/operacion/{operationId}', primary: true },
       { label: 'Más info', type: 'ask_ai', payload: '¿Qué documentos necesito para comprar una propiedad en Argentina?', primary: false },
     ],
     targetElementId: 'docs-section',
@@ -87,7 +86,7 @@ const GUIDANCE_RULES: GuidanceStep[] = [
     headline: 'Hay tareas que no pueden avanzar',
     subtext: 'Algunas tareas están bloqueadas y necesitan atención para no frenar la operación.',
     actions: [
-      { label: 'Ver operación', type: 'navigate', payload: '/operacion/txn-001', primary: true },
+      { label: 'Ver operación', type: 'navigate', payload: '/operacion/{operationId}', primary: true },
       { label: 'Ignorar por ahora', type: 'dismiss', primary: false },
     ],
     targetElementId: 'tasks-section',
@@ -177,7 +176,7 @@ const GUIDANCE_RULES: GuidanceStep[] = [
     headline: 'Documentación necesaria antes de publicar',
     subtext: 'Tener la escritura y el libre deuda listo acelera la operación cuando llegue un comprador serio.',
     actions: [
-      { label: 'Ver documentos', type: 'navigate', payload: '/operacion/txn-001', primary: true },
+      { label: 'Ver documentos', type: 'navigate', payload: '/operacion/{operationId}', primary: true },
       { label: 'Entendido', type: 'dismiss', primary: false },
     ],
     targetElementId: 'docs-section',
@@ -268,13 +267,31 @@ function evaluateCondition(step: GuidanceStep, ctx: GuidanceContext): boolean {
   }
 }
 
+/**
+ * Sustituye `{operationId}` en los payloads de navigate con el ID real de
+ * la operación activa. Si no hay operationId (usuario sin operación), los
+ * pasos que apuntan a una operación concreta no se muestran de todas formas
+ * porque sus condiciones requieren datos de operación.
+ */
+function resolveStepPayloads(step: GuidanceStep, ctx: GuidanceContext): GuidanceStep {
+  if (!ctx.operationId) return step
+  const actions = step.actions.map(a => {
+    if (a.type === 'navigate' && a.payload?.includes('{operationId}')) {
+      return { ...a, payload: a.payload.replace('{operationId}', ctx.operationId) }
+    }
+    return a
+  })
+  return { ...step, actions }
+}
+
 // Retorna el paso de mayor prioridad aplicable, o null si no hay nada relevante
 export function getNextGuidanceStep(ctx: GuidanceContext): GuidanceStep | null {
   const applicable = GUIDANCE_RULES
     .filter(step => stepMatchesContext(step, ctx) && evaluateCondition(step, ctx))
     .sort((a, b) => a.priority - b.priority)
 
-  return applicable[0] ?? null
+  const step = applicable[0] ?? null
+  return step ? resolveStepPayloads(step, ctx) : null
 }
 
 // Retorna todos los pasos aplicables, ordenados por prioridad
@@ -282,6 +299,7 @@ export function getAllGuidanceSteps(ctx: GuidanceContext): GuidanceStep[] {
   return GUIDANCE_RULES
     .filter(step => stepMatchesContext(step, ctx) && evaluateCondition(step, ctx))
     .sort((a, b) => a.priority - b.priority)
+    .map(step => resolveStepPayloads(step, ctx))
 }
 
 export interface GuidanceSummary {

@@ -20,7 +20,7 @@ import {
 } from '@/lib/varaVisit/session'
 import {
   getBookingByCode, getSession, ensureSession, getMyPartner,
-  checkIn as persistCheckIn, recordPinResult, startVisit as persistStart,
+  checkIn as persistCheckIn, startVisit as persistStart,
   saveChecklist, checkOut as persistCheckOut, reportIncident,
 } from '@/lib/supabase/visits'
 
@@ -251,16 +251,14 @@ export default function VisitModePage() {
       const res = await fetch('/api/visit/verify-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: booking.id, pin: pinInput, previousAttempts: session.pinAttempts }),
+        body: JSON.stringify({ bookingId: booking.id, pin: pinInput }),
       })
       const result = await res.json() as { ok: boolean; reason?: string; message?: string }
 
       if (!result.ok) {
         setPinError(result.message ?? 'El PIN no coincide.')
-        if (result.reason === 'WRONG_PIN') {
-          await recordPinResult(booking.id, partnerId, false, session.pinAttempts + 1)
-          await reload()
-        }
+        // La base ya registró el intento y el bloqueo: solo recargamos el estado.
+        if (result.reason === 'WRONG_PIN' || result.reason === 'TOO_MANY_ATTEMPTS') await reload()
         setPinInput('')
         setBusy(false)
         return
@@ -271,7 +269,6 @@ export default function VisitModePage() {
       return
     }
 
-    await recordPinResult(booking.id, partnerId, true, session.pinAttempts)
     const fresh = await getSession(booking.id)
     if (fresh) {
       const startBlock = canStartVisit(fresh)

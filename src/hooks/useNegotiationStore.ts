@@ -78,6 +78,11 @@ export function useNegotiationStore() {
   const [loading, setLoading]         = useState(true)
 
   useEffect(() => {
+    if (!supabase) {
+      // No Supabase configured — fall through to localStorage branch in the next effect
+      setUserId(null)
+      return
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     supabase.auth.getUser().then(({ data }: any) => {
       setUserId(data.user?.id ?? null)

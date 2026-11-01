@@ -13,11 +13,16 @@ import {
 import { tryCreateClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { VaraLogo } from '@/components/ui/VaraLogo'
+import { isEnabled } from '@/lib/flags'
 import { useVaraState } from '@/hooks/useVaraState'
+import { useOperations } from '@/hooks/useOperations'
+import { journeyToStored } from '@/lib/journey'
+import { forcedJourney } from '@/lib/routeContext'
+import { searchApp } from '@/lib/search/appSearch'
 import { GuiameButton, GuiameTrigger } from '@/components/guidance/GuiameButton'
 import { VaraAIFloat } from '@/components/ai/VaraAIFloat'
 
-const NO_SHELL = new Set(['/', '/onboarding', '/login'])
+const NO_SHELL = new Set(['/', '/onboarding', '/login', '/demo', '/labs', '/empezar', '/property-pack', '/planes'])
 
 type JourneyType = 'BUY' | 'SELL'
 
@@ -27,49 +32,64 @@ interface NavItem {
   label: string
   /** Etiqueta chica a la derecha, para señalar lo que recién se suma. */
   tag?: string
+  /** Encabezado del grupo: se muestra cuando cambia respecto del ítem anterior. */
+  section?: string
 }
 
 function getBuyNav(operationId: string): NavItem[] {
-  const opHref = operationId ? `/operacion/${operationId}` : '/dashboard'
+  const opHref = operationId ? `/operacion/${operationId}` : '/operacion/inicio'
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
-    { href: '/acciones', icon: Zap, label: 'Acciones' },
-    { href: '/propiedades', icon: Building2, label: 'Mis propiedades' },
-    { href: '/comparar', icon: BarChart2, label: 'Comparar' },
-    { href: '/visitas', icon: ClipboardCheck, label: 'Checklist de visita' },
-    { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', tag: 'Nuevo' },
-    { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas' },
-    { href: opHref, icon: FileText, label: 'Mi operación' },
-    { href: operationId ? `${opHref}?tab=documentos` : '/dashboard', icon: FileText, label: 'Documentos' },
-    { href: operationId ? `${opHref}?tab=riesgos` : '/dashboard', icon: ShieldAlert, label: 'Riesgos' },
-    { href: '/dinero', icon: DollarSign, label: 'Dinero' },
-    { href: '/profesionales', icon: Users, label: 'Profesionales' },
+    { href: '/acciones', icon: Zap, label: 'Qué hago ahora' },
+    // VARA Buy WOW V3: pegás el link de una propiedad y VARA la analiza.
+    ...(isEnabled('buyWowV3')
+      ? [{ href: '/analizar', icon: Search, label: 'Analizar propiedad', tag: 'Nuevo', section: 'Buscar' } as NavItem]
+      : []),
+    { href: '/mi-busqueda', icon: ClipboardCheck, label: 'Mi búsqueda', section: 'Buscar' },
+    { href: '/propiedades', icon: Building2, label: 'Propiedades', section: 'Buscar' },
+    { href: '/comparar', icon: BarChart2, label: 'Comparar', section: 'Buscar' },
+    { href: '/visitas', icon: ClipboardCheck, label: 'Checklist de visita', section: 'Visitar' },
+    { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas', section: 'Visitar' },
+    { href: opHref, icon: FileText, label: 'Resumen', section: 'Mi operación' },
+    { href: `${opHref}?tab=documentos`, icon: FileText, label: 'Documentos', section: 'Mi operación' },
+    { href: `${opHref}?tab=riesgos`, icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
+    { href: '/dinero', icon: DollarSign, label: 'Costos y financiamiento', section: 'Mi operación' },
+    { href: '/profesionales', icon: Users, label: 'Profesionales', section: 'Mi operación' },
   ]
 }
 
 function getSellNav(operationId: string): NavItem[] {
-  const opHref = operationId ? `/operacion/${operationId}` : '/dashboard'
+  const opHref = operationId ? `/operacion/${operationId}` : '/operacion/inicio'
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
-    { href: '/acciones', icon: Zap, label: 'Acciones' },
-    { href: '/publicar', icon: Share2, label: 'Mi propiedad' },
-    { href: '/ofertas', icon: Inbox, label: 'Ofertas y negociación' },
-    { href: '/visitas-vendedor', icon: Eye, label: 'Quién quiere visitar' },
-    { href: '/vara-visit', icon: MapPin, label: 'VARA Visit', tag: 'Nuevo' },
-    { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas' },
-    { href: opHref, icon: FileText, label: 'Mi operación' },
-    { href: operationId ? `${opHref}?tab=documentos` : '/dashboard', icon: FileText, label: 'Documentos' },
-    { href: operationId ? `${opHref}?tab=riesgos` : '/dashboard', icon: ShieldAlert, label: 'Riesgos' },
-    { href: '/dinero', icon: DollarSign, label: 'Dinero' },
-    { href: '/profesionales', icon: Users, label: 'Profesionales' },
+    { href: '/acciones', icon: Zap, label: 'Qué hago ahora' },
+    { href: '/publicar', icon: Share2, label: 'Mi propiedad', section: 'Mi venta' },
+    { href: '/precio-venta', icon: DollarSign, label: 'Precio', section: 'Mi venta' },
+    { href: '/revisar-publicacion', icon: Eye, label: 'Publicación', section: 'Mi venta' },
+    { href: '/fotos-venta', icon: Eye, label: 'Fotos y video', section: 'Mi venta' },
+    { href: '/interesados', icon: Users, label: 'Interesados', section: 'Interesados' },
+    { href: '/ofertas', icon: Inbox, label: 'Ofertas', section: 'Interesados' },
+    { href: '/visitas-vendedor', icon: CalendarCheck, label: 'Visitas', section: 'Interesados' },
+    { href: '/preparar-venta', icon: FileText, label: 'Papeles de la venta', section: 'Mi operación' },
+    { href: opHref, icon: FileText, label: 'Resumen', section: 'Mi operación' },
+    { href: `${opHref}?tab=documentos`, icon: FileText, label: 'Documentos', section: 'Mi operación' },
+    { href: `${opHref}?tab=riesgos`, icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
+    { href: '/dinero', icon: DollarSign, label: 'Neto de la venta', section: 'Mi operación' },
+    { href: '/profesionales', icon: Users, label: 'Profesionales', section: 'Mi operación' },
   ]
 }
 
+const JOURNEY_TOOL_HREFS = new Set(['/mi-busqueda', '/preparar-venta', '/precio-venta', '/property-pack', '/video-presentacion', '/interesados', '/fotos-venta', '/revisar-publicacion', '/recorrido-ia'])
+
 const SECONDARY_NAV: NavItem[] = [
+  { href: '/vara-visit', icon: MapPin, label: 'VARA Visit' },
   { href: '/guia', icon: BookOpen, label: 'Guía' },
   { href: '/asistente', icon: MessageSquare, label: 'Asistente' },
-  { href: '/vara-labs', icon: Sparkles, label: 'VARA Labs', tag: 'Labs' },
 ]
+
+/** Lo que todavía está en prueba, aparte del menú principal. */
+/** Labs va aparte del menú principal: lo que está en prueba no se mezcla con compra, venta y operación. */
+const LABS_NAV: NavItem = { href: '/vara-labs', icon: Sparkles, label: 'VARA Labs' }
 
 function isActive(pathname: string, search: string, href: string) {
   const [path, query] = href.split('?')
@@ -136,6 +156,7 @@ function SidebarContent({
   pathname,
   userName,
   operationId,
+  onChangeJourney,
 }: {
   collapsed: boolean
   onClose?: () => void
@@ -143,8 +164,13 @@ function SidebarContent({
   pathname: string
   userName: string
   operationId: string
+  onChangeJourney: (j: JourneyType) => void
 }) {
-  const primaryNav = journey === 'SELL' ? getSellNav(operationId) : getBuyNav(operationId)
+  const allNav = journey === 'SELL' ? getSellNav(operationId) : getBuyNav(operationId)
+  // Interruptores de rollback: sin las herramientas nuevas o sin encabezados de grupo.
+  const primaryNav = allNav
+    .filter(i => isEnabled('journeyTools') || !JOURNEY_TOOL_HREFS.has(i.href))
+    .map(i => (isEnabled('groupedMenu') ? i : { ...i, section: undefined }))
   // useSearchParams obliga a un límite de Suspense; lo acotamos al menú
   // para no suspender el contenido de la página entera.
   const searchParams = useSearchParams()
@@ -166,21 +192,40 @@ function SidebarContent({
       </div>
 
       {!collapsed && (
-        <p className="px-5 mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-          {journey === 'SELL' ? 'Vendiendo' : 'Comprando'}
-        </p>
+        <div role="group" aria-label="Qué estás haciendo" className="mx-4 mb-2 flex rounded-xl bg-slate-100 p-0.5 text-[11px] font-semibold">
+          {(['BUY', 'SELL'] as const).map(j => (
+            <button
+              key={j}
+              type="button"
+              aria-pressed={journey === j}
+              onClick={() => onChangeJourney(j)}
+              className={cn('flex-1 rounded-[10px] px-2 py-1.5 transition-colors', journey === j ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700')}
+            >
+              {j === 'SELL' ? 'Vendiendo' : 'Comprando'}
+            </button>
+          ))}
+        </div>
       )}
 
       <nav className="flex-1 space-y-0.5 px-3 overflow-y-auto no-scrollbar">
-        {primaryNav.map(item => (
-          <NavLink key={item.href} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
+        {primaryNav.map((item, i) => (
+          <div key={`${item.href}|${item.label}`}>
+            {!collapsed && item.section && item.section !== primaryNav[i - 1]?.section && (
+              <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">{item.section}</p>
+            )}
+            <NavLink item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
+          </div>
         ))}
 
         <div className="my-3 border-t border-slate-200 mx-2" />
 
-        {SECONDARY_NAV.map(item => (
-          <NavLink key={item.href} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
+        {SECONDARY_NAV.filter(item => !primaryNav.some(p => p.href === item.href)).map(item => (
+          <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
         ))}
+
+        <div className="mt-3 border-t border-slate-200 pt-2">
+          <NavLink item={LABS_NAV} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
+        </div>
       </nav>
 
       {/* Acceso permanente al asistente: es el atajo cuando el usuario no sabe dónde mirar. */}
@@ -239,6 +284,8 @@ function AuthFooter({ collapsed, userName }: { collapsed: boolean; userName: str
         'vara_user_name', 'vara_journey_type', 'vara_province',
         'vara_property_url', 'vara_onboarding_done', 'vara_dismissed_guidance',
         'vara_country', 'vara_publish_requests', 'vara_publish_draft', 'vara_scoring_weights',
+        // Mapas de ids de la migración invitado → cuenta: no deben pasar a la persona que entre después.
+        'vara_ops_idmap', 'vara_props_idmap', 'vara_props_promo_links', 'vara_save_banner_dismissed',
       ]
       keysToRemove.forEach(k => localStorage.removeItem(k))
     } catch {}
@@ -283,7 +330,7 @@ function AuthFooter({ collapsed, userName }: { collapsed: boolean; userName: str
           <>
             <div className="min-w-0 flex-1">
               <p className="text-slate-800 font-semibold text-xs truncate">{userName?.split(' ')[0] || 'Mi cuenta'}</p>
-              <p className="text-slate-400 text-[10px] truncate">{email ?? 'Sin cuenta'}</p>
+              <p className="text-slate-400 text-[10px] truncate">{email ?? 'Verificando sesión…'}</p>
             </div>
             {email && (
               <button
@@ -316,12 +363,15 @@ function TopBar({
   onToggleGuia: () => void
 }) {
   const router = useRouter()
+  const { activeOperationId, operations } = useOperations()
   const [q, setQ] = useState('')
+  const [open, setOpen] = useState(false)
+  const results = searchApp(q, { journey, operationId: activeOperationId, operations: operations.map(o => ({ id: o.id, title: o.title })) })
 
+  const go = (href: string) => { setOpen(false); setQ(''); router.push(href) }
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    const term = q.trim()
-    router.push(term ? `/guia?q=${encodeURIComponent(term)}` : '/guia')
+    if (results[0]) go(results[0].href)
   }
 
   return (
@@ -334,15 +384,31 @@ function TopBar({
         <Menu size={20} aria-hidden="true" />
       </button>
 
-      <form onSubmit={submit} className="flex-1 max-w-md relative">
+      <form onSubmit={submit} className="flex-1 max-w-md relative" role="search">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
         <input
           value={q}
-          onChange={e => setQ(e.target.value)}
-          placeholder="Buscar en la guía: seña, boleto, sellos…"
-          aria-label="Buscar en la guía"
+          onChange={e => { setQ(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Buscar en VARA: documentos, costos, visitas…"
+          aria-label="Buscar en VARA"
+          aria-expanded={open && results.length > 0}
+          aria-controls="vara-search-results"
           className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:bg-white focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100 transition-colors"
         />
+        {open && results.length > 0 && (
+          <ul id="vara-search-results" role="listbox" className="absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+            {results.map(r => (
+              <li key={`${r.kind}|${r.href}|${r.label}`} role="option" aria-selected={false}>
+                <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => go(r.href)} className="block w-full px-3 py-2 text-left hover:bg-slate-50">
+                  <span className="block text-sm font-semibold text-slate-800">{r.label}</span>
+                  <span className="block text-[11px] text-slate-400">{r.hint}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </form>
 
       <div className="ml-auto flex items-center gap-2">
@@ -353,7 +419,7 @@ function TopBar({
         className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 px-3.5 py-2 text-sm font-semibold text-white transition-colors"
       >
         <Plus size={15} />
-        {journey === 'SELL' ? 'Mi propiedad' : 'Agregar propiedad'}
+        {journey === 'SELL' ? 'Completar mi propiedad' : 'Agregar propiedad'}
       </Link>
       </div>
     </header>
@@ -367,7 +433,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [guiaMenuOpen, setGuiaMenuOpen] = useState(false)
 
-  const journey: JourneyType = vara.journeyType === 'SELL_PROPERTY' ? 'SELL' : 'BUY'
+  const { journey, activeOperationId, operations: allOps } = useOperations()
+  const changeJourney = (j: JourneyType) => vara.setJourneyType(journeyToStored(j))
+
+  // Una pantalla de compra o de venta ajusta el modo a sí misma: menú, guía y contenido nunca se contradicen.
+  useEffect(() => {
+    // Una pantalla de compra o de venta fija el modo; abrir una operación fija el de esa operación.
+    const opId = pathname.match(/^\/operacion\/([^/?]+)/)?.[1]
+    const opType = opId ? allOps.find(o => o.id === opId)?.type : undefined
+    const forced = forcedJourney(pathname) ?? opType ?? null
+    if (vara.loaded && forced && forced !== journey) vara.setJourneyType(journeyToStored(forced))
+  }, [pathname, journey, vara.loaded, allOps]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setDrawerOpen(false)
@@ -401,7 +477,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             journey={journey}
             pathname={pathname}
             userName={vara.userName}
-            operationId={vara.operationId}
+            operationId={activeOperationId ?? ''}
+            onChangeJourney={changeJourney}
           />
         </Suspense>
 
@@ -422,6 +499,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <aside
+        aria-hidden={!drawerOpen}
+        inert={!drawerOpen}
         className={cn(
           'lg:hidden fixed left-0 top-0 bottom-0 z-50 w-[280px] bg-white border-r border-slate-200 transition-transform duration-200',
           drawerOpen ? 'translate-x-0' : '-translate-x-full'
@@ -434,7 +513,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             journey={journey}
             pathname={pathname}
             userName={vara.userName}
-            operationId={vara.operationId}
+            operationId={activeOperationId ?? ''}
+            onChangeJourney={changeJourney}
           />
         </Suspense>
       </aside>

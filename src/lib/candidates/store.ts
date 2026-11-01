@@ -14,9 +14,11 @@
 import type { CandidateStatus, PropertyCandidate } from './model'
 import { canTransitionCandidate } from './model'
 import { log } from '@/lib/observability/logger'
+import { newEntityId } from '@/lib/operationIds'
 import {
   getUserProperties,
   getImportedProperties,
+  migratePropertiesToSupabase,
   type UserProperty,
 } from '@/lib/userProperties'
 
@@ -35,9 +37,12 @@ function writeList(list: PropertyCandidate[]): void {
   try { localStorage.setItem(LIST_KEY, JSON.stringify(list)) } catch {}
 }
 
-/** Un id estable para lo que el navegador guarda sin base de datos. */
+/**
+ * Un id estable para lo que el navegador guarda sin base de datos. Es un UUID: al crear la cuenta el candidato
+ * se sube con este mismo id y la operación que lo referencia sigue apuntando a él.
+ */
 function localId(): string {
-  return `cand_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+  return newEntityId()
 }
 
 export function toCandidate(
@@ -88,7 +93,16 @@ function adoptLegacyProperty(): PropertyCandidate[] {
 export async function loadCandidates(): Promise<PropertyCandidate[]> {
   try {
     const { hasSession, fetchCandidates } = await import('@/lib/supabase/candidates')
-    if (await hasSession()) return await fetchCandidates()
+    if (await hasSession()) {
+      // Lo que cargó como invitado pasa a la cuenta antes de listar (sin duplicar ni perder estado, notas ni vínculo con la operación).
+      await migratePropertiesToSupabase()
+      const remote = await fetchCandidates()
+      // Lo que todavía no se pudo subir sigue siendo del usuario: no debe desaparecer.
+      const pending = readList().filter(
+        c => c.source !== 'draft' && !remote.some(r => r.id === c.id || (c.sourceUrl && r.sourceUrl === c.sourceUrl)),
+      )
+      return [...remote, ...pending]
+    }
   } catch {
     // Sin base, seguimos con lo local en vez de mostrar una lista vacía.
   }

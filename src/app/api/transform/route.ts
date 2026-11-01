@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 import OpenAI, { toFile } from 'openai'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/api/requireAuth'
+import { requireAiAccess } from '@/lib/api/aiAccess'
 
 export const maxDuration = 120
 
@@ -51,7 +51,7 @@ function buildEditPrompt(mode: TransformMode, instruction: string, roomType: str
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth()
+  const auth = await requireAiAccess('image')
   if (auth.error) return auth.error
 
   if (!process.env.OPENAI_API_KEY) {

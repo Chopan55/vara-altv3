@@ -437,7 +437,7 @@ function OnboardingInner() {
           <>
             <div className="mb-6">
               <p className="text-xs font-bold text-brand-500 uppercase tracking-widest mb-2">Paso 4</p>
-              <h1 className="text-2xl font-extrabold text-slate-900 mb-1">Tu GPS está listo</h1>
+              <h1 className="text-2xl font-extrabold text-slate-900 mb-1">Tu plan está listo</h1>
               <p className="text-slate-400 text-sm">Checklist generado con datos regulatorios reales de {checklist.provinceName}.</p>
             </div>
 

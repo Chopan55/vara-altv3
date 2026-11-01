@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Search, ChevronDown, ChevronUp, AlertTriangle, MessageSquare, BookOpen } from 'lucide-react'
 import { useVaraState } from '@/hooks/useVaraState'
+import { useOperations } from '@/hooks/useOperations'
 import { KNOWLEDGE, type KnowledgeEntry, type Audience } from '@/data/knowledge'
 
 /** Orden real del proceso. Las entradas sin etapa van al final, como conceptos generales. */
@@ -69,7 +70,8 @@ function EntryCard({ entry, open, onToggle }: {
 
 export default function GuiaPage() {
   const vara = useVaraState()
-  const audience: Audience = vara.journeyType === 'SELL_PROPERTY' ? 'SELL' : 'BUY'
+  const { journey } = useOperations()
+  const audience: Audience = journey
 
   const [query, setQuery] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)

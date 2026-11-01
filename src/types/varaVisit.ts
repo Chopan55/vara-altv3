@@ -380,15 +380,15 @@ export type VisitStatus =
 
 export const VISIT_STATUS_LABELS: Record<VisitStatus, string> = {
   REQUESTED: 'Solicitada',
-  SEARCHING_PARTNER: 'Buscando Visit Partner',
-  ASSIGNED: 'Partner asignado',
+  SEARCHING_PARTNER: 'Esperando cobertura',
+  ASSIGNED: 'Partner asignado · pendiente de confirmar',
   CONFIRMED: 'Confirmada',
   PARTNER_EN_ROUTE: 'Partner en camino',
   ARRIVED: 'Partner en la propiedad',
   IN_PROGRESS: 'Visita en curso',
   COMPLETED: 'Completada',
   CANCELLED: 'Cancelada',
-  INCIDENT_REVIEW: 'En revisión',
+  INCIDENT_REVIEW: 'Incidente en revisión',
 }
 
 /** Estados en los que la visita todavía puede pasar algo. */

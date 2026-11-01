@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Handshake, History } from 'lucide-react'
@@ -10,8 +10,7 @@ import { Progress } from '@/components/ui/Progress'
 import { mockTransaction } from '@/data/mock'
 import { useOperation } from '@/hooks/useOperation'
 import { useOperations } from '@/hooks/useOperations'
-import { getOperation } from '@/lib/userOperations'
-import { buildTransaction } from '@/lib/operationFromChecklist'
+import { buildTransaction, setTaskState } from '@/lib/operationFromChecklist'
 import { cn, formatPrice, formatDate, getStatusLabel } from '@/lib/utils'
 import { generateChecklist } from '@/lib/regulations'
 import { primaryAction } from '@/lib/nba/engine'
@@ -52,12 +51,23 @@ const taskStatusIcon = (status: string) => {
   return <div className="w-[18px] h-[18px] rounded-full border-2 border-slate-300 flex-shrink-0" />
 }
 
-function TaskCard({ task }: { task: Task }) {
+function TaskCard({ task, onToggle }: { task: Task; onToggle?: (task: Task) => void }) {
   const [open, setOpen] = useState(false)
   return (
     <div className={cn('rounded-xl border transition-all', task.status === 'DONE' ? 'bg-slate-50 border-slate-100' : 'bg-white border-slate-200')}>
-      <button className="w-full flex items-center gap-3 p-3.5 text-left" onClick={() => setOpen(o => !o)}>
-        {taskStatusIcon(task.status)}
+      <div className="flex items-center">
+      {onToggle && task.status !== 'BLOCKED' && (
+        <button
+          type="button"
+          onClick={() => onToggle(task)}
+          aria-label={task.status === 'DONE' ? 'Marcar como pendiente' : 'Marcar como hecha'}
+          className="pl-3.5 py-3.5 flex-shrink-0"
+        >
+          {taskStatusIcon(task.status)}
+        </button>
+      )}
+      <button className="flex-1 flex items-center gap-3 p-3.5 text-left" onClick={() => setOpen(o => !o)}>
+        {!(onToggle && task.status !== 'BLOCKED') && taskStatusIcon(task.status)}
         <div className="flex-1 min-w-0">
           <p className={cn('text-sm font-medium', task.status === 'DONE' ? 'text-slate-400 line-through' : 'text-slate-800')}>{task.title}</p>
           {task.responsibleRole && <p className="text-xs text-slate-400 mt-0.5">{task.responsibleRole}</p>}
@@ -65,6 +75,7 @@ function TaskCard({ task }: { task: Task }) {
         {task.warnings && task.warnings.length > 0 && <AlertCircle size={14} className="text-amber-500 flex-shrink-0" />}
         {open ? <ChevronUp size={14} className="text-slate-300 flex-shrink-0" /> : <ChevronDown size={14} className="text-slate-300 flex-shrink-0" />}
       </button>
+      </div>
       {open && (
         <div className="px-4 pb-4 space-y-3 border-t border-slate-100 pt-3">
           <div>
@@ -108,17 +119,47 @@ export default function OperacionPage() {
     : 'tareas'
   const operationId = typeof params.id === 'string' ? params.id : 'txn-001'
   const { operation, notFound } = useOperation(operationId)
-  const { relations, getTransactionData } = useOperations()
+  const { relations, getTransactionData, getStoredOperation, operations, activeOperation, journey, loaded: opsLoaded } = useOperations()
   const crossRelations = relations.filter(r => r.fromOperationId === operationId || r.toOperationId === operationId)
   const isDemoOperation = ['txn-001', 'txn-002', 'txn-003'].includes(operationId)
   // Para operaciones reales del usuario (guardadas en localStorage), buildTransaction las arma.
-  const userOp = !operation && !isDemoOperation ? getOperation(operationId) : null
+  // Solo la lista unificada (local + cuenta): leer localStorage en el render desfasa servidor y cliente.
+  const userOp = !operation && !isDemoOperation ? getStoredOperation(operationId) : null
   const txn = operation ?? (userOp ? buildTransaction(userOp) : null) ?? (isDemoOperation ? mockTransaction : null)
-  const country: CountryCode = userOp?.country ?? (() => { try { return (localStorage.getItem('vara_country') as CountryCode) || 'AR' } catch { return 'AR' } })()
+  // El país guardado en el dispositivo se lee después de montar: leerlo en el render desfasa servidor y cliente (React #418).
+  const [storedCountry, setStoredCountry] = useState<CountryCode>('AR')
+  useEffect(() => { try { setStoredCountry((localStorage.getItem('vara_country') as CountryCode) || 'AR') } catch { /* sin acceso */ } }, [])
+  const country: CountryCode = userOp?.country ?? storedCountry
 
   // Todos los hooks deben declararse antes de cualquier return condicional (Rules of Hooks).
   // El sidebar linkea directo a una pestaña (?tab=documentos).
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
+  const tabsRef = useRef<HTMLDivElement>(null)
+
+  // La pestaña sigue a la URL: un enlace del menú con ?tab=documentos cambia la pestaña aunque ya estés en la operación.
+  useEffect(() => {
+    if (requested && (TAB_IDS as readonly string[]).includes(requested)) {
+      setActiveTab(requested as Tab)
+      requestAnimationFrame(() => tabsRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }))
+    }
+  }, [requested]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectTab = (id: Tab) => {
+    setActiveTab(id)
+    try {
+      const u = new URL(window.location.href)
+      u.searchParams.set('tab', id)
+      window.history.replaceState(null, '', u)
+    } catch {}
+  }
+  const [, setTaskTick] = useState(0)
+  // Solo las operaciones del usuario guardan el avance; las de demostración no se tocan.
+  const toggleTask = userOp
+    ? (t: Task) => {
+        setTaskState(userOp.id, t.id, t.status === 'DONE' ? 'TODO' : 'DONE')
+        setTaskTick(n => n + 1)
+      }
+    : undefined
   const [openStage, setOpenStage] = useState<string>('')
   useEffect(() => {
     if (txn && !openStage) setOpenStage(txn.currentStageId)
@@ -126,15 +167,38 @@ export default function OperacionPage() {
   }, [txn?.currentStageId])
 
   if (!txn) {
+    // Estado puente: nunca una pantalla vacía sin explicación.
+    if (!opsLoaded) {
+      return (
+        <div className="min-h-screen bg-[var(--background)] flex items-center justify-center px-4">
+          <p className="text-sm text-slate-400" role="status">Cargando tu operación…</p>
+        </div>
+      )
+    }
+    const hasOps = operations.length > 0
+    const loadHref = journey === 'SELL' ? '/publicar' : '/propiedades'
+    const checklistHref = journey === 'SELL' ? '/preparar-venta' : '/guia?q=documentos'
     return (
       <div className="min-h-screen bg-[var(--background)] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <FileText size={24} className="text-slate-300" />
           </div>
-          <p className="font-semibold text-slate-700 mb-1">Operación vacía</p>
-          <p className="text-sm text-slate-400 mb-5">Esta operación no tiene datos cargados todavía. Completá los pasos del onboarding para comenzar.</p>
-          <Link href="/dashboard" className="text-brand-600 text-sm font-semibold hover:underline">← Volver al dashboard</Link>
+          <h1 className="font-semibold text-slate-800 mb-1">{hasOps ? 'No encontramos esa operación' : 'Todavía no creaste una operación'}</h1>
+          <p className="text-sm text-slate-500 mb-5">
+            {hasOps
+              ? 'Puede haberse eliminado o ser de otra cuenta. Tus operaciones siguen guardadas.'
+              : 'Primero cargá tu propiedad o preparemos la documentación. Cuando avances en serio con una propiedad, acá vas a ver sus documentos, riesgos y costos.'}
+          </p>
+          <div className="flex flex-col gap-2">
+            {hasOps && activeOperation ? (
+              <Link href={`/operacion/${activeOperation.id}`} className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white">Abrir mi operación</Link>
+            ) : (
+              <Link href={loadHref} className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white">Cargar propiedad</Link>
+            )}
+            <Link href={checklistHref} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">Ver checklist documental</Link>
+            <Link href="/dashboard" className="text-brand-600 text-sm font-semibold hover:underline">← Volver al inicio</Link>
+          </div>
         </div>
       </div>
     )
@@ -183,14 +247,27 @@ export default function OperacionPage() {
           <div className="flex items-start justify-between mb-3">
             <div>
               <h1 className="font-bold text-slate-900 text-lg">{txn.title}</h1>
-              <p className="text-sm text-slate-400 flex items-center gap-1 mt-0.5"><MapPin size={11} />{txn.city}, {txn.province}</p>
-              {txn.property && (
-                <Link href="/propiedades" className="inline-flex items-center gap-1 text-xs text-brand-600 font-medium mt-1 hover:underline">
-                  <MapPin size={10} />{txn.property.address} · {txn.property.surface}m² · {formatPrice(txn.property.price, txn.property.currency)} →
+              <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                {txn.type === 'SELL_PROPERTY' ? 'Venta' : 'Compra'}
+                {(() => { const stage = txn.stages.find(st => st.id === txn.currentStageId); return stage ? ` · Etapa: ${stage.label}` : '' })()}
+              </p>
+              <p className="text-sm text-slate-400 flex items-center gap-1 mt-0.5"><MapPin size={11} />{[txn.city, txn.province].filter(Boolean).join(', ') || 'Falta la ubicación'}</p>
+              {txn.property ? (
+                <Link href="/propiedades" className="inline-flex flex-wrap items-center gap-1 text-xs text-brand-600 font-medium mt-1 hover:underline">
+                  <MapPin size={10} />
+                  {[
+                    txn.property.address || 'Falta la dirección',
+                    txn.property.surface ? `${txn.property.surface}m²` : 'Falta la superficie',
+                    txn.property.price ? formatPrice(txn.property.price, txn.property.currency) : 'Falta el precio',
+                  ].join(' · ')} →
+                </Link>
+              ) : (
+                <Link href={txn.type === 'SELL_PROPERTY' ? '/publicar' : '/propiedades'} className="inline-block text-xs text-amber-700 font-medium mt-1 hover:underline">
+                  Falta cargar la propiedad (dirección, superficie y precio) →
                 </Link>
               )}
             </div>
-            <Badge variant="brand">{txn.progress}%</Badge>
+            <Badge variant="brand">{txn.progress > 0 ? `${txn.progress}%` : 'Sin avances todavía'}</Badge>
           </div>
           <Progress value={txn.progress} />
         </div>
@@ -227,7 +304,9 @@ export default function OperacionPage() {
             )}
             <div className="flex items-center gap-1 text-xs text-slate-500 ml-auto">
               <DollarSign size={11} />
-              {formatPrice(intel.totalMin)} – {formatPrice(intel.totalMax)}
+              {intel.totalMin > 0 || intel.totalMax > 0
+                ? `${formatPrice(intel.totalMin)} – ${formatPrice(intel.totalMax)}`
+                : 'Los costos se estiman cuando cargues el precio'}
             </div>
           </div>
           {/* NBA row */}
@@ -302,13 +381,13 @@ export default function OperacionPage() {
         </div>
       )}
 
-      <div className="bg-white border-b border-slate-100 sticky top-[57px] z-10">
+      <div ref={tabsRef} className="bg-white border-b border-slate-100 sticky top-[57px] z-10 scroll-mt-[57px]">
         {/* overflow-x-auto en el contenedor externo; pl-4 al primer ítem y pr-4 al spacer final
             para que el padding se incluya en el área de scroll y no corte el último tab en mobile. */}
         <div className="max-w-4xl mx-auto overflow-x-auto no-scrollbar">
-          <div className="flex w-max min-w-full">
+          <div role="tablist" aria-label="Secciones de la operación" className="flex w-max min-w-full">
             {tabs.map(({ id, label, icon: Icon, badge }, i) => (
-              <button key={id} onClick={() => setActiveTab(id)}
+              <button key={id} role="tab" aria-selected={activeTab === id} onClick={() => selectTab(id)}
                 className={cn(
                   'flex items-center gap-1.5 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0',
                   i === 0 ? 'pl-4 pr-3' : i === tabs.length - 1 ? 'pl-3 pr-4' : 'px-3',
@@ -349,7 +428,7 @@ export default function OperacionPage() {
                 </button>
                 {openStage === stage.id && (
                   <div className="px-4 pb-4 space-y-2 border-t border-slate-50">
-                    {stage.tasks.map(task => <TaskCard key={task.id} task={task} />)}
+                    {stage.tasks.map(task => <TaskCard key={task.id} task={task} onToggle={toggleTask} />)}
                   </div>
                 )}
               </div>
