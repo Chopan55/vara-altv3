@@ -72,6 +72,7 @@ export function VaraAIFloat() {
     pathname === '/' ||
     pathname === '/onboarding' ||
     pathname === '/login' ||
+    pathname === '/partner/entrar' ||
     pathname === '/asistente' ||
     pathname.startsWith('/visit/')
   ) return null

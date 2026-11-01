@@ -54,11 +54,13 @@ export function FinanciamientoPanel() {
   const [bankIdx, setBankIdx] = useState(0)
 
   const bank = banks[bankIdx]
+  const downPaymentExceedsPrice = method === 'MORTGAGE' && price > 0 && downPayment > price
+  const downPaymentEqualsPrice = method === 'MORTGAGE' && price > 0 && downPayment === price
   const loan = price - downPayment
-  const ltv = (loan / price) * 100
+  const ltv = price > 0 ? (loan / price) * 100 : 0
   const r = bank.rate / 100 / 12
   const n = term * 12
-  const monthly = loan * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
+  const monthly = loan > 0 ? loan * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1) : 0
   const totalPaid = monthly * n
   const totalInterest = totalPaid - loan
   const escritura = price * 0.035
@@ -173,7 +175,27 @@ export function FinanciamientoPanel() {
           </div>
         )}
 
-        {method === 'MORTGAGE' && (
+        {method === 'MORTGAGE' && downPaymentEqualsPrice && (
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-start gap-3">
+            <AlertCircle size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Sin préstamo</p>
+              <p className="text-xs text-slate-500 mt-0.5">La entrada cubre el precio completo. No se necesita hipoteca.</p>
+            </div>
+          </div>
+        )}
+
+        {method === 'MORTGAGE' && downPaymentExceedsPrice && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+            <AlertCircle size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-red-700">La entrada supera el precio</p>
+              <p className="text-xs text-red-600 mt-0.5">La entrada no puede ser mayor al precio de la propiedad. Corregí el valor para ver el cálculo.</p>
+            </div>
+          </div>
+        )}
+
+        {method === 'MORTGAGE' && !downPaymentExceedsPrice && !downPaymentEqualsPrice && (
           <>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-white rounded-2xl p-4 shadow-sm text-center">

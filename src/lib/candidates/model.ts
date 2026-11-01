@@ -185,7 +185,9 @@ export function buildComparison(candidates: PropertyCandidate[]): ComparisonRow[
 
 // ───────────────────────── Scoring ponderado ─────────────────────────
 
-export type ScoringCriterion = 'price_m2' | 'price' | 'surface' | 'rooms' | 'bedrooms' | 'expenses' | 'age'
+export type ScoringCriterion =
+  | 'price_m2' | 'price' | 'surface' | 'rooms' | 'bedrooms' | 'bathrooms'
+  | 'expenses' | 'age' | 'garage' | 'amenities' | 'light' | 'condition'
 
 export const SCORING_CRITERION_LABELS: Record<ScoringCriterion, string> = {
   price_m2: 'Precio/m²',
@@ -193,8 +195,62 @@ export const SCORING_CRITERION_LABELS: Record<ScoringCriterion, string> = {
   surface: 'Superficie',
   rooms: 'Ambientes',
   bedrooms: 'Dormitorios',
+  bathrooms: 'Baños',
   expenses: 'Expensas',
   age: 'Antigüedad',
+  garage: 'Cochera',
+  amenities: 'Amenities',
+  light: 'Luz natural',
+  condition: 'Estado',
+}
+
+/**
+ * Lo que ningún portal trae y la persona carga mirando la propiedad.
+ *
+ * No se inventa ni se deduce de la descripción: si nadie lo cargó, no hay dato
+ * y esa propiedad no suma puntos en ese criterio.
+ */
+export type LightLevel = 1 | 2 | 3
+export type ConditionLevel = 1 | 2 | 3 | 4
+
+export interface ManualAttrs {
+  light?: LightLevel
+  condition?: ConditionLevel
+}
+
+export const LIGHT_LABELS: Record<LightLevel, string> = {
+  1: 'Poca',
+  2: 'Buena',
+  3: 'Muy luminosa',
+}
+
+/**
+ * Ordenado de menos a más trabajo hecho. A quien le gusta lo de época puede bajar
+ * el peso de este criterio o dejarlo en cero.
+ */
+export const CONDITION_LABELS: Record<ConditionLevel, string> = {
+  1: 'A refaccionar',
+  2: 'De época, original',
+  3: 'Renovada',
+  4: 'A estrenar',
+}
+
+const AMENITY = /jard[ií]n|pileta|piscina|parrilla|quincho|\bsum\b|gimnasio|seguridad|balc[oó]n|terraza|laundry|cowork|solarium/i
+
+/** Cuántos amenities declara el aviso. Los marcados "No" no cuentan; sin datos, null. */
+export function countAmenities(features: string[]): number | null {
+  if (features.length === 0) return null
+  return features.filter(f => AMENITY.test(f) && !/:\s*no\b/i.test(f)).length
+}
+
+/** Los portales mandan la antigüedad como texto ("Antigüedad: 10 años"). */
+export function parseAgeFromFeatures(features: string[]): number | null {
+  for (const f of features) {
+    const m = /antig[uü]edad\s*:?\s*(\d{1,3})/i.exec(f)
+    if (m) return Number(m[1])
+    if (/a estrenar/i.test(f)) return 0
+  }
+  return null
 }
 
 export interface ScoringWeight {
@@ -212,17 +268,47 @@ export const DEFAULT_SCORING_WEIGHTS: ScoringWeight[] = [
   { criterion: 'bedrooms', enabled: false, weight: 5  },
   { criterion: 'expenses', enabled: false, weight: 3  },
   { criterion: 'age',      enabled: false, weight: 2  },
+  // Desactivados hasta que la persona decida que le importan.
+  { criterion: 'bathrooms', enabled: false, weight: 5  },
+  { criterion: 'garage',    enabled: false, weight: 3  },
+  { criterion: 'amenities', enabled: false, weight: 5  },
+  { criterion: 'light',     enabled: false, weight: 10 },
+  { criterion: 'condition', enabled: false, weight: 10 },
 ]
 
-function rawValue(c: PropertyCandidate, criterion: ScoringCriterion): number | null {
+/**
+ * Pesos guardados antes de que existieran los criterios nuevos no los traen:
+ * se completan con los valores por defecto en vez de perder la configuración.
+ */
+export function mergeScoringWeights(stored: unknown): ScoringWeight[] {
+  const valid = Array.isArray(stored)
+    ? (stored as unknown[]).filter((w): w is ScoringWeight => {
+        const x = w as Partial<ScoringWeight> | null
+        return !!x && typeof x.criterion === 'string' && typeof x.weight === 'number' && typeof x.enabled === 'boolean'
+      })
+    : []
+  return DEFAULT_SCORING_WEIGHTS.map(def => {
+    const found = valid.find(w => w.criterion === def.criterion)
+    return found ? { ...found } : { ...def }
+  })
+}
+
+function rawValue(c: Property, criterion: ScoringCriterion, manual?: ManualAttrs): number | null {
   switch (criterion) {
-    case 'price_m2': return c.price > 0 && c.surface > 0 ? c.price / c.surface : null
-    case 'price':    return c.price > 0 ? c.price : null
-    case 'surface':  return c.surface > 0 ? c.surface : null
-    case 'rooms':    return c.rooms > 0 ? c.rooms : null
-    case 'bedrooms': return c.bedrooms > 0 ? c.bedrooms : null
-    case 'expenses': return c.expenses && c.expenses > 0 ? c.expenses : null
-    case 'age':      return typeof (c as unknown as Record<string, unknown>).ageYears === 'number' ? (c as unknown as Record<string, unknown>).ageYears as number : null
+    case 'price_m2':   return c.price > 0 && c.surface > 0 ? c.price / c.surface : null
+    case 'price':      return c.price > 0 ? c.price : null
+    case 'surface':    return c.surface > 0 ? c.surface : null
+    case 'rooms':      return c.rooms > 0 ? c.rooms : null
+    case 'bedrooms':   return c.bedrooms > 0 ? c.bedrooms : null
+    case 'bathrooms':  return c.bathrooms > 0 ? c.bathrooms : null
+    case 'expenses':   return c.expenses && c.expenses > 0 ? c.expenses : null
+    case 'age':        return typeof c.ageYears === 'number' ? c.ageYears : parseAgeFromFeatures(c.features ?? [])
+    // El importador no completa `garage` (llega siempre en false), así que también
+    // se busca en lo que declara el aviso. Sin cochera no hay dato: nunca afirmamos "No".
+    case 'garage':     return c.garage || (c.features ?? []).some(f => /cochera|garage/i.test(f) && !/:\s*no\b/i.test(f)) ? 1 : null
+    case 'amenities':  return countAmenities(c.features ?? [])
+    case 'light':      return manual?.light ?? null
+    case 'condition':  return manual?.condition ?? null
   }
 }
 
@@ -237,10 +323,14 @@ export interface CandidateScore {
 /**
  * Scoring ponderado: normaliza cada criterio (min-max) y combina con los pesos.
  * Si una propiedad no tiene el dato, recibe 0 en esa dimensión.
+ *
+ * Acepta cualquier `Property` (un candidato o una propiedad guardada) y, opcional,
+ * los datos que la persona cargó a mano, por id de propiedad.
  */
-export function scoreCandidates(
-  candidates: PropertyCandidate[],
+export function scoreCandidates<T extends Property>(
+  candidates: T[],
   weights: ScoringWeight[],
+  manual: Record<string, ManualAttrs> = {},
 ): CandidateScore[] {
   const active = weights.filter(w => w.enabled && w.weight > 0)
   const totalWeight = active.reduce((s, w) => s + w.weight, 0)
@@ -254,7 +344,7 @@ export function scoreCandidates(
   if (active.length === 0 || totalWeight === 0) return scores
 
   for (const { criterion, weight } of active) {
-    const values = candidates.map(c => rawValue(c, criterion))
+    const values = candidates.map(c => rawValue(c, criterion, manual[c.id]))
     const known = values.filter((v): v is number => v !== null)
     if (known.length < 1) continue
 
@@ -280,6 +370,71 @@ export function scoreCandidates(
 
   scores.forEach(s => { s.score = Math.round(s.score) })
   return scores
+}
+
+/** Valor numérico de una propiedad en un criterio, o null si no hay dato. */
+export function criterionValue(
+  c: Property, criterion: ScoringCriterion, manual?: ManualAttrs,
+): number | null {
+  return rawValue(c, criterion, manual)
+}
+
+export function isLowerBetter(criterion: ScoringCriterion): boolean {
+  return LOWER_IS_BETTER.includes(criterion)
+}
+
+/**
+ * Los pesos activos para los que al menos una propiedad tiene dato.
+ *
+ * Un criterio que ninguna tiene (por ejemplo "luz natural" si nadie la cargó) no
+ * puede discriminar entre ellas, y dejarlo en el divisor haría que la mejor
+ * propiedad nunca llegara a 100 sin que se entienda por qué.
+ */
+export function weightsWithData<T extends Property>(
+  candidates: T[], weights: ScoringWeight[], manual: Record<string, ManualAttrs> = {},
+): ScoringWeight[] {
+  return weights.filter(w =>
+    w.enabled && w.weight > 0 &&
+    candidates.some(c => rawValue(c, w.criterion, manual[c.id]) !== null),
+  )
+}
+
+/**
+ * Qué parte del peso tiene dato real para esta propiedad (0 a 1).
+ * Una casa con poca información puede parecer mejor o peor de lo que es; esto
+ * permite decirlo en vez de ocultarlo. "Cochera" no cuenta: no tenerla es un dato.
+ */
+export function dataCoverage(
+  c: Property, weights: ScoringWeight[], manual?: ManualAttrs,
+): number {
+  const active = weights.filter(w => w.enabled && w.weight > 0)
+  const total = active.reduce((s, w) => s + w.weight, 0)
+  if (total === 0) return 1
+  const covered = active
+    .filter(w => w.criterion === 'garage' || rawValue(c, w.criterion, manual) !== null)
+    .reduce((s, w) => s + w.weight, 0)
+  return covered / total
+}
+
+/**
+ * Por qué gana la primera: los criterios en los que más se despega del resto,
+ * del que más al que menos. Solo cuentan los que de verdad la favorecen.
+ */
+export function explainWinner(scores: CandidateScore[], max = 3): ScoringCriterion[] {
+  if (scores.length < 2) return []
+  const ranked = [...scores].sort((a, b) => b.score - a.score)
+  const [winner, ...others] = ranked
+  const criteria = Object.keys(winner.breakdown) as ScoringCriterion[]
+  return criteria
+    .map(criterion => {
+      const mine = winner.breakdown[criterion] ?? 0
+      const theirAvg = others.reduce((s, o) => s + (o.breakdown[criterion] ?? 0), 0) / others.length
+      return { criterion, edge: mine - theirAvg }
+    })
+    .filter(x => x.edge > 0.5)
+    .sort((a, b) => b.edge - a.edge)
+    .slice(0, max)
+    .map(x => x.criterion)
 }
 
 /**

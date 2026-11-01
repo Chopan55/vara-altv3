@@ -233,6 +233,7 @@ export default function PartnerPortalPage() {
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
+    try {
     const me = await getMyPartner()
     setPartner(me)
     if (me) {
@@ -248,7 +249,11 @@ export default function PartnerPortalPage() {
       )
       setReported(new Set(withReport.filter((x): x is string => x !== null)))
     }
-    setLoading(false)
+    } catch {
+      setPartner(null)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { void load() }, [load])
@@ -284,12 +289,31 @@ export default function PartnerPortalPage() {
       <div className="min-h-screen bg-slate-50">
         <div className="max-w-2xl mx-auto px-4 lg:px-6 py-8">
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Ser Visit Partner de VARA
+            Todavía no sos Visit Partner
           </h1>
           <p className="text-sm text-slate-600 mt-2 leading-relaxed">
             Mostrás propiedades o acompañás visitas, con un checklist y un reporte.
             No sos agente inmobiliario y no participás de la negociación.
           </p>
+
+          <div className="mt-4 grid sm:grid-cols-2 gap-3 text-xs text-slate-600">
+            <div className="rounded-2xl bg-white border border-slate-200/70 p-4">
+              <p className="font-bold text-slate-900 text-sm">Qué hacés</p>
+              <ul className="mt-1.5 space-y-1">
+                <li>• Llegás a horario y pedís el PIN antes de empezar.</li>
+                <li>• Seguís el checklist y registrás hechos, no opiniones.</li>
+                <li>• Cargás el reporte al terminar.</li>
+              </ul>
+            </div>
+            <div className="rounded-2xl bg-white border border-slate-200/70 p-4">
+              <p className="font-bold text-slate-900 text-sm">Qué no hacés</p>
+              <ul className="mt-1.5 space-y-1">
+                <li>• No negociás ni reemplazás a escribano, arquitecto o inspector.</li>
+                <li>• No cobrás por fuera de VARA.</li>
+                <li>• No recibís llaves, salvo un protocolo especial acordado.</li>
+              </ul>
+            </div>
+          </div>
 
           <div className="mt-6 bg-white rounded-2xl border border-slate-200/70 p-5">
             <h2 className="font-bold text-slate-900 text-sm">
@@ -311,8 +335,13 @@ export default function PartnerPortalPage() {
             </ol>
             <Link href="/partner/onboarding"
               className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 px-4 py-3 text-sm font-semibold text-white transition-colors">
-              Empezar el alta <ArrowRight size={15} aria-hidden="true" />
+              Empezar alta <ArrowRight size={15} aria-hidden="true" />
             </Link>
+            <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
+              La revisión final es manual y la hace el equipo de VARA. Si no cumplís los
+              requisitos de verificación o de referencias, no se habilita el alta.
+              El cobro lo coordina VARA; nunca cobrás directamente al cliente.
+            </p>
           </div>
         </div>
       </div>

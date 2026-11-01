@@ -1,5 +1,6 @@
 import { tryCreateClient } from './client'
 import { log } from '@/lib/observability/logger'
+import { isUuid } from '@/lib/operationIds'
 import type { PropertyRow, PropertyTypeDb, CurrencyDb } from './types'
 import type { UserProperty } from '@/lib/userProperties'
 import type { Property } from '@/types'
@@ -83,6 +84,8 @@ export async function fetchUserPropertyById(id: string): Promise<UserProperty | 
 }
 
 export interface NewPropertyInput {
+  /** Si es un UUID, la fila se crea con ese id (el que ya tenía en el navegador). Si no, lo asigna la base. */
+  id?: string
   source: 'IMPORTED' | 'MANUAL'
   sourceUrl?: string | null
   portal?: string | null
@@ -117,6 +120,7 @@ export async function insertProperty(input: NewPropertyInput): Promise<string | 
   const { data, error } = await supabase
     .from('properties')
     .insert({
+      ...(isUuid(input.id) ? { id: input.id } : {}),
       user_id: userId,
       source: input.source,
       source_url: input.sourceUrl ?? null,
@@ -142,6 +146,12 @@ export async function insertProperty(input: NewPropertyInput): Promise<string | 
     })
     .select('id')
     .single()
+
+  // Ya estaba subida (reintento tras un corte): no se duplica. Solo vale si es del usuario (RLS).
+  if (error && isUuid(input.id) && (error as { code?: unknown }).code === '23505') {
+    const { data: existing } = await supabase.from('properties').select('id').eq('id', input.id).maybeSingle()
+    return existing?.id ?? null
+  }
 
   if (error || !data) {
     log.error('property.insert.failed', error)

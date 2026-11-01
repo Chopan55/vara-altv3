@@ -437,7 +437,7 @@ function OnboardingInner() {
           <>
             <div className="mb-6">
               <p className="text-xs font-bold text-brand-500 uppercase tracking-widest mb-2">Paso 4</p>
-              <h1 className="text-2xl font-extrabold text-slate-900 mb-1">Tu GPS está listo</h1>
+              <h1 className="text-2xl font-extrabold text-slate-900 mb-1">Tu plan está listo</h1>
               <p className="text-slate-400 text-sm">Checklist generado con datos regulatorios reales de {checklist.provinceName}.</p>
             </div>
 
@@ -459,9 +459,11 @@ function OnboardingInner() {
                 <span className="font-semibold text-slate-800">{checklist.stages.length} etapas</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Costo estimado comprador</span>
+                <span className="text-slate-500">{isBuy ? 'Costo estimado comprador' : 'Costo estimado vendedor'}</span>
                 <span className={cn('font-semibold', checklist.dataConfidence !== 'VERIFIED' ? 'text-amber-600' : 'text-slate-800')}>
-                  {checklist.costs.totalBuyer.percentMin.toFixed(1)}–{checklist.costs.totalBuyer.percentMax.toFixed(1)}% del valor
+                  {isBuy
+                    ? `${checklist.costs.totalBuyer.percentMin.toFixed(1)}–${checklist.costs.totalBuyer.percentMax.toFixed(1)}% del valor`
+                    : `${checklist.costs.totalSeller.percentMin.toFixed(1)}–${checklist.costs.totalSeller.percentMax.toFixed(1)}% del valor`}
                   {checklist.dataConfidence !== 'VERIFIED' && ' (est.)'}
                 </span>
               </div>

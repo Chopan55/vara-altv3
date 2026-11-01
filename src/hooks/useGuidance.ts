@@ -66,7 +66,7 @@ export interface UseGuidanceReturn {
 export function useGuidance(): UseGuidanceReturn {
   const vara = useVaraState()
   const pathname = usePathname()
-  const { activeTransactionData } = useOperations()
+  const { activeTransactionData, journey } = useOperations()
 
   const txnData = useMemo(
     () => (activeTransactionData ? snapshotOf(activeTransactionData) : undefined),
@@ -74,10 +74,10 @@ export function useGuidance(): UseGuidanceReturn {
   )
 
   const ctx = useMemo(
-    () => buildGuidanceContext(vara, pathname, txnData),
+    () => buildGuidanceContext({ ...vara, journeyType: journey === 'SELL' ? 'SELL_PROPERTY' : 'BUY_PROPERTY' }, pathname, txnData),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      vara.journeyType, vara.propertyUrl, vara.province, vara.onboardingDone,
+      journey, vara.propertyUrl, vara.province, vara.onboardingDone,
       vara.operationId, vara.dismissedGuidanceIds, pathname, txnData,
     ],
   )

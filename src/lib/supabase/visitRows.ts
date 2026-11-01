@@ -165,7 +165,6 @@ export type VisitBookingRow = {
   assignment_mode: AssignmentModeDb
   assigned_partner_id: string | null
   status: VaraVisitStatusDb
-  confirmation_pin: string | null
   cancellation_reason: string | null
   created_at: string
   updated_at: string

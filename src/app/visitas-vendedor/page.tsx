@@ -4,8 +4,11 @@ import Link from 'next/link'
 import {
   ArrowLeft, Calendar, Clock, User, CheckCircle2, XCircle,
   Phone, MessageSquare, MapPin, ChevronDown, ChevronUp, Plus,
+  Sparkles, Loader2, Copy, ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { tryCreateClient } from '@/lib/supabase/client'
+import type { VisitStatusDb } from '@/lib/supabase/types'
 
 type SolicitudEstado = 'PENDIENTE' | 'CONFIRMADA' | 'RECHAZADA' | 'REALIZADA'
 
@@ -65,6 +68,15 @@ const MOCK_SOLICITUDES: SolicitudVisita[] = [
   },
 ]
 
+/** PIN determinístico de 6 dígitos derivado del ID de la visita. */
+function generatePin(id: string): string {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0
+  }
+  return String(hash % 1000000).padStart(6, '0')
+}
+
 const ESTADO_CONFIG: Record<SolicitudEstado, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   PENDIENTE:  { label: 'Pendiente',  color: 'text-amber-700',   bg: 'bg-amber-50',   icon: Clock },
   CONFIRMADA: { label: 'Confirmada', color: 'text-emerald-700', bg: 'bg-emerald-50', icon: CheckCircle2 },
@@ -77,30 +89,53 @@ function formatFecha(fecha: string) {
   return d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
-/** Arranca vacío: nunca mostramos compradores inventados como si fueran leads reales. */
-function loadSolicitudes(): SolicitudVisita[] {
-  try {
-    const saved = localStorage.getItem('vara_visit_requests')
-    if (saved) return JSON.parse(saved) as SolicitudVisita[]
-  } catch {}
-  return []
-}
-
 export default function VisitasVendedorPage() {
   const [solicitudes, setSolicitudes] = useState<SolicitudVisita[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
   const [tab, setTab] = useState<'proximas' | 'historial'>('proximas')
   const [loaded, setLoaded] = useState(false)
+  const [analyzing, setAnalyzing] = useState<Record<string, boolean>>({})
+  const [analysis, setAnalysis] = useState<Record<string, string>>({})
+  const [pinCopied, setPinCopied] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    setSolicitudes(loadSolicitudes())
-    setLoaded(true)
+    let alive = true
+    const supabase = tryCreateClient()
+    if (!supabase) { setLoaded(true); return }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(supabase as any).auth.getUser().then(({ data }: any) => {
+      const userId: string | null = data?.user?.id ?? null
+      if (!userId) { setLoaded(true); return }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(supabase as any)
+        .from('visit_requests')
+        .select('id, buyer_name, buyer_phone, visit_date, visit_time, message, status, agent')
+        .eq('user_id', userId)
+        .order('visit_date', { ascending: false })
+        .then(({ data: rows }: { data: unknown[] | null }) => {
+          if (!alive) return
+          if (rows) {
+            setSolicitudes(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (rows as any[]).map(r => ({
+                id: r.id as string,
+                compradorNombre: r.buyer_name as string,
+                compradorTelefono: (r.buyer_phone ?? '') as string,
+                fecha: r.visit_date as string,
+                hora: (r.visit_time ?? '') as string,
+                mensaje: r.message as string | undefined,
+                estado: r.status as SolicitudEstado,
+                agente: r.agent as string | undefined,
+                isMockData: false as unknown as true,
+              }))
+            )
+          }
+          setLoaded(true)
+        })
+        .catch(() => setLoaded(true))
+    })
+    return () => { alive = false }
   }, [])
-
-  useEffect(() => {
-    if (!loaded) return
-    try { localStorage.setItem('vara_visit_requests', JSON.stringify(solicitudes)) } catch {}
-  }, [solicitudes, loaded])
 
   const showingExample = solicitudes.some(s => s.isMockData)
 
@@ -114,8 +149,37 @@ export default function VisitasVendedorPage() {
     setExpanded(null)
   }
 
+  const analyzeMessage = async (id: string, mensaje: string) => {
+    if (analyzing[id]) return
+    setAnalyzing(prev => ({ ...prev, [id]: true }))
+    try {
+      const res = await fetch('/api/negotiation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'analyze',
+          message: mensaje,
+          context: { counterpartyRole: 'Comprador interesado' },
+          country: 'AR',
+        }),
+      })
+      const data = await res.json() as { suggestedReply?: string; analysis?: string; error?: string }
+      const text = data.analysis ?? data.suggestedReply ?? data.error ?? 'Sin análisis disponible.'
+      setAnalysis(prev => ({ ...prev, [id]: text }))
+    } catch {
+      setAnalysis(prev => ({ ...prev, [id]: 'No se pudo analizar. Revisá tu conexión.' }))
+    } finally {
+      setAnalyzing(prev => ({ ...prev, [id]: false }))
+    }
+  }
+
   const updateEstado = (id: string, estado: SolicitudEstado) => {
     setSolicitudes(prev => prev.map(s => s.id === id ? { ...s, estado } : s))
+    const supabase = tryCreateClient()
+    if (supabase) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      void (supabase as any).from('visit_requests').update({ status: estado as VisitStatusDb }).eq('id', id)
+    }
   }
 
   const proximas = solicitudes.filter(s => s.estado === 'PENDIENTE' || s.estado === 'CONFIRMADA')
@@ -273,19 +337,38 @@ export default function VisitasVendedorPage() {
                       )}
 
                       <div className="flex gap-2 flex-wrap">
-                        <a
-                          href={`tel:${s.compradorTelefono}`}
-                          className="flex items-center gap-1.5 bg-slate-100 text-slate-700 text-[11px] font-semibold px-3 py-2 rounded-xl hover:bg-slate-200 transition-colors"
-                        >
-                          <Phone size={11} /> {s.compradorTelefono}
-                        </a>
-                        <Link
-                          href="/asistente"
-                          className="flex items-center gap-1.5 bg-slate-100 text-slate-700 text-[11px] font-semibold px-3 py-2 rounded-xl hover:bg-slate-200 transition-colors"
-                        >
-                          <MessageSquare size={11} /> Consultar VARA
-                        </Link>
+                        {s.compradorTelefono && (
+                          <a
+                            href={`tel:${s.compradorTelefono}`}
+                            className="flex items-center gap-1.5 bg-slate-100 text-slate-700 text-[11px] font-semibold px-3 py-2 rounded-xl hover:bg-slate-200 transition-colors"
+                          >
+                            <Phone size={11} /> {s.compradorTelefono}
+                          </a>
+                        )}
+                        {s.mensaje && (
+                          <button
+                            onClick={() => analyzeMessage(s.id, s.mensaje!)}
+                            disabled={!!analyzing[s.id]}
+                            className="flex items-center gap-1.5 bg-brand-50 text-brand-700 text-[11px] font-semibold px-3 py-2 rounded-xl hover:bg-brand-100 disabled:opacity-60 transition-colors"
+                          >
+                            {analyzing[s.id]
+                              ? <Loader2 size={11} className="animate-spin" />
+                              : <Sparkles size={11} />
+                            }
+                            {analysis[s.id] ? 'Re-analizar' : 'Analizar con VARA'}
+                          </button>
+                        )}
                       </div>
+
+                      {analysis[s.id] && (
+                        <div className="bg-brand-50 rounded-xl p-3 border border-brand-100">
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <Sparkles size={11} className="text-brand-600" />
+                            <span className="text-[10px] font-bold text-brand-700 uppercase tracking-widest">Análisis VARA</span>
+                          </div>
+                          <p className="text-xs text-slate-700 leading-relaxed">{analysis[s.id]}</p>
+                        </div>
+                      )}
 
                       {s.estado === 'PENDIENTE' && (
                         <div className="flex gap-2 pt-1">
@@ -304,14 +387,55 @@ export default function VisitasVendedorPage() {
                         </div>
                       )}
 
-                      {s.estado === 'CONFIRMADA' && (
-                        <button
-                          onClick={() => updateEstado(s.id, 'REALIZADA')}
-                          className="w-full flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold py-2.5 rounded-xl transition-colors"
-                        >
-                          <CheckCircle2 size={13} /> Marcar como realizada
-                        </button>
-                      )}
+                      {s.estado === 'CONFIRMADA' && (() => {
+                        const pin = generatePin(s.id)
+                        const waText = encodeURIComponent(`Hola ${s.compradorNombre}, tu visita está confirmada. Tu PIN de verificación es: ${pin} — presentalo cuando llegues.`)
+                        const copyPin = () => {
+                          navigator.clipboard.writeText(pin).catch(() => {})
+                          setPinCopied(prev => ({ ...prev, [s.id]: true }))
+                          setTimeout(() => setPinCopied(prev => ({ ...prev, [s.id]: false })), 2000)
+                        }
+                        return (
+                          <>
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <ShieldCheck size={13} className="text-emerald-600" />
+                                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">PIN de verificación</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-2xl font-extrabold text-slate-900 tracking-widest font-mono">{pin}</span>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={copyPin}
+                                    className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-white border border-emerald-200 px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors"
+                                  >
+                                    {pinCopied[s.id] ? <CheckCircle2 size={11} /> : <Copy size={11} />}
+                                    {pinCopied[s.id] ? 'Copiado' : 'Copiar'}
+                                  </button>
+                                  {s.compradorTelefono && (
+                                    <a
+                                      href={`https://wa.me/${s.compradorTelefono.replace(/\D/g, '')}?text=${waText}`}
+                                      target="_blank" rel="noopener noreferrer"
+                                      className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-white border border-emerald-200 px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors"
+                                    >
+                                      <Phone size={11} /> Enviar por WhatsApp
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-[10px] text-emerald-600 mt-1.5 leading-relaxed">
+                                Compartí este PIN con el comprador. Pedíselo cuando llegue para confirmar que es quien dijo ser.
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => updateEstado(s.id, 'REALIZADA')}
+                              className="w-full flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold py-2.5 rounded-xl transition-colors"
+                            >
+                              <CheckCircle2 size={13} /> Marcar como realizada
+                            </button>
+                          </>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>

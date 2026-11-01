@@ -1,11 +1,15 @@
 'use client'
 import { use, useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, Bed, Bath, Square, Upload, Sparkles, ChevronRight, TrendingUp, AlertCircle, Clock, DollarSign, Zap } from 'lucide-react'
+import { ArrowLeft, MapPin, Bed, Bath, Square, Upload, Sparkles, ChevronRight, TrendingUp, AlertCircle, Clock, DollarSign, Zap, TrendingDown, Minus } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { formatPrice, cn } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
+import { useOperations } from '@/hooks/useOperations'
 import { loadUserPropertyById, type UserProperty } from '@/lib/userProperties'
+import { PropertyFactsEditor } from '@/components/properties/PropertyFactsEditor'
+import { ValuationCard } from '@/components/valuation/ValuationCard'
+import { ApiError, apiErrorMessage, safeJson, userFacingError } from '@/lib/api/client'
 
 const categoryIcon: Record<string, string> = { PINTURA: '🎨', ILUMINACION: '💡', PISOS: '🪵', COCINA: '🍳', BAÑO: '🚿', MOBILIARIO: '🛋️', JARDÍN: '🌿', EXTERIOR: '🏠' }
 
@@ -47,9 +51,11 @@ function ImpactBadge({ impact }: { impact: string }) {
 export default function PropertyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const vara = useVaraState()
-  const isSeller = vara.loaded && vara.journeyType === 'SELL_PROPERTY'
+  const { journey } = useOperations()
+  const isSeller = vara.loaded && journey === 'SELL'
   const [property, setProperty] = useState<UserProperty | null>(null)
   const [propertyLoaded, setPropertyLoaded] = useState(false)
+  const [reloadTick, setReloadTick] = useState(0)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [mimeType, setMimeType] = useState('image/jpeg')
   const [mode, setMode] = useState<TransformMode>('AUTO')
@@ -84,11 +90,11 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
           mode,
         }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setResult(data)
+      const data = await safeJson<TransformResult & { error?: string }>(res)
+      if (!res.ok || !data.recommendations) throw new ApiError(apiErrorMessage(res.status, data.error), res.status)
+      setResult(data as TransformResult)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error procesando la imagen')
+      setError(userFacingError(e, 'No pudimos procesar la imagen. No se perdió nada: probá de nuevo.'))
     } finally { setLoading(false) }
   }
 
@@ -102,7 +108,7 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
       .then(p => { if (alive) setProperty(p) })
       .finally(() => { if (alive) setPropertyLoaded(true) })
     return () => { alive = false }
-  }, [id])
+  }, [id, reloadTick])
 
   const totalMin = result?.recommendations.reduce((s, r) => s + r.estimatedCostMin, 0) ?? 0
   const totalMax = result?.recommendations.reduce((s, r) => s + r.estimatedCostMax, 0) ?? 0
@@ -169,15 +175,14 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="font-extrabold text-slate-900 text-2xl">{formatPrice(property.price, property.currency)}</p>
-              <p className="text-xs text-slate-400">USD {Math.round(property.price / property.surface).toLocaleString('es-AR')}/m²</p>
             </div>
             <Badge variant="brand" size="sm">{property.operationType === 'sale' ? 'Venta' : 'Alquiler'}</Badge>
           </div>
           <div className="grid grid-cols-3 gap-3 mb-3">
-            {[{ icon: Bed, val: property.bedrooms, label: 'dorm.' }, { icon: Bath, val: property.bathrooms, label: 'baños' }, { icon: Square, val: property.surface, label: 'm²' }].map(({ icon: Icon, val, label }) => (
+            {[{ icon: Bed, val: property.bedrooms, label: 'dorm.' }, { icon: Bath, val: property.bathrooms, label: 'baños' }, { icon: Square, val: property.coveredSurface || property.surface, label: property.coveredSurface ? 'm² cubiertos' : 'm²' }].map(({ icon: Icon, val, label }) => (
               <div key={label} className="text-center bg-slate-50 rounded-xl py-3">
                 <Icon size={16} className="mx-auto text-slate-400 mb-1" />
-                <p className="font-bold text-slate-900 text-sm">{val}</p>
+                <p className={val ? 'font-bold text-slate-900 text-sm' : 'font-bold text-amber-600 text-sm'}>{val || '—'}</p>
                 <p className="text-[10px] text-slate-400">{label}</p>
               </div>
             ))}
@@ -188,6 +193,8 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
             </div>
           )}
         </div>
+
+        <PropertyFactsEditor property={property} onSaved={() => setReloadTick(t => t + 1)} />
 
         {/* True acquisition cost */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -205,6 +212,9 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
         </div>
+
+        {/* Valor de referencia: rango según comparables parecidos que cargó la persona (motor en lib/valuation). */}
+        <ValuationCard property={property} />
 
         {/* Visualizá el potencial */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">

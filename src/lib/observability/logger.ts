@@ -66,6 +66,13 @@ export function redactContext(
 export function messageOf(err: unknown): string {
   if (err instanceof Error) return err.message
   if (typeof err === 'string') return err
+  // Errores de Supabase/Postgres y similares son objetos con message, code, details y hint, no instancias de Error.
+  if (err && typeof err === 'object') {
+    const e = err as { message?: unknown; code?: unknown; details?: unknown; hint?: unknown }
+    if (typeof e.message === 'string' && e.message) {
+      return [e.code ? `[${String(e.code)}]` : '', e.message, e.details ? String(e.details) : '', e.hint ? `(${String(e.hint)})` : ''].filter(Boolean).join(' ')
+    }
+  }
   return 'Error desconocido'
 }
 

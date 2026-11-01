@@ -59,7 +59,7 @@ function loadChecklist(): ChecklistItem[] {
     const saved = localStorage.getItem('vara_visit_checklist')
     if (saved) return JSON.parse(saved) as ChecklistItem[]
   } catch {}
-  return mockVisitChecklist
+  return mockVisitChecklist.map(i => ({ ...i, checked: false, note: undefined }))
 }
 
 function loadNotes(): UserNotes {
@@ -71,7 +71,7 @@ function loadNotes(): UserNotes {
 }
 
 export default function VisitasPage() {
-  const [items, setItems] = useState<ChecklistItem[]>(mockVisitChecklist)
+  const [items, setItems] = useState<ChecklistItem[]>(() => mockVisitChecklist.map(i => ({ ...i, checked: false, note: undefined })))
   const [notes, setNotes] = useState<UserNotes>({})
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(SECTION_ORDER))
   const [editingNote, setEditingNote] = useState<string | null>(null)
@@ -320,7 +320,7 @@ export default function VisitasPage() {
               <div className="flex items-center gap-2 mb-0.5">
                 <p className="font-bold text-slate-900 text-sm">¿Preferís no ir solo?</p>
                 <span className="text-[9px] font-bold bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                  Desde USD 16
+                  Desde USD 25
                 </span>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed">

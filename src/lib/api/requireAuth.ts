@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 
 export interface AuthResult {
   userId: string
+  email?: string
   error?: never
 }
 
@@ -49,5 +50,5 @@ export async function requireAuth(): Promise<AuthResult | AuthError> {
     }
   }
 
-  return { userId: user.id }
+  return { userId: user.id, email: user.email }
 }

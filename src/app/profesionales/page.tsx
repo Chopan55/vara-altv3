@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, CheckCircle2, ExternalLink, Info, MessageSquare, Phone, Mail, Users } from 'lucide-react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { ArrowLeft, CheckCircle2, ExternalLink, Info, MessageSquare, Phone, Mail, Users, Plus, X, Loader2 } from 'lucide-react'
 import { useOperations } from '@/hooks/useOperations'
 import type { Transaction, CountryCode } from '@/types'
 import { getProfessionalLabel } from '@/lib/utils'
@@ -27,23 +27,64 @@ const ROLE_LABELS: Record<ParticipantRoleDb, string> = {
 
 function useParticipants(operationId: string | null) {
   const [people, setPeople] = useState<Participant[]>([])
+  const [userId, setUserId] = useState<string | null>(null)
+
   useEffect(() => {
+    const supabase = tryCreateClient()
+    if (!supabase) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    void (supabase as any).auth.getUser().then(({ data }: any) => {
+      setUserId(data?.user?.id ?? null)
+    })
+  }, [])
+
+  const reload = useCallback(() => {
     if (!operationId) return
     const supabase = tryCreateClient()
     if (!supabase) return
-    supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    void (supabase as any)
       .from('operation_participants')
       .select('id, name, role, email, phone, notes')
       .eq('operation_id', operationId)
       .order('created_at', { ascending: true })
-      .then(({ data }) => {
-        if (data) setPeople(data.map(r => ({
-          id: r.id, name: r.name, role: r.role as ParticipantRoleDb,
-          email: r.email ?? undefined, phone: r.phone ?? undefined, notes: r.notes ?? undefined,
-        })))
+      .then(({ data }: { data: unknown[] | null }) => {
+        if (data) setPeople(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (data as any[]).map(r => ({
+            id: r.id as string, name: r.name as string, role: r.role as ParticipantRoleDb,
+            email: r.email ?? undefined, phone: r.phone ?? undefined, notes: r.notes ?? undefined,
+          }))
+        )
       })
   }, [operationId])
-  return people
+
+  useEffect(() => { reload() }, [reload])
+
+  const addParticipant = useCallback(async (
+    name: string, role: ParticipantRoleDb, phone?: string, email?: string, notes?: string
+  ): Promise<boolean> => {
+    if (!operationId || !userId) return false
+    const supabase = tryCreateClient()
+    if (!supabase) return false
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from('operation_participants').insert({
+      operation_id: operationId, user_id: userId,
+      name, role, phone: phone || null, email: email || null, notes: notes || null,
+    })
+    if (!error) { reload(); return true }
+    return false
+  }, [operationId, userId, reload])
+
+  const removeParticipant = useCallback(async (id: string) => {
+    const supabase = tryCreateClient()
+    if (!supabase) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from('operation_participants').delete().eq('id', id)
+    setPeople(prev => prev.filter(p => p.id !== id))
+  }, [])
+
+  return { people, addParticipant, removeParticipant }
 }
 
 const specialtyEmoji: Record<string, string> = {
@@ -103,7 +144,20 @@ const OFFICIAL_REGISTRIES: { specialty: string; org: string; url: string; note: 
 export default function ProfesionalesPage() {
   const { activeTransactionData, activeOperationId } = useOperations()
   const operationNeeds = getOperationNeeds(activeTransactionData)
-  const participants = useParticipants(activeOperationId)
+  const { people: participants, addParticipant, removeParticipant } = useParticipants(activeOperationId)
+
+  const [showAdd, setShowAdd] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({ name: '', role: 'NOTARY' as ParticipantRoleDb, phone: '', email: '', notes: '' })
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.name.trim()) return
+    setSaving(true)
+    const ok = await addParticipant(form.name.trim(), form.role, form.phone || undefined, form.email || undefined, form.notes || undefined)
+    setSaving(false)
+    if (ok) { setShowAdd(false); setForm({ name: '', role: 'NOTARY', phone: '', email: '', notes: '' }) }
+  }
 
   const country = useMemo<CountryCode>(() => {
     try { return (localStorage.getItem('vara_country') as CountryCode) || 'AR' } catch { return 'AR' }
@@ -146,50 +200,116 @@ export default function ProfesionalesPage() {
         </div>
 
         {/* Equipo real de la operación */}
-        {participants.length > 0 && (
+        {activeOperationId && (
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
               <div className="flex items-center gap-2">
                 <Users size={14} className="text-brand-500" />
-                <h2 className="font-semibold text-slate-800 text-sm">Tu equipo en esta operación</h2>
+                <h2 className="font-semibold text-slate-800 text-sm">
+                  Tu equipo {participants.length > 0 ? `(${participants.length})` : ''}
+                </h2>
               </div>
-              {activeOperationId && (
-                <Link href={`/operacion/${activeOperationId}?tab=equipo`}
-                  className="text-[11px] text-brand-600 font-semibold hover:underline">
-                  Gestionar →
-                </Link>
-              )}
+              <button
+                onClick={() => setShowAdd(o => !o)}
+                className="flex items-center gap-1 text-[11px] text-brand-600 font-semibold hover:text-brand-800 transition-colors"
+              >
+                {showAdd ? <X size={12} /> : <Plus size={12} />}
+                {showAdd ? 'Cancelar' : 'Agregar'}
+              </button>
             </div>
-            <div className="divide-y divide-slate-50">
-              {participants.map(p => (
-                <div key={p.id} className="flex items-center gap-3 px-5 py-3">
-                  <div className="w-9 h-9 bg-gradient-to-br from-brand-100 to-brand-200 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-brand-700 font-bold text-sm">{p.name.charAt(0).toUpperCase()}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 leading-tight truncate">{p.name}</p>
-                    <p className="text-[11px] text-slate-400">{ROLE_LABELS[p.role]}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {p.phone && (
-                      <a href={`https://wa.me/${p.phone.replace(/\D/g, '')}`}
-                        target="_blank" rel="noopener noreferrer"
-                        title="WhatsApp"
-                        className="w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center transition-colors">
-                        <Phone size={12} className="text-emerald-600" />
-                      </a>
-                    )}
-                    {p.email && (
-                      <a href={`mailto:${p.email}`}
-                        title="Email"
-                        className="w-7 h-7 rounded-lg bg-slate-50 hover:bg-slate-100 flex items-center justify-center transition-colors">
-                        <Mail size={12} className="text-slate-500" />
-                      </a>
-                    )}
-                  </div>
+
+            {showAdd && (
+              <form onSubmit={handleAdd} className="px-5 py-4 border-b border-slate-100 space-y-3 bg-slate-50/60">
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    required
+                    placeholder="Nombre"
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    className="col-span-2 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                  />
+                  <select
+                    value={form.role}
+                    onChange={e => setForm(f => ({ ...f, role: e.target.value as ParticipantRoleDb }))}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                  >
+                    {Object.entries(ROLE_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                  <input
+                    placeholder="Teléfono"
+                    value={form.phone}
+                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                  />
+                  <input
+                    placeholder="Email"
+                    type="email"
+                    value={form.email}
+                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                    className="col-span-2 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                  />
                 </div>
-              ))}
-            </div>
+                <button
+                  type="submit"
+                  disabled={saving || !form.name.trim()}
+                  className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-xl transition-colors"
+                >
+                  {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                  Guardar profesional
+                </button>
+              </form>
+            )}
+
+            {participants.length === 0 && !showAdd && (
+              <div className="px-5 py-6 text-center">
+                <p className="text-xs text-slate-400">Sin profesionales registrados todavía.</p>
+                <button onClick={() => setShowAdd(true)} className="mt-2 text-xs text-brand-600 font-semibold hover:underline">
+                  Agregar el primero →
+                </button>
+              </div>
+            )}
+
+            {participants.length > 0 && (
+              <div className="divide-y divide-slate-50">
+                {participants.map(p => (
+                  <div key={p.id} className="flex items-center gap-3 px-5 py-3">
+                    <div className="w-9 h-9 bg-gradient-to-br from-brand-100 to-brand-200 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-brand-700 font-bold text-sm">{p.name.charAt(0).toUpperCase()}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 leading-tight truncate">{p.name}</p>
+                      <p className="text-[11px] text-slate-400">{ROLE_LABELS[p.role]}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {p.phone && (
+                        <a href={`https://wa.me/${p.phone.replace(/\D/g, '')}`}
+                          target="_blank" rel="noopener noreferrer"
+                          title="WhatsApp"
+                          className="w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                          <Phone size={12} className="text-emerald-600" />
+                        </a>
+                      )}
+                      {p.email && (
+                        <a href={`mailto:${p.email}`}
+                          title="Email"
+                          className="w-7 h-7 rounded-lg bg-slate-50 hover:bg-slate-100 flex items-center justify-center transition-colors">
+                          <Mail size={12} className="text-slate-500" />
+                        </a>
+                      )}
+                      <button
+                        onClick={() => removeParticipant(p.id)}
+                        title="Eliminar"
+                        className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center transition-colors"
+                      >
+                        <X size={12} className="text-slate-300 hover:text-red-400" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
