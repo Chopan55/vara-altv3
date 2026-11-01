@@ -155,7 +155,10 @@ async function currentUserId(): Promise<string | null> {
 }
 
 export async function hasSession(): Promise<boolean> {
-  return (await currentUserId()) !== null
+  const supabase = tryCreateClient()
+  if (!supabase) return false
+  const { data } = await supabase.auth.getSession()
+  return Boolean(data.session)
 }
 
 export type Role = 'CLIENT' | 'PARTNER' | 'ADMIN'
