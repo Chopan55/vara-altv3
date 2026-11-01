@@ -1,0 +1,218 @@
+'use client'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import {
+  ArrowLeft, Shield, CheckCircle2, Circle,
+  Award, FileText, Loader2, Info,
+} from 'lucide-react'
+import { tryCreateClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
+
+interface TrustSignal {
+  id: string
+  label: string
+  description: string
+  verified: boolean
+  icon: React.ElementType
+  points: number
+  actionLabel?: string
+  actionHref?: string
+}
+
+export default function TrustPassportPage() {
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const client = tryCreateClient()
+    if (!client) {
+      setLoading(false)
+      return
+    }
+    client.auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? null)
+      setLoading(false)
+    })
+  }, [])
+
+  const signals: TrustSignal[] = [
+    {
+      id: 'email',
+      label: 'Email verificado',
+      description: 'Tu dirección de correo fue confirmada.',
+      verified: !!userEmail,
+      icon: CheckCircle2,
+      points: 20,
+    },
+    {
+      id: 'profile',
+      label: 'Perfil completo',
+      description: 'Nombre, foto y teléfono cargados.',
+      verified: false,
+      icon: Circle,
+      points: 15,
+      actionLabel: 'Completar perfil',
+      actionHref: '/perfil',
+    },
+    {
+      id: 'phone',
+      label: 'Teléfono verificado',
+      description: 'Número de celular validado con SMS.',
+      verified: false,
+      icon: Circle,
+      points: 15,
+    },
+    {
+      id: 'identity',
+      label: 'Identidad verificada',
+      description: 'DNI o pasaporte cargado y validado.',
+      verified: false,
+      icon: FileText,
+      points: 30,
+    },
+    {
+      id: 'operations',
+      label: 'Historial de operaciones',
+      description: 'Operaciones completadas en VARA.',
+      verified: false,
+      icon: Award,
+      points: 20,
+    },
+  ]
+
+  const earned = signals.filter(s => s.verified).reduce((sum, s) => sum + s.points, 0)
+  const total = signals.reduce((sum, s) => sum + s.points, 0)
+  const score = Math.round((earned / total) * 100)
+
+  const trustLabel =
+    score >= 80
+      ? { label: 'Confianza alta', color: 'text-emerald-700', bg: 'bg-emerald-50' }
+      : score >= 40
+      ? { label: 'Confianza media', color: 'text-amber-700', bg: 'bg-amber-50' }
+      : { label: 'Confianza básica', color: 'text-slate-600', bg: 'bg-slate-100' }
+
+  return (
+    <div className="min-h-screen bg-[var(--background)]">
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="flex items-center gap-3 mb-6">
+          <Link href="/dashboard" className="text-slate-400 hover:text-slate-700 transition-colors">
+            <ArrowLeft size={18} />
+          </Link>
+          <div>
+            <h1 className="text-lg font-bold text-[var(--foreground)] leading-tight">
+              Trust Passport
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5">Tu perfil de confianza en VARA</p>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 size={20} className="animate-spin text-slate-300" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Tarjeta de perfil */}
+            <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-5">
+              <div className="flex items-center gap-4">
+                <div className="relative flex-shrink-0">
+                  <div className="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center">
+                    <Shield size={28} className="text-brand-500" />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center">
+                    <span className="text-[10px] font-black text-brand-600">{score}</span>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-slate-900 truncate">{userEmail ?? 'Usuario VARA'}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span
+                      className={cn(
+                        'text-[10px] font-bold px-2 py-0.5 rounded-full',
+                        trustLabel.bg,
+                        trustLabel.color,
+                      )}
+                    >
+                      {trustLabel.label}
+                    </span>
+                    <span className="text-xs text-slate-400">{score}/100 pts</span>
+                  </div>
+                  <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-brand-500 rounded-full transition-all duration-500"
+                      style={{ width: `${score}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Señales */}
+            <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h2 className="text-sm font-bold text-slate-800">Señales de confianza</h2>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {signals.map(signal => {
+                  const Icon = signal.icon
+                  return (
+                    <div key={signal.id} className="flex items-center gap-3 px-5 py-4">
+                      <div
+                        className={cn(
+                          'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0',
+                          signal.verified ? 'bg-emerald-50' : 'bg-slate-50',
+                        )}
+                      >
+                        <Icon
+                          size={15}
+                          className={signal.verified ? 'text-emerald-500' : 'text-slate-300'}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800">{signal.label}</p>
+                        <p className="text-xs text-slate-500">{signal.description}</p>
+                        {!signal.verified && signal.actionHref && (
+                          <Link
+                            href={signal.actionHref}
+                            className="text-[10px] font-semibold text-brand-600 hover:underline"
+                          >
+                            {signal.actionLabel} →
+                          </Link>
+                        )}
+                      </div>
+                      <span
+                        className={cn(
+                          'text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0',
+                          signal.verified
+                            ? 'text-emerald-600 bg-emerald-50'
+                            : 'text-slate-400 bg-slate-100',
+                        )}
+                      >
+                        {signal.verified ? `+${signal.points}` : `${signal.points} pts`}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="bg-brand-50 rounded-2xl border border-brand-100 p-4">
+              <div className="flex items-start gap-2">
+                <Info size={14} className="text-brand-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-brand-700 mb-1">¿Para qué sirve?</p>
+                  <p className="text-xs text-brand-600 leading-relaxed">
+                    Cuando avancés con una contraparte, ambos pueden ver el nivel de
+                    verificación del otro antes de comprometerse. Un puntaje alto genera más
+                    confianza y puede acelerar el cierre de la operación.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
