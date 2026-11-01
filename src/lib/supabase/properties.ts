@@ -56,12 +56,12 @@ export function rowToUserProperty(r: PropertyRow): UserProperty {
   }
 }
 
-/** true si hay sesión activa. */
+/** true si hay sesión activa. Usa getSession() (localStorage, sin red) para no colgar en entornos sin acceso a Supabase. */
 export async function hasSession(): Promise<boolean> {
   const supabase = tryCreateClient()
   if (!supabase) return false
-  const { data } = await supabase.auth.getUser()
-  return Boolean(data.user)
+  const { data } = await supabase.auth.getSession()
+  return Boolean(data.session)
 }
 
 export async function fetchUserProperties(): Promise<UserProperty[]> {

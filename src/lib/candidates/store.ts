@@ -103,8 +103,8 @@ export async function loadCandidates(): Promise<PropertyCandidate[]> {
       )
       return [...remote, ...pending]
     }
-  } catch {
-    // Sin base, seguimos con lo local en vez de mostrar una lista vacía.
+  } catch (e) {
+    log.error('candidates.load.failed', e)
   }
   return adoptLegacyProperty()
 }
