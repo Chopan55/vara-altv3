@@ -16,6 +16,7 @@ import { canTransitionCandidate } from './model'
 import { log } from '@/lib/observability/logger'
 import {
   getUserProperties,
+  getImportedProperties,
   type UserProperty,
 } from '@/lib/userProperties'
 
@@ -70,7 +71,14 @@ function adoptLegacyProperty(): PropertyCandidate[] {
   )
   if (newOnes.length === 0) return list
 
-  const adopted = newOnes.map(p => toCandidate(p, { id: localId() }))
+  // Preservar el importedAt original de cada propiedad importada.
+  const rawImported = getImportedProperties()
+  const importedAtByUrl = new Map(rawImported.map(p => [p.url, p.importedAt]))
+
+  const adopted = newOnes.map(p => toCandidate(p, {
+    id: localId(),
+    addedAt: (p.sourceUrl ? importedAtByUrl.get(p.sourceUrl) : undefined) ?? Date.now(),
+  }))
   const merged = [...list, ...adopted]
   writeList(merged)
   return merged

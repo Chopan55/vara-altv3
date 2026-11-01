@@ -72,7 +72,8 @@ describe('la regla de oro', () => {
   })
 
   it('sin problemas, no inventa riesgos', () => {
-    expect(computeRisks(input())).toEqual([])
+    // documentsLoaded:true confirma que la carga fue exitosa (H10): lista vacía = sin riesgos.
+    expect(computeRisks(input({ documentsLoaded: true }))).toEqual([])
   })
 })
 
