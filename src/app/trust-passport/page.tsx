@@ -19,8 +19,15 @@ interface TrustSignal {
   actionHref?: string
 }
 
+interface ProfileData {
+  hasName: boolean
+  hasPhone: boolean
+}
+
 export default function TrustPassportPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [profile, setProfile] = useState<ProfileData>({ hasName: false, hasPhone: false })
+  const [operationsCount, setOperationsCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -29,10 +36,19 @@ export default function TrustPassportPage() {
       setLoading(false)
       return
     }
-    client.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email ?? null)
+    Promise.all([
+      client.auth.getUser(),
+      client.from('profiles').select('full_name, phone').maybeSingle(),
+      client.from('operations').select('id', { count: 'exact', head: true }),
+    ]).then(([{ data: authData }, { data: profileData }, { count }]) => {
+      setUserEmail(authData.user?.email ?? null)
+      setProfile({
+        hasName: !!profileData?.full_name?.trim(),
+        hasPhone: !!profileData?.phone?.trim(),
+      })
+      setOperationsCount(count ?? 0)
       setLoading(false)
-    })
+    }).catch(() => setLoading(false))
   }, [])
 
   const signals: TrustSignal[] = [
@@ -47,19 +63,19 @@ export default function TrustPassportPage() {
     {
       id: 'profile',
       label: 'Perfil completo',
-      description: 'Nombre, foto y teléfono cargados.',
-      verified: false,
-      icon: Circle,
+      description: 'Nombre y teléfono cargados en tu cuenta.',
+      verified: profile.hasName && profile.hasPhone,
+      icon: profile.hasName && profile.hasPhone ? CheckCircle2 : Circle,
       points: 15,
       actionLabel: 'Completar perfil',
       actionHref: '/perfil',
     },
     {
       id: 'phone',
-      label: 'Teléfono verificado',
-      description: 'Número de celular validado con SMS.',
-      verified: false,
-      icon: Circle,
+      label: 'Teléfono registrado',
+      description: 'Número de celular cargado en tu cuenta.',
+      verified: profile.hasPhone,
+      icon: profile.hasPhone ? CheckCircle2 : Circle,
       points: 15,
     },
     {
@@ -73,9 +89,11 @@ export default function TrustPassportPage() {
     {
       id: 'operations',
       label: 'Historial de operaciones',
-      description: 'Operaciones completadas en VARA.',
-      verified: false,
-      icon: Award,
+      description: operationsCount > 0
+        ? `${operationsCount} operación${operationsCount !== 1 ? 'es' : ''} en VARA.`
+        : 'Operaciones completadas en VARA.',
+      verified: operationsCount > 0,
+      icon: operationsCount > 0 ? Award : Circle,
       points: 20,
     },
   ]

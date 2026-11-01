@@ -204,7 +204,7 @@ export default function EstadoOperacionPage() {
                   <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
                     <h2 className="text-sm font-bold text-slate-800">Participantes del equipo</h2>
                     <Link
-                      href={`/operacion/${selected.id}?tab=participantes`}
+                      href={`/operacion/${selected.id}`}
                       className="text-[10px] font-semibold text-brand-600 hover:underline"
                     >
                       Editar →
@@ -222,7 +222,7 @@ export default function EstadoOperacionPage() {
                     <div className="px-4 py-6 text-center">
                       <p className="text-sm text-slate-500 mb-2">Sin participantes cargados</p>
                       <Link
-                        href={`/operacion/${selected.id}?tab=participantes`}
+                        href={`/operacion/${selected.id}`}
                         className="text-xs font-semibold text-brand-600 hover:underline"
                       >
                         Agregar participantes →

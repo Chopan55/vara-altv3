@@ -309,6 +309,9 @@ export default function CadenaNegociacionPage() {
               </p>
               <p className="text-sm text-brand-800 font-semibold">{result.nextAction}</p>
             </div>
+            <p className="text-[10px] text-slate-400 text-center leading-relaxed px-2">
+              Análisis generado por IA · No constituye asesoramiento legal ni financiero
+            </p>
             <div className="flex gap-2">
               <Link
                 href="/negociacion"

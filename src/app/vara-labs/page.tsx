@@ -188,7 +188,7 @@ const FEATURES: LabFeature[] = [
 
 const ESTADO_CONFIG: Record<Estado, { label: string; color: string; bg: string }> = {
   LISTO:         { label: 'Ya está',        color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  BETA:          { label: 'Beta',           color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  BETA:          { label: 'Beta',           color: 'text-amber-700',   bg: 'bg-amber-50'   },
   EN_DESARROLLO: { label: 'En desarrollo',  color: 'text-blue-700',    bg: 'bg-blue-50' },
   PRONTO:        { label: 'Próximamente',   color: 'text-slate-600',   bg: 'bg-slate-100' },
   EXPERIMENTO:   { label: 'Experimento',    color: 'text-purple-700',  bg: 'bg-purple-50' },

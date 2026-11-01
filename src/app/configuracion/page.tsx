@@ -69,15 +69,42 @@ export default function ConfiguracionPage() {
             })}
           </div>
 
-          {country === 'MX' && (
-            <div className="mt-4 rounded-xl bg-amber-50 border border-amber-100 p-3">
-              <p className="text-xs text-amber-800 leading-relaxed">
-                <strong>México activado.</strong> VARA usa terminología mexicana: Notario/a,
-                escrituración, ISABI, IVA sobre honorarios. Las plantillas de documentos y
-                los checklists están adaptados al mercado mexicano.
-              </p>
+          {/* Preview de terminología para el país activo */}
+          <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-3">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+              Cómo aparece en tu cuenta ahora
+            </p>
+            <div className="space-y-1.5">
+              {[
+                {
+                  ar: { label: 'Profesional de cierre', value: 'Escribano/a' },
+                  mx: { label: 'Profesional de cierre', value: 'Notario/a' },
+                },
+                {
+                  ar: { label: 'Etapa final', value: 'Escritura' },
+                  mx: { label: 'Etapa final', value: 'Firma ante notario' },
+                },
+                {
+                  ar: { label: 'Impuesto transferencia', value: 'ITI' },
+                  mx: { label: 'Impuesto transferencia', value: 'ISR' },
+                },
+                {
+                  ar: { label: 'Seña inicial', value: 'Reserva' },
+                  mx: { label: 'Seña inicial', value: 'Apartado' },
+                },
+              ].map(row => {
+                const active = country === 'MX' ? row.mx : row.ar
+                return (
+                  <div key={active.label} className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-slate-500">{active.label}</span>
+                    <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full">
+                      {active.value}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
-          )}
+          </div>
         </div>
 
         <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">
