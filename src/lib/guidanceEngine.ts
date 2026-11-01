@@ -37,7 +37,6 @@ export interface GuidanceContext {
   onboardingDone: boolean
   operationId: string
   dismissedGuidanceIds: string[]
-  // computados desde mockTransaction
   currentStageId: string
   pendingDocCategories: string[]
   blockedTaskCount: number

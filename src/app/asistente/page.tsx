@@ -36,7 +36,7 @@ export default function AsistentePage() {
 
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
-      const saved = sessionStorage.getItem('vara_chat_history')
+      const saved = localStorage.getItem('vara_chat_history')
       if (saved) return JSON.parse(saved) as Message[]
     } catch {}
     return [{ role: 'assistant', content: welcomeMsg, time: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) }]
@@ -47,7 +47,7 @@ export default function AsistentePage() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    try { sessionStorage.setItem('vara_chat_history', JSON.stringify(messages)) } catch {}
+    try { localStorage.setItem('vara_chat_history', JSON.stringify(messages)) } catch {}
   }, [messages])
 
   useEffect(() => {
