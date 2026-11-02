@@ -43,9 +43,9 @@ function statusChipClass(status: string) {
 }
 
 function DocSummaryCard({ summary }: { summary: DocSummary }) {
-  const [open, setOpen] = useState(false)
   const hasIssues = summary.encumbrances.length > 0 || summary.restrictions.length > 0
   const hasAlerts = summary.alerts.length > 0
+  const [open, setOpen] = useState(hasAlerts || hasIssues)
 
   return (
     <div className="mt-3 rounded-xl border border-slate-200 overflow-hidden">
@@ -168,6 +168,7 @@ interface DocRow extends OperationDocumentRow {
   analysisState: 'idle' | 'loading' | 'done' | 'error' | 'unavailable'
   summary: DocSummary | null
   errorMsg: string | null
+  analyzedAt?: string
 }
 
 export default function EscrituraPage() {
@@ -198,11 +199,14 @@ export default function EscrituraPage() {
             .order('created_at', { ascending: false }),
           client
             .from('document_ai_summaries')
-            .select('document_id, summary'),
+            .select('document_id, summary, updated_at'),
         ])
         if (!alive) return
-        const summaryMap = new Map<string, DocSummary>(
-          (summariesData ?? []).map(s => [s.document_id, s.summary as unknown as DocSummary]),
+        const summaryMap = new Map<string, { summary: DocSummary; updated_at: string }>(
+          (summariesData ?? []).map(s => [
+            s.document_id,
+            { summary: s.summary as unknown as DocSummary, updated_at: s.updated_at as string },
+          ]),
         )
         setDocs(
           (docsData ?? []).map(d => {
@@ -210,8 +214,9 @@ export default function EscrituraPage() {
             return {
               ...d,
               analysisState: saved ? ('done' as const) : ('idle' as const),
-              summary: saved ?? null,
+              summary: saved?.summary ?? null,
               errorMsg: null,
+              analyzedAt: saved?.updated_at,
             }
           }),
         )
@@ -225,8 +230,17 @@ export default function EscrituraPage() {
   }, [opId])
 
   function analyze(docId: string) {
+    let prevSummary: DocSummary | null = null
+    let prevAnalyzedAt: string | undefined
     setDocs(prev =>
-      prev.map(d => d.id === docId ? { ...d, analysisState: 'loading', summary: null, errorMsg: null } : d),
+      prev.map(d => {
+        if (d.id === docId) {
+          prevSummary = d.summary
+          prevAnalyzedAt = d.analyzedAt
+          return { ...d, analysisState: 'loading' as const, errorMsg: null }
+        }
+        return d
+      }),
     )
     fetch('/api/doc-intelligence', {
       method: 'POST',
@@ -241,14 +255,22 @@ export default function EscrituraPage() {
         if (!res.ok) throw new Error(`${res.status}`)
         const data = await res.json() as { summary: DocSummary }
         setDocs(prev =>
-          prev.map(d => d.id === docId ? { ...d, analysisState: 'done', summary: data.summary } : d),
+          prev.map(d => d.id === docId
+            ? { ...d, analysisState: 'done', summary: data.summary, analyzedAt: new Date().toISOString() }
+            : d),
         )
       })
       .catch(() => {
         setDocs(prev =>
           prev.map(d =>
             d.id === docId
-              ? { ...d, analysisState: 'error', errorMsg: 'No se pudo analizar el documento. Intentá de nuevo.' }
+              ? {
+                  ...d,
+                  analysisState: prevSummary ? ('done' as const) : ('error' as const),
+                  summary: prevSummary,
+                  analyzedAt: prevAnalyzedAt,
+                  errorMsg: prevSummary ? null : 'No se pudo analizar el documento. Intentá de nuevo.',
+                }
               : d,
           ),
         )
@@ -392,12 +414,19 @@ export default function EscrituraPage() {
                               </button>
                             )}
                             {canAnalyze && doc.analysisState === 'done' && (
-                              <button
-                                onClick={() => analyze(doc.id)}
-                                className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-brand-500 transition-colors"
-                              >
-                                <Sparkles size={10} /> Re-analizar
-                              </button>
+                              <div className="mt-2 flex items-center gap-3">
+                                <button
+                                  onClick={() => analyze(doc.id)}
+                                  className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 px-2.5 py-1 rounded-lg border border-slate-200 hover:border-brand-200 transition-colors"
+                                >
+                                  <Sparkles size={10} /> Re-analizar
+                                </button>
+                                {doc.analyzedAt && (
+                                  <span className="text-[10px] text-slate-400">
+                                    Analizado {new Date(doc.analyzedAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </span>
+                                )}
+                              </div>
                             )}
 
                             {doc.analysisState === 'loading' && (

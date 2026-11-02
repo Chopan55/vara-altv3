@@ -147,14 +147,20 @@ export default function WorkflowsPage() {
   )
 
   function handleToggle(id: string, enabled: boolean) {
+    let prevEnabled = enabled
     setSaving(true)
-    setRules(prev => prev.map(r => r.id === id ? { ...r, enabled } : r))
+    setRules(prev => prev.map(r => {
+      if (r.id === id) { prevEnabled = r.enabled; return { ...r, enabled } }
+      return r
+    }))
     fetch(`/api/workflow-rules/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled }),
     })
-      .catch(() => {})
+      .catch(() => {
+        setRules(prev => prev.map(r => r.id === id ? { ...r, enabled: prevEnabled } : r))
+      })
       .finally(() => setSaving(false))
   }
 
@@ -181,9 +187,6 @@ export default function WorkflowsPage() {
               )}
             </p>
           </div>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
-            Beta
-          </span>
         </div>
 
         {/* Explicación */}
