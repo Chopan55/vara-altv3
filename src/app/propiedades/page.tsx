@@ -542,7 +542,9 @@ export default function PropiedadesPage() {
     setCandidates(sortCandidates(await loadCandidates()))
   }, [])
 
-  useEffect(() => { refresh().finally(() => setLoaded(true)) }, [refresh])
+  useEffect(() => {
+    refresh().then(() => setLoaded(true), () => setLoaded(true))
+  }, [refresh])
 
   const visible = useMemo(() => candidates.filter(c =>
     filter === 'ACTIVE'
