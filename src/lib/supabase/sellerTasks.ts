@@ -92,8 +92,9 @@ async function fetchChecklist(
 
   const existingKeys = new Set(data.map(r => r.task_key))
   const newDefs = defs.filter(d => !existingKeys.has(d.key))
+  let extraRows: OperationTaskRow[] = []
   if (newDefs.length > 0) {
-    await supabase.from('operation_tasks').insert(
+    const inserted = await supabase.from('operation_tasks').insert(
       newDefs.map(def => ({
         user_id: u.user!.id,
         operation_id: operationId,
@@ -104,11 +105,13 @@ async function fetchChecklist(
         status: 'TODO' as const,
         priority: def.priority,
       })),
-    )
+    ).select('*')
+    extraRows = inserted.data ?? []
   }
 
+  const allRows = [...data, ...extraRows]
   return defs.map(def => {
-    const row = data.find(r => r.task_key === def.key)
+    const row = allRows.find(r => r.task_key === def.key)
     return row ? rowToState(row) : {
       id: '',
       key: def.key,
@@ -137,13 +140,15 @@ export async function fetchOperationTasks(
     : fetchSellerTasks(operationId)
 }
 
-export async function toggleSellerTask(
+export async function toggleOperationTask(
   operationId: string,
   taskKey: string,
   done: boolean,
+  type: 'SELL' | 'BUY' = 'SELL',
 ): Promise<boolean> {
   const supabase = tryCreateClient()
   if (!supabase) return false
+  const stage = type === 'BUY' ? BUYER_STAGE : SELLER_STAGE
   const { error } = await supabase
     .from('operation_tasks')
     .update({
@@ -152,23 +157,33 @@ export async function toggleSellerTask(
       updated_at: new Date().toISOString(),
     })
     .eq('operation_id', operationId)
-    .eq('stage_key', SELLER_STAGE)
+    .eq('stage_key', stage)
     .eq('task_key', taskKey)
   return !error
 }
 
-export async function setSellerTaskDueDate(
+export async function setOperationTaskDueDate(
   operationId: string,
   taskKey: string,
   dueDate: string | null,
+  type: 'SELL' | 'BUY' = 'SELL',
 ): Promise<boolean> {
   const supabase = tryCreateClient()
   if (!supabase) return false
+  const stage = type === 'BUY' ? BUYER_STAGE : SELLER_STAGE
   const { error } = await supabase
     .from('operation_tasks')
     .update({ due_date: dueDate, updated_at: new Date().toISOString() })
     .eq('operation_id', operationId)
-    .eq('stage_key', SELLER_STAGE)
+    .eq('stage_key', stage)
     .eq('task_key', taskKey)
   return !error
 }
+
+/** @deprecated Use toggleOperationTask with type param */
+export const toggleSellerTask = (operationId: string, taskKey: string, done: boolean) =>
+  toggleOperationTask(operationId, taskKey, done, 'SELL')
+
+/** @deprecated Use setOperationTaskDueDate with type param */
+export const setSellerTaskDueDate = (operationId: string, taskKey: string, dueDate: string | null) =>
+  setOperationTaskDueDate(operationId, taskKey, dueDate, 'SELL')
