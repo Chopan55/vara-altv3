@@ -264,6 +264,23 @@ type Insert<T, Req extends keyof T> = Pick<T, Req> & Partial<Omit<T, Req>>
 
 type ContactRequestRow = { id: string; name: string; email: string; message: string; created_at: string }
 
+export type DocumentAiSummaryRow = {
+  id: string
+  user_id: string
+  document_id: string
+  summary: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+export type WorkflowRuleOverrideRow = {
+  id: string
+  user_id: string
+  rule_id: string
+  enabled: boolean
+  updated_at: string
+}
+
 /** Supabase exige Row/Insert/Update/Relationships en cada tabla. Sin Relationships infiere `never`. */
 type Tbl<R, Req extends keyof R> = {
   Row: R
@@ -333,6 +350,8 @@ export type Database = {
       coverage_requests: Tbl<V.CoverageRequestRow, 'user_id' | 'zone_label'>
       visit_events: Tbl<V.VisitEventRow, 'name'>
       contact_requests: Tbl<ContactRequestRow, 'name' | 'email' | 'message'>
+      document_ai_summaries: Tbl<DocumentAiSummaryRow, 'user_id' | 'document_id' | 'summary'>
+      workflow_rule_overrides: Tbl<WorkflowRuleOverrideRow, 'user_id' | 'rule_id' | 'enabled'>
     }
   }
 }

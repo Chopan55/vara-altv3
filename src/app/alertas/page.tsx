@@ -6,7 +6,7 @@ import {
   Clock, Loader2, ChevronRight, Info,
 } from 'lucide-react'
 import { useOperations } from '@/hooks/useOperations'
-import { fetchSellerTasks } from '@/lib/supabase/sellerTasks'
+import { fetchOperationTasks } from '@/lib/supabase/sellerTasks'
 import { buildOpDocStatus, mergeAndRankAlerts, type OpDocStatus, type DocAlert } from '@/lib/docAlerts'
 import { cn } from '@/lib/utils'
 
@@ -58,7 +58,7 @@ function useDocStatuses(
     let alive = true
     Promise.all(
       operations.map(op =>
-        fetchSellerTasks(op.id).then(tasks => ({ op, tasks: tasks ?? [] })),
+        fetchOperationTasks(op.id, op.type as 'SELL' | 'BUY').then(tasks => ({ op, tasks: tasks ?? [] })),
       ),
     )
       .then(results => {

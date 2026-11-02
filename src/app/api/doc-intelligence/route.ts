@@ -147,6 +147,12 @@ Respondé SOLO con JSON válido: {"holders":[],"encumbrances":[],"restrictions":
       headers: { Authorization: `Bearer ${apiKey}` },
     }).catch(() => {})
 
+    // Persistir el análisis en Supabase para no repetir el análisis (best effort)
+    void supabase.from('document_ai_summaries').upsert(
+      { user_id: user.id, document_id: doc.id, summary, updated_at: new Date().toISOString() },
+      { onConflict: 'document_id' },
+    )
+
     log.info('doc.intelligence.ok', { documentId: body.documentId })
     return NextResponse.json({ summary })
   } catch (err) {
