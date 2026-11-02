@@ -190,19 +190,30 @@ export default function EscrituraPage() {
     setDocsLoading(true)
     void (async () => {
       try {
-        const { data } = await client
-          .from('operation_documents')
-          .select('*')
-          .eq('operation_id', opId)
-          .order('created_at', { ascending: false })
+        const [{ data: docsData }, { data: summariesData }] = await Promise.all([
+          client
+            .from('operation_documents')
+            .select('*')
+            .eq('operation_id', opId)
+            .order('created_at', { ascending: false }),
+          client
+            .from('document_ai_summaries')
+            .select('document_id, summary'),
+        ])
         if (!alive) return
+        const summaryMap = new Map<string, DocSummary>(
+          (summariesData ?? []).map(s => [s.document_id, s.summary as unknown as DocSummary]),
+        )
         setDocs(
-          (data ?? []).map(d => ({
-            ...d,
-            analysisState: 'idle' as const,
-            summary: null,
-            errorMsg: null,
-          })),
+          (docsData ?? []).map(d => {
+            const saved = summaryMap.get(d.id)
+            return {
+              ...d,
+              analysisState: saved ? ('done' as const) : ('idle' as const),
+              summary: saved ?? null,
+              errorMsg: null,
+            }
+          }),
         )
       } catch {
         // leave docs empty
@@ -378,6 +389,14 @@ export default function EscrituraPage() {
                                 className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 px-2.5 py-1 rounded-lg transition-colors"
                               >
                                 <Sparkles size={10} /> Analizar con IA
+                              </button>
+                            )}
+                            {canAnalyze && doc.analysisState === 'done' && (
+                              <button
+                                onClick={() => analyze(doc.id)}
+                                className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-brand-500 transition-colors"
+                              >
+                                <Sparkles size={10} /> Re-analizar
                               </button>
                             )}
 

@@ -1,14 +1,15 @@
 import { tryCreateClient } from './client'
 import type { OperationTaskRow } from './types'
 
-const STAGE = 'SELLER_CHECKLIST'
-
 export interface SellerTaskDef {
   key: string
   title: string
   description: string
   priority: 'HIGH' | 'MEDIUM' | 'LOW'
 }
+
+const SELLER_STAGE = 'SELLER_CHECKLIST'
+const BUYER_STAGE  = 'BUYER_CHECKLIST'
 
 export const SELLER_TASK_DEFS: SellerTaskDef[] = [
   { key: 'docs',      title: 'Reunir documentación del inmueble', description: 'Título, planos, impuestos al día',       priority: 'HIGH' },
@@ -18,6 +19,16 @@ export const SELLER_TASK_DEFS: SellerTaskDef[] = [
   { key: 'visits',    title: 'Organizar visitas',                 description: 'Coordinar con potenciales compradores', priority: 'MEDIUM' },
   { key: 'offer',     title: 'Evaluar ofertas recibidas',         description: 'Reserva y boleto de compraventa',       priority: 'HIGH' },
   { key: 'escritura', title: 'Escriturar',                        description: 'Con escribano y comprador',             priority: 'HIGH' },
+]
+
+export const BUYER_TASK_DEFS: SellerTaskDef[] = [
+  { key: 'financiamiento', title: 'Definir financiamiento',          description: 'Crédito hipotecario, ahorros o financiación privada', priority: 'HIGH' },
+  { key: 'docs',           title: 'Documentación personal',          description: 'DNI, constancias de ingresos, CUIL',                  priority: 'HIGH' },
+  { key: 'visitas',        title: 'Visitar propiedades',             description: 'Coordinar visitas con agente o vendedor',             priority: 'MEDIUM' },
+  { key: 'oferta',         title: 'Hacer oferta',                    description: 'Oferta escrita con condiciones y plazos',             priority: 'HIGH' },
+  { key: 'reserva',        title: 'Firmar reserva',                  description: 'Reserva económica para asegurar la operación',        priority: 'HIGH' },
+  { key: 'boleto',         title: 'Firmar boleto de compraventa',    description: 'Con escribano: condiciones, monto, entrega',          priority: 'HIGH' },
+  { key: 'escritura',      title: 'Escriturar',                      description: 'Acto de escrituración con el escribano',              priority: 'HIGH' },
 ]
 
 export interface SellerTaskState {
@@ -40,7 +51,11 @@ function rowToState(r: OperationTaskRow): SellerTaskState {
   }
 }
 
-export async function fetchSellerTasks(operationId: string): Promise<SellerTaskState[] | null> {
+async function fetchChecklist(
+  operationId: string,
+  stage: string,
+  defs: SellerTaskDef[],
+): Promise<SellerTaskState[] | null> {
   const supabase = tryCreateClient()
   if (!supabase) return null
   const { data: u } = await supabase.auth.getUser()
@@ -50,7 +65,7 @@ export async function fetchSellerTasks(operationId: string): Promise<SellerTaskS
     .from('operation_tasks')
     .select('*')
     .eq('operation_id', operationId)
-    .eq('stage_key', STAGE)
+    .eq('stage_key', stage)
     .order('priority', { ascending: true })
 
   if (error) return null
@@ -59,10 +74,10 @@ export async function fetchSellerTasks(operationId: string): Promise<SellerTaskS
     const inserted = await supabase
       .from('operation_tasks')
       .insert(
-        SELLER_TASK_DEFS.map(def => ({
+        defs.map(def => ({
           user_id: u.user!.id,
           operation_id: operationId,
-          stage_key: STAGE,
+          stage_key: stage,
           task_key: def.key,
           title: def.title,
           description: def.description,
@@ -76,13 +91,13 @@ export async function fetchSellerTasks(operationId: string): Promise<SellerTaskS
   }
 
   const existingKeys = new Set(data.map(r => r.task_key))
-  const newDefs = SELLER_TASK_DEFS.filter(d => !existingKeys.has(d.key))
+  const newDefs = defs.filter(d => !existingKeys.has(d.key))
   if (newDefs.length > 0) {
     await supabase.from('operation_tasks').insert(
       newDefs.map(def => ({
         user_id: u.user!.id,
         operation_id: operationId,
-        stage_key: STAGE,
+        stage_key: stage,
         task_key: def.key,
         title: def.title,
         description: def.description,
@@ -92,7 +107,7 @@ export async function fetchSellerTasks(operationId: string): Promise<SellerTaskS
     )
   }
 
-  return SELLER_TASK_DEFS.map(def => {
+  return defs.map(def => {
     const row = data.find(r => r.task_key === def.key)
     return row ? rowToState(row) : {
       id: '',
@@ -102,6 +117,24 @@ export async function fetchSellerTasks(operationId: string): Promise<SellerTaskS
       done: false,
     }
   })
+}
+
+export async function fetchSellerTasks(operationId: string): Promise<SellerTaskState[] | null> {
+  return fetchChecklist(operationId, SELLER_STAGE, SELLER_TASK_DEFS)
+}
+
+export async function fetchBuyerTasks(operationId: string): Promise<SellerTaskState[] | null> {
+  return fetchChecklist(operationId, BUYER_STAGE, BUYER_TASK_DEFS)
+}
+
+/** Unificado: elige automáticamente SELLER o BUYER según el tipo de operación. */
+export async function fetchOperationTasks(
+  operationId: string,
+  type: 'SELL' | 'BUY',
+): Promise<SellerTaskState[] | null> {
+  return type === 'BUY'
+    ? fetchBuyerTasks(operationId)
+    : fetchSellerTasks(operationId)
 }
 
 export async function toggleSellerTask(
@@ -119,7 +152,7 @@ export async function toggleSellerTask(
       updated_at: new Date().toISOString(),
     })
     .eq('operation_id', operationId)
-    .eq('stage_key', STAGE)
+    .eq('stage_key', SELLER_STAGE)
     .eq('task_key', taskKey)
   return !error
 }
@@ -135,7 +168,7 @@ export async function setSellerTaskDueDate(
     .from('operation_tasks')
     .update({ due_date: dueDate, updated_at: new Date().toISOString() })
     .eq('operation_id', operationId)
-    .eq('stage_key', STAGE)
+    .eq('stage_key', SELLER_STAGE)
     .eq('task_key', taskKey)
   return !error
 }

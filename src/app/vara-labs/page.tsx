@@ -127,13 +127,13 @@ const FEATURES: LabFeature[] = [
     tag: 'Todos',
   },
 
-  // ── PRÓXIMAMENTE ──
+  // ── DISPONIBLES ──
   {
     id: 'lf-003',
     nombre: 'Resumen de escritura',
     descripcion: 'Subí el PDF. VARA extrae titularidad, hipotecas y restricciones.',
     detalle: 'Trabaja sobre el documento que cargues, no sobre registros públicos. VARA lee la escritura y te da un resumen estructurado con los titulares, las cargas y las alertas que un profesional debería revisar.',
-    estado: 'BETA',
+    estado: 'LISTO',
     href: '/escritura',
     icon: FileSearch,
     tag: 'Todos',
@@ -143,7 +143,7 @@ const FEATURES: LabFeature[] = [
     nombre: 'Alertas sobre la documentación',
     descripcion: 'VARA cruza tus documentos y te avisa qué falta, qué venció y qué frena la escrituración.',
     detalle: 'Cruza las fechas de vencimiento, los documentos faltantes y el estado de cada tarea para generar alertas accionables. El historial registral hay que pedirlo al Registro: eso no lo podemos automatizar, pero sí te decimos cuándo pedirlo.',
-    estado: 'BETA',
+    estado: 'LISTO',
     href: '/alertas',
     icon: Bell,
     tag: 'Compradores',
@@ -153,7 +153,7 @@ const FEATURES: LabFeature[] = [
     nombre: 'Event Engine + Workflow Engine',
     descripcion: 'Automatizaciones, triggers y workflows configurables por país.',
     detalle: 'La base técnica para que VARA pueda automatizar: "cuando el comprador sube la inhibición, notificá al escribano y creá la tarea de revisión". Habilita integraciones B2B y customización por país sin tocar código.',
-    estado: 'BETA',
+    estado: 'LISTO',
     href: '/workflows',
     icon: Workflow,
     tag: 'Técnico',

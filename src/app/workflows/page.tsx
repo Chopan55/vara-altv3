@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, Workflow, Zap, ChevronDown, ChevronRight,
@@ -9,6 +9,7 @@ import {
   BUILT_IN_RULES, CATEGORY_LABELS, TRIGGER_LABELS, ACTION_LABELS,
   type WorkflowRule,
 } from '@/lib/workflowEngine'
+import { fetchWorkflowOverrides } from '@/lib/supabase/workflowOverrides'
 import { cn } from '@/lib/utils'
 
 const CATEGORY_ORDER: WorkflowRule['category'][] = [
@@ -121,6 +122,19 @@ function RuleCard({
 export default function WorkflowsPage() {
   const [rules, setRules] = useState<WorkflowRule[]>(BUILT_IN_RULES)
   const [saving, setSaving] = useState(false)
+  const [loadingOverrides, setLoadingOverrides] = useState(true)
+
+  useEffect(() => {
+    fetchWorkflowOverrides()
+      .then(overrides => {
+        if (overrides.length === 0) return
+        setRules(prev => prev.map(r => {
+          const ov = overrides.find(o => o.ruleId === r.id)
+          return ov ? { ...r, enabled: ov.enabled } : r
+        }))
+      })
+      .finally(() => setLoadingOverrides(false))
+  }, [])
 
   const enabledCount = rules.filter(r => r.enabled).length
 
@@ -135,8 +149,13 @@ export default function WorkflowsPage() {
   function handleToggle(id: string, enabled: boolean) {
     setSaving(true)
     setRules(prev => prev.map(r => r.id === id ? { ...r, enabled } : r))
-    // Simula persistencia — en producción: PATCH /api/workflow-rules/:id
-    setTimeout(() => setSaving(false), 600)
+    fetch(`/api/workflow-rules/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    })
+      .catch(() => {})
+      .finally(() => setSaving(false))
   }
 
   return (
@@ -184,7 +203,13 @@ export default function WorkflowsPage() {
 
         {/* Reglas por categoría */}
         <div className="space-y-6">
-          {grouped.map(({ cat, rules: catRules }) => (
+          {loadingOverrides && (
+            <div className="flex items-center gap-2 py-4 justify-center">
+              <Loader2 size={14} className="animate-spin text-slate-300" />
+              <span className="text-xs text-slate-400">Cargando configuración…</span>
+            </div>
+          )}
+          {!loadingOverrides && grouped.map(({ cat, rules: catRules }) => (
             <section key={cat}>
               <div className="flex items-center gap-2 mb-3">
                 <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide', CATEGORY_COLORS[cat])}>
