@@ -70,41 +70,32 @@ export default function ConfiguracionPage() {
           </div>
 
           {/* Preview de terminología para el país activo */}
-          <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-3">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
-              Cómo aparece en tu cuenta ahora
-            </p>
-            <div className="space-y-1.5">
-              {[
-                {
-                  ar: { label: 'Profesional de cierre', value: 'Escribano/a' },
-                  mx: { label: 'Profesional de cierre', value: 'Notario/a' },
-                },
-                {
-                  ar: { label: 'Etapa final', value: 'Escritura' },
-                  mx: { label: 'Etapa final', value: 'Firma ante notario' },
-                },
-                {
-                  ar: { label: 'Impuesto transferencia', value: 'ITI' },
-                  mx: { label: 'Impuesto transferencia', value: 'ISR' },
-                },
-                {
-                  ar: { label: 'Seña inicial', value: 'Reserva' },
-                  mx: { label: 'Seña inicial', value: 'Apartado' },
-                },
-              ].map(row => {
-                const active = country === 'MX' ? row.mx : row.ar
-                return (
-                  <div key={active.label} className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] text-slate-500">{active.label}</span>
-                    <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full">
-                      {active.value}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+          {(() => {
+            const j = getJurisdiction(country)
+            const rows = [
+              { label: 'Profesional de cierre', value: j.professionalLabels.CLOSING_PROFESSIONAL },
+              { label: 'Etapa final',            value: j.closingStageLabel },
+              { label: 'Impuesto transferencia', value: j.transferTaxLabel },
+              { label: 'Seña inicial',           value: j.depositLabel },
+            ]
+            return (
+              <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-3">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+                  Cómo aparece en tu cuenta ahora
+                </p>
+                <div className="space-y-1.5">
+                  {rows.map(row => (
+                    <div key={row.label} className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-slate-500">{row.label}</span>
+                      <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full">
+                        {row.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
         </div>
 
         <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">

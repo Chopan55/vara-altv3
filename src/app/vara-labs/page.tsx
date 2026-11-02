@@ -133,7 +133,8 @@ const FEATURES: LabFeature[] = [
     nombre: 'Resumen de escritura',
     descripcion: 'Subí el PDF. VARA extrae titularidad, hipotecas y restricciones.',
     detalle: 'Trabaja sobre el documento que cargues, no sobre registros públicos. VARA lee la escritura y te da un resumen estructurado con los titulares, las cargas y las alertas que un profesional debería revisar.',
-    estado: 'PRONTO',
+    estado: 'BETA',
+    href: '/escritura',
     icon: FileSearch,
     tag: 'Todos',
   },
@@ -142,7 +143,8 @@ const FEATURES: LabFeature[] = [
     nombre: 'Alertas sobre la documentación',
     descripcion: 'VARA cruza tus documentos y te avisa qué falta, qué venció y qué frena la escrituración.',
     detalle: 'Cruza las fechas de vencimiento, los documentos faltantes y el estado de cada tarea para generar alertas accionables. El historial registral hay que pedirlo al Registro: eso no lo podemos automatizar, pero sí te decimos cuándo pedirlo.',
-    estado: 'PRONTO',
+    estado: 'BETA',
+    href: '/alertas',
     icon: Bell,
     tag: 'Compradores',
   },
@@ -284,7 +286,7 @@ export default function VaraLabsPage() {
 
       <div className="max-w-4xl mx-auto px-4 py-5 pb-20 space-y-6">
         <Section label="Ya podés usarlo"       color="bg-emerald-100 text-emerald-700" features={byEstado('LISTO')} />
-        <Section label="Beta activo"           color="bg-emerald-100 text-emerald-700" features={byEstado('BETA')} />
+        <Section label="Beta activo"           color="bg-amber-100 text-amber-700"     features={byEstado('BETA')} />
         <Section label="En desarrollo"         color="bg-blue-100 text-blue-700"       features={byEstado('EN_DESARROLLO')} />
         <Section label="Próximamente"          color="bg-slate-100 text-slate-600"     features={byEstado('PRONTO')} />
         <Section label="Experimentos"          color="bg-purple-100 text-purple-700"   features={byEstado('EXPERIMENTO')} />

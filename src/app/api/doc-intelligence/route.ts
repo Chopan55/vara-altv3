@@ -62,18 +62,19 @@ export async function POST(req: Request) {
 
   const { data: doc } = await supabase
     .from('operation_documents')
-    .select('id, bucket_path, kind, operation_id')
+    .select('id, storage_path, category, operation_id')
     .eq('id', body.documentId)
     .maybeSingle()
 
   if (!doc) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-  if (!doc.bucket_path.endsWith('.pdf') && doc.kind !== 'ESCRITURA') {
+  if (!doc.storage_path) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  if (!doc.storage_path.endsWith('.pdf') && doc.category !== 'ESCRITURA') {
     return NextResponse.json({ error: 'not_a_pdf' }, { status: 400 })
   }
 
   const { data: fileData, error: dlErr } = await supabase.storage
     .from('documents')
-    .download(doc.bucket_path)
+    .download(doc.storage_path)
 
   if (dlErr || !fileData) {
     log.error('doc.intelligence.download.failed', dlErr)
