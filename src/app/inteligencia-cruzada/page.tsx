@@ -100,7 +100,7 @@ function daysLabel(d: number): string {
 }
 
 export default function InteligenciaCruzadaPage() {
-  const { operations: allOps, loaded, journey } = useOperations()
+  const { operations: allOps, loaded } = useOperations()
   const operations = useMemo(
     () => allOps.map(o => ({ id: o.id, title: o.title, type: o.type })),
     [allOps],

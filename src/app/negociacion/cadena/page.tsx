@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils'
  * historial como texto estructurado en el campo negotiationHistory.
  */
 
+const MAX_ROUNDS = 15
+
 interface OfferRound {
   id: string
   ronda: number
@@ -245,12 +247,18 @@ export default function CadenaNegociacionPage() {
             </div>
           ))}
 
-          <button
-            onClick={addRound}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-3 text-sm text-slate-500 hover:border-brand-300 hover:text-brand-600 transition-colors"
-          >
-            <Plus size={14} /> Agregar ronda
-          </button>
+          {rounds.length < MAX_ROUNDS ? (
+            <button
+              onClick={addRound}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-3 text-sm text-slate-500 hover:border-brand-300 hover:text-brand-600 transition-colors"
+            >
+              <Plus size={14} /> Agregar ronda
+            </button>
+          ) : (
+            <p className="text-center text-xs text-slate-400 py-2">
+              Máximo {MAX_ROUNDS} rondas por análisis
+            </p>
+          )}
         </div>
 
         {/* Momentum preview */}

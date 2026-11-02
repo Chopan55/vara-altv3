@@ -284,7 +284,7 @@ export default function VaraLabsPage() {
 
       <div className="max-w-4xl mx-auto px-4 py-5 pb-20 space-y-6">
         <Section label="Ya podés usarlo"       color="bg-emerald-100 text-emerald-700" features={byEstado('LISTO')} />
-        <Section label="Beta activo"           color="bg-emerald-100 text-emerald-700" features={byEstado('BETA')} />
+        <Section label="Beta activo"           color="bg-amber-100 text-amber-700"     features={byEstado('BETA')} />
         <Section label="En desarrollo"         color="bg-blue-100 text-blue-700"       features={byEstado('EN_DESARROLLO')} />
         <Section label="Próximamente"          color="bg-slate-100 text-slate-600"     features={byEstado('PRONTO')} />
         <Section label="Experimentos"          color="bg-purple-100 text-purple-700"   features={byEstado('EXPERIMENTO')} />
