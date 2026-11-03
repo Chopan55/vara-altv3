@@ -41,7 +41,7 @@ export default function TrustPassportPage() {
       client.from('profiles').select('full_name, phone').maybeSingle(),
       client.from('operations').select('id', { count: 'exact', head: true }),
     ]).then(([{ data: authData }, { data: profileData }, { count }]) => {
-      setUserEmail(authData.user?.email ?? null)
+      setUserEmail(authData.user?.email_confirmed_at ? (authData.user.email ?? null) : null)
       setProfile({
         hasName: !!profileData?.full_name?.trim(),
         hasPhone: !!profileData?.phone?.trim(),

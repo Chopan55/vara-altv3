@@ -3,7 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, Building2, Check, ChevronRight, Code2, Globe,
-  Key, Layers, Lock, Shield, Sparkles, Users, Zap,
+  Key, Layers, Lock, Shield, Sparkles, Zap,
   Copy, CheckCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -46,10 +46,10 @@ const PLANS: Plan[] = [
     highlight: true,
     features: [
       'Operaciones ilimitadas',
-      'API v1 con 10k requests/mes',
-      'Múltiples usuarios con roles',
+      'API v1 de lectura (preview)',
+      'Múltiples usuarios con roles (próximamente)',
       'Automatizaciones (Event Engine)',
-      'Webhook para tu CRM',
+      'Webhook para tu CRM (próximamente)',
       'Soporte prioritario',
     ],
     cta: 'Solicitar acceso',
@@ -63,10 +63,10 @@ const PLANS: Plan[] = [
     period: '',
     highlight: false,
     features: [
-      'White label — tu marca, tu dominio',
-      'API ilimitada + SLA 99.9%',
-      'SSO / SAML',
-      'Soporte dedicado 24/7',
+      'White label: tu marca, tu dominio (próximamente)',
+      'API ilimitada con SLA acordado (próximamente)',
+      'SSO / SAML (próximamente)',
+      'Soporte dedicado',
       'Onboarding personalizado',
       'Integración con tu sistema',
     ],
@@ -75,33 +75,35 @@ const PLANS: Plan[] = [
   },
 ]
 
-const API_FEATURES = [
-  { icon: Code2, title: 'REST API v1', desc: 'Endpoints para operaciones, documentos y tareas. JSON limpio, autenticación con API key.' },
-  { icon: Zap, title: 'Webhooks', desc: 'Recibí eventos en tiempo real en tu sistema: tarea completada, documento subido, oferta recibida.' },
-  { icon: Globe, title: 'White Label', desc: 'Tu marca, tu dominio. VARA desaparece del front. Ideal para desarrolladoras.' },
-  { icon: Layers, title: 'Multi-Workspace', desc: 'Una cuenta, múltiples inmobiliarias o sucursales. Panel unificado con permisos granulares.' },
-  { icon: Users, title: 'Roles y permisos', desc: 'Admin, broker, escribano, Visit Partner. Cada rol ve lo que necesita.' },
-  { icon: Shield, title: 'Enterprise Security', desc: 'SOC 2 (en preparación), SSO, auditoría de acciones, data residency.' },
+/** HOY = existe en el código. ROADMAP = planificado, no disponible. No se mezclan. */
+const API_FEATURES: { icon: React.ElementType; title: string; desc: string; status: 'HOY' | 'ROADMAP' }[] = [
+  { icon: Code2, title: 'API v1 de lectura', desc: 'Consultá tus operaciones y su estado desde tu sistema. JSON, con el token de tu sesión.', status: 'HOY' },
+  { icon: Zap, title: 'Webhooks', desc: 'Eventos hacia tu sistema: tarea completada, documento subido, oferta recibida.', status: 'ROADMAP' },
+  { icon: Key, title: 'API keys y escritura', desc: 'Claves por integración y endpoints para crear y actualizar operaciones.', status: 'ROADMAP' },
+  { icon: Globe, title: 'White label', desc: 'Tu marca y tu dominio, con VARA por debajo.', status: 'ROADMAP' },
+  { icon: Layers, title: 'Multi-workspace', desc: 'Varias inmobiliarias o sucursales en un panel, con permisos por rol.', status: 'ROADMAP' },
+  { icon: Shield, title: 'Seguridad enterprise', desc: 'SSO, auditoría de acciones y data residency.', status: 'ROADMAP' },
 ]
 
 const SAMPLE_ENDPOINT = `GET /api/v1/operations
-Authorization: Bearer vara_live_xxxxxxxxxxxx
+Authorization: Bearer <token de sesión>
 
-// Response
+// Respuesta
 {
   "data": [
     {
-      "id": "op_abc123",
+      "id": "8f2c…",
       "title": "Cabello 1234, CABA",
       "type": "SELL",
       "status": "ACTIVE",
-      "tasks_done": 4,
-      "tasks_total": 7,
+      "province_code": "CABA",
+      "created_at": "2026-10-28T10:12:00Z",
       "updated_at": "2026-11-02T14:30:00Z"
     }
-  ],
-  "meta": { "total": 1, "page": 1 }
-}`
+  ]
+}
+
+GET /api/v1/operations/{id}   // una operación`
 
 function PlanCard({ plan }: { plan: Plan }) {
   return (
@@ -198,7 +200,7 @@ export default function VaraProPage() {
               <h1 className="text-lg font-bold text-[var(--foreground)] leading-tight">VARA Pro</h1>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Beta</span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">API, white label e integración para inmobiliarias</p>
+            <p className="text-xs text-slate-400 mt-0.5">VARA para inmobiliarias y desarrolladoras</p>
           </div>
         </div>
 
@@ -211,17 +213,23 @@ export default function VaraProPage() {
             VARA en tu plataforma
           </h2>
           <p className="text-sm text-slate-300 leading-relaxed max-w-sm mx-auto">
-            Integrá la inteligencia de VARA en tu sistema. API limpia, webhooks en tiempo real,
-            white label y panel enterprise para tu equipo.
+            Hoy: una API de lectura en preview para consultar tus operaciones. Lo que sigue
+            (webhooks, white label, panel enterprise) lo construimos con las primeras inmobiliarias.
           </p>
         </div>
 
         {/* Features grid */}
         <div className="grid grid-cols-2 gap-3 mb-8">
-          {API_FEATURES.map(({ icon: Icon, title, desc }) => (
+          {API_FEATURES.map(({ icon: Icon, title, desc, status }) => (
             <div key={title} className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-4">
-              <div className="w-8 h-8 bg-brand-50 rounded-xl flex items-center justify-center mb-3">
-                <Icon size={14} className="text-brand-600" />
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center', status === 'HOY' ? 'bg-brand-50' : 'bg-slate-100')}>
+                  <Icon size={14} className={status === 'HOY' ? 'text-brand-600' : 'text-slate-400'} />
+                </div>
+                <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-full',
+                  status === 'HOY' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500')}>
+                  {status === 'HOY' ? 'Disponible' : 'En roadmap'}
+                </span>
               </div>
               <p className="text-xs font-bold text-slate-900 mb-1">{title}</p>
               <p className="text-[11px] text-slate-500 leading-relaxed">{desc}</p>
@@ -240,8 +248,8 @@ export default function VaraProPage() {
           <div className="mt-3 bg-amber-50 rounded-xl border border-amber-100 p-3 flex items-start gap-2">
             <Lock size={12} className="text-amber-500 flex-shrink-0 mt-0.5" />
             <p className="text-[11px] text-amber-700 leading-relaxed">
-              La API v1 está en modo preview. Solicitá acceso anticipado y obtenés tu API key
-              de sandbox para empezar a integrar hoy.
+              La API v1 está en preview y es solo de lectura: devuelve las operaciones del usuario
+              autenticado. Solicitá acceso anticipado para que la habilitemos en tu cuenta.
             </p>
           </div>
         </div>
@@ -261,19 +269,15 @@ export default function VaraProPage() {
           {[
             {
               q: '¿La API v1 ya está disponible?',
-              a: 'Está en modo preview. Podés solicitar acceso anticipado para integrar y dar feedback antes del lanzamiento oficial.',
-            },
-            {
-              q: '¿Qué significa White Label?',
-              a: 'VARA desaparece del frontend. Tus usuarios ven tu marca, tu dominio, tus colores. VARA trabaja por debajo.',
+              a: 'En preview y solo de lectura: podés consultar tus operaciones y su estado. Pedí acceso anticipado y te la habilitamos.',
             },
             {
               q: '¿Puedo integrar VARA con mi CRM?',
-              a: 'Sí. Con webhooks podés recibir eventos de VARA en tu CRM en tiempo real. También hay endpoints para crear y actualizar operaciones desde tu sistema.',
+              a: 'Hoy podés leer tus operaciones desde tu CRM con la API v1. Los webhooks y los endpoints de escritura están en el roadmap: si los necesitás, contanos tu caso y lo priorizamos.',
             },
             {
-              q: '¿Cuánto tiempo toma la integración?',
-              a: 'Una integración básica con la API REST es cuestión de horas. La integración profunda con white label y SSO toma días, dependiendo de tu stack.',
+              q: '¿Qué significa white label?',
+              a: 'Que tus usuarios vean tu marca y tu dominio, con VARA trabajando por debajo. Está en el roadmap; lo armamos con las primeras inmobiliarias que lo pidan.',
             },
           ].map(({ q, a }) => (
             <div key={q} className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-4">

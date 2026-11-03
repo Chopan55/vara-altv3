@@ -190,12 +190,17 @@ export default function EstadoOperacionPage() {
                       {copied ? (
                         <><Check size={12} /> Copiado</>
                       ) : (
-                        <><Share2 size={12} /> Compartir</>
+                        <><Share2 size={12} /> Copiar link</>
                       )}
                     </button>
                   </div>
                   {shareUrl && (
-                    <p className="text-[10px] text-slate-400 mt-2 font-mono truncate">{shareUrl}</p>
+                    <>
+                      <p className="text-[10px] text-slate-400 mt-2 font-mono truncate">{shareUrl}</p>
+                      <p className="text-[11px] text-amber-700 mt-1.5">
+                        Por ahora el link abre la operación solo con tu cuenta. El acceso de la contraparte y los profesionales está en desarrollo.
+                      </p>
+                    </>
                   )}
                 </div>
 
@@ -266,7 +271,10 @@ export default function EstadoOperacionPage() {
                 <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">
                   <div className="flex items-start gap-2 mb-2">
                     <AlertCircle size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-xs font-semibold text-slate-600">Visibilidad por rol</p>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-600">Visibilidad por rol · en desarrollo</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Así va a funcionar. Hoy la operación la ves solo vos.</p>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     {[

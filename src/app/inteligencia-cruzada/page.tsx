@@ -6,7 +6,7 @@ import {
   Loader2, Calendar, ChevronRight,
 } from 'lucide-react'
 import { useOperations } from '@/hooks/useOperations'
-import { fetchSellerTasks, type SellerTaskState } from '@/lib/supabase/sellerTasks'
+import { fetchOperationTasks, type SellerTaskState } from '@/lib/supabase/sellerTasks'
 import { cn } from '@/lib/utils'
 
 /**
@@ -25,7 +25,7 @@ interface OpTask {
   daysUntil: number
 }
 
-function useCrossOpTasks(operations: { id: string; title: string; type: string }[], loaded: boolean) {
+function useCrossOpTasks(operations: { id: string; title: string; type: 'SELL' | 'BUY' }[], loaded: boolean) {
   const [allTasks, setAllTasks] = useState<OpTask[]>([])
   const [tasksLoaded, setTasksLoaded] = useState(false)
 
@@ -37,7 +37,7 @@ function useCrossOpTasks(operations: { id: string; title: string; type: string }
     let alive = true
     Promise.all(
       operations.map(op =>
-        fetchSellerTasks(op.id).then(tasks => ({ op, tasks: tasks ?? [] })),
+        fetchOperationTasks(op.id, op.type).then(tasks => ({ op, tasks: tasks ?? [] })),
       ),
     )
       .then(results => {
