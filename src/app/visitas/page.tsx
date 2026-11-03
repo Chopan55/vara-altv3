@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { mockVisitChecklist } from '@/data/mock'
 import { cn } from '@/lib/utils'
+import { useOperations } from '@/hooks/useOperations'
 
 type ChecklistItem = { id: string; section: string; label: string; checked: boolean; note?: string }
 type UserNotes = Record<string, string>
@@ -54,41 +55,37 @@ function varaRecommendation(progress: number, docsOk: boolean, interiorPct: numb
   }
 }
 
-function loadChecklist(): ChecklistItem[] {
-  try {
-    const saved = localStorage.getItem('vara_visit_checklist')
-    if (saved) return JSON.parse(saved) as ChecklistItem[]
-  } catch {}
-  return mockVisitChecklist.map(i => ({ ...i, checked: false, note: undefined }))
-}
-
-function loadNotes(): UserNotes {
-  try {
-    const saved = localStorage.getItem('vara_visit_notes')
-    if (saved) return JSON.parse(saved) as UserNotes
-  } catch {}
-  return {}
-}
-
 export default function VisitasPage() {
+  const { operations, activeOperationId } = useOperations()
+  const scopeId = activeOperationId ?? operations[0]?.id ?? 'default'
+  const checklistKey = `vara_visit_checklist_${scopeId}`
+  const notesKey = `vara_visit_notes_${scopeId}`
+
   const [items, setItems] = useState<ChecklistItem[]>(() => mockVisitChecklist.map(i => ({ ...i, checked: false, note: undefined })))
   const [notes, setNotes] = useState<UserNotes>({})
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(SECTION_ORDER))
   const [editingNote, setEditingNote] = useState<string | null>(null)
   const [noteInput, setNoteInput] = useState('')
 
+  // Re-load from localStorage whenever the active operation changes
   useEffect(() => {
-    setItems(loadChecklist())
-    setNotes(loadNotes())
-  }, [])
+    try {
+      const saved = localStorage.getItem(checklistKey)
+      setItems(saved ? JSON.parse(saved) as ChecklistItem[] : mockVisitChecklist.map(i => ({ ...i, checked: false, note: undefined })))
+    } catch { setItems(mockVisitChecklist.map(i => ({ ...i, checked: false, note: undefined }))) }
+    try {
+      const saved = localStorage.getItem(notesKey)
+      setNotes(saved ? JSON.parse(saved) as UserNotes : {})
+    } catch { setNotes({}) }
+  }, [checklistKey, notesKey])
 
   useEffect(() => {
-    try { localStorage.setItem('vara_visit_checklist', JSON.stringify(items)) } catch {}
-  }, [items])
+    try { localStorage.setItem(checklistKey, JSON.stringify(items)) } catch {}
+  }, [items, checklistKey])
 
   useEffect(() => {
-    try { localStorage.setItem('vara_visit_notes', JSON.stringify(notes)) } catch {}
-  }, [notes])
+    try { localStorage.setItem(notesKey, JSON.stringify(notes)) } catch {}
+  }, [notes, notesKey])
 
   const toggle = (id: string) =>
     setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i))
@@ -106,11 +103,11 @@ export default function VisitasPage() {
   }
 
   const resetAll = () => {
-    setItems(mockVisitChecklist)
+    setItems(mockVisitChecklist.map(i => ({ ...i, checked: false, note: undefined })))
     setNotes({})
     try {
-      localStorage.removeItem('vara_visit_checklist')
-      localStorage.removeItem('vara_visit_notes')
+      localStorage.removeItem(checklistKey)
+      localStorage.removeItem(notesKey)
     } catch {}
   }
 

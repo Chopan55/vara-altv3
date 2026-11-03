@@ -11,7 +11,7 @@ import {
   SERVICE_LABELS, SERVICE_DESCRIPTIONS, PRICE_BANDS,
   type VisitServiceType, type VisitBooking, type PartnerPublicProfile,
 } from '@/types/varaVisit'
-import { findMatches, type MatchCriteria, type MatchResult } from '@/lib/varaVisit/matching'
+import { findMatches, zoneAffinity, type MatchCriteria, type MatchResult } from '@/lib/varaVisit/matching'
 import { quote, formatVisitPrice } from '@/lib/varaVisit/pricing'
 import {
   listActivePartners, createBooking, requestCoverage, hasSession,
@@ -21,6 +21,7 @@ import { loadKnownLocation } from '@/lib/knownLocation'
 import { PartnerCard } from '@/components/visit/PartnerCard'
 import { useVaraState } from '@/hooks/useVaraState'
 import { journeyToStored } from '@/lib/journey'
+import { accountUrl } from '@/lib/auth/entryJourney'
 
 const VALID_SERVICES: VisitServiceType[] = ['SHOW_PROPERTY', 'ACCOMPANY_VISIT']
 const CHECK_OPTIONS = [
@@ -175,14 +176,17 @@ function SolicitarInner() {
     })
   }, [])
 
-  // Buscamos partners recién en el paso 3: antes no hay zona ni fecha que usar.
+  // Partners del servicio apenas se elige: así el paso 2 puede avisar si la zona no tiene cobertura.
   useEffect(() => {
-    if (step !== 'quien' || !serviceType) return
+    if (!serviceType) return
     setLoadingPartners(true)
     void listActivePartners(serviceType)
       .then(setPartners)
       .finally(() => setLoadingPartners(false))
-  }, [step, serviceType])
+  }, [serviceType])
+
+  const zoneUncovered = !loadingPartners && locationLabel.trim().length >= 3
+    && !partners.some(p => zoneAffinity(p, locationLabel) > 0)
 
   const criteria: MatchCriteria | null = useMemo(() => {
     if (!serviceType || !locationLabel || !date) return null
@@ -471,6 +475,31 @@ function SolicitarInner() {
                   Con esto buscamos quién trabaja cerca. La dirección exacta se la damos
                   solo al partner asignado.
                 </p>
+                {zoneUncovered && (
+                  <div role="status" className="mt-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-xs font-semibold text-amber-900">
+                      Todavía no hay Visit Partners en {locationLabel.trim()}.
+                    </p>
+                    <p className="text-[11px] text-amber-900/80 mt-0.5">
+                      No hace falta completar el resto: anotate y te avisamos cuando haya cobertura.
+                    </p>
+                    {waitlisted ? (
+                      <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                        <Check size={12} aria-hidden="true" /> Te anotamos.
+                      </p>
+                    ) : signedIn === false ? (
+                      <Link href={accountUrl('/vara-visit/solicitar', 'login')}
+                        className="mt-2 inline-block text-xs font-bold text-amber-900 underline">
+                        Entrá para anotarte
+                      </Link>
+                    ) : (
+                      <button type="button" onClick={joinWaitlist}
+                        className="mt-2 rounded-lg bg-amber-900 hover:bg-amber-950 px-3 py-1.5 text-xs font-semibold text-white transition-colors">
+                        Avisame cuando haya cobertura
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -522,20 +551,10 @@ function SolicitarInner() {
                     placeholder="https://… o calle y altura aproximada" className={inputCls} />
                 </div>
                 <div>
-                  <label htmlFor="vname" className={labelCls}>Nombre o referencia <Opt /></label>
-                  <input id="vname" value={visitName} onChange={e => setVisitName(e.target.value)}
-                    placeholder="Ej: Depto 3 amb. Belgrano" className={inputCls} />
-                </div>
-                <div>
                   <label htmlFor="punto" className={labelCls}>Punto de encuentro<Req /></label>
                   <input id="punto" value={meetingPoint} onChange={e => setMeetingPoint(e.target.value)}
                     placeholder="Ej: puerta del edificio, esquina…"
                     aria-invalid={touched && !meetingPoint.trim()} className={inputCls} />
-                </div>
-                <div>
-                  <label htmlFor="coord" className={labelCls}>Quién coordina la visita y cómo contactarlo <Opt /></label>
-                  <input id="coord" value={coordinator} onChange={e => setCoordinator(e.target.value)}
-                    placeholder="Ej: Inmobiliaria Pérez, 11 5555 5555" className={inputCls} />
                 </div>
                 <div>
                   <span className={labelCls}>Qué querés que revise</span>
@@ -553,48 +572,65 @@ function SolicitarInner() {
                     })}
                   </div>
                 </div>
-                <div>
-                  <span className={labelCls}>Tipo de reporte</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['BASICO', 'DETALLADO'] as const).map(t => (
-                      <button key={t} type="button" aria-pressed={reportType === t} onClick={() => setReportType(t)}
-                        className={cn('rounded-xl border px-3 py-2.5 text-sm font-semibold',
-                          reportType === t ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600')}>
-                        {t === 'BASICO' ? 'Básico' : 'Detallado'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <span className={labelCls}>¿Vas a estar presente?</span>
-                    <div className="flex gap-2">
-                      {(['SI', 'NO'] as const).map(v => (
-                        <button key={v} type="button" aria-pressed={attending === v} onClick={() => setAttending(v)}
-                          className={cn('flex-1 rounded-xl border px-3 py-2 text-sm font-semibold',
-                            attending === v ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600')}>
-                          {v === 'SI' ? 'Sí' : 'No'}
-                        </button>
-                      ))}
+                <details className="group rounded-xl border border-slate-200/70">
+                  <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-semibold text-slate-600">
+                    Más detalles para el partner <Opt />
+                  </summary>
+                  <div className="space-y-3 border-t border-slate-100 p-3">
+                    <div>
+                      <label htmlFor="vname" className={labelCls}>Nombre o referencia <Opt /></label>
+                      <input id="vname" value={visitName} onChange={e => setVisitName(e.target.value)}
+                        placeholder="Ej: Depto 3 amb. Belgrano" className={inputCls} />
+                    </div>
+                    <div>
+                      <label htmlFor="coord" className={labelCls}>Quién coordina la visita y cómo contactarlo <Opt /></label>
+                      <input id="coord" value={coordinator} onChange={e => setCoordinator(e.target.value)}
+                        placeholder="Ej: Inmobiliaria Pérez, 11 5555 5555" className={inputCls} />
+                    </div>
+                    <div>
+                      <span className={labelCls}>Tipo de reporte</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(['BASICO', 'DETALLADO'] as const).map(t => (
+                          <button key={t} type="button" aria-pressed={reportType === t} onClick={() => setReportType(t)}
+                            className={cn('rounded-xl border px-3 py-2.5 text-sm font-semibold',
+                              reportType === t ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600')}>
+                            {t === 'BASICO' ? 'Básico' : 'Detallado'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className={labelCls}>¿Vas a estar presente?</span>
+                        <div className="flex gap-2">
+                          {(['SI', 'NO'] as const).map(v => (
+                            <button key={v} type="button" aria-pressed={attending === v} onClick={() => setAttending(v)}
+                              className={cn('flex-1 rounded-xl border px-3 py-2 text-sm font-semibold',
+                                attending === v ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600')}>
+                              {v === 'SI' ? 'Sí' : 'No'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <label className="flex items-end gap-2 text-xs text-slate-600 pb-2">
+                        <input type="checkbox" checked={arrivesEarly} onChange={e => setArrivesEarly(e.target.checked)} />
+                        Que llegue antes
+                      </label>
+                    </div>
+                    <div>
+                      <label htmlFor="emerg" className={labelCls}>Contacto de emergencia <Opt /></label>
+                      <input id="emerg" value={emergency} onChange={e => setEmergency(e.target.value)}
+                        placeholder="Nombre y teléfono" className={inputCls} />
+                    </div>
+                    <div>
+                      <label htmlFor="instr" className={labelCls}>Notas <Opt /></label>
+                      <textarea id="instr" rows={2} value={instructions} maxLength={300}
+                        onChange={e => setInstructions(e.target.value)}
+                        placeholder="Algo más que el partner deba saber…"
+                        className={cn(inputCls, 'resize-none')} />
                     </div>
                   </div>
-                  <label className="flex items-end gap-2 text-xs text-slate-600 pb-2">
-                    <input type="checkbox" checked={arrivesEarly} onChange={e => setArrivesEarly(e.target.checked)} />
-                    Que llegue antes
-                  </label>
-                </div>
-                <div>
-                  <label htmlFor="emerg" className={labelCls}>Contacto de emergencia <Opt /></label>
-                  <input id="emerg" value={emergency} onChange={e => setEmergency(e.target.value)}
-                    placeholder="Nombre y teléfono" className={inputCls} />
-                </div>
-                <div>
-                  <label htmlFor="instr" className={labelCls}>Notas <Opt /></label>
-                  <textarea id="instr" rows={2} value={instructions} maxLength={300}
-                    onChange={e => setInstructions(e.target.value)}
-                    placeholder="Algo más que el partner deba saber…"
-                    className={cn(inputCls, 'resize-none')} />
-                </div>
+                </details>
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-slate-200/70 p-4 space-y-3">

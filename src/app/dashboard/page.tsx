@@ -91,7 +91,7 @@ function useOperationPlan(operationId: string, type: 'SELL' | 'BUY') {
     if (!isLocal) await setOperationTaskDueDate(operationId, key, date || null, type)
   }
   const estimate = async () => {
-    const updated = tasks.map(t => ({ ...t, dueDate: t.done ? t.dueDate : estimatedDueDate(t.key) }))
+    const updated = tasks.map(t => ({ ...t, dueDate: t.done ? t.dueDate : estimatedDueDate(t.key, type) }))
     setTasks(updated)
     if (!isLocal) await Promise.all(updated.filter(t => !t.done && t.dueDate).map(t => setOperationTaskDueDate(operationId, t.key, t.dueDate!, type)))
   }
@@ -130,15 +130,16 @@ function OperationView({ op, operations, onSelect, onDelete, getTransactionData 
 
       {kind === 'BUY' ? (
         <>
-          <SellerChecklist tasks={plan.tasks} onToggle={plan.toggle} onDate={plan.setDate} onEstimate={plan.estimate} />
+          <SellerChecklist tasks={plan.tasks} onToggle={plan.toggle} onDate={plan.setDate} onEstimate={plan.estimate} type="BUY" />
           {property && <PropertyCard property={property} label="La propiedad que estás mirando" />}
           <CostsCard costs={fv.costs} />
-          <DocsRow pending={fv.pendingDocs} operationId={op.id} />
+          <DocsRow operationId={op.id} />
         </>
       ) : (
         <>
-          <SellerChecklist tasks={plan.tasks} onToggle={plan.toggle} onDate={plan.setDate} onEstimate={plan.estimate} />
+          <SellerChecklist tasks={plan.tasks} onToggle={plan.toggle} onDate={plan.setDate} onEstimate={plan.estimate} type="SELL" />
           {property && <PropertyCard property={property} label="Tu propiedad" />}
+          <DocsRow operationId={op.id} />
           <SellerReferences province={op.province} />
         </>
       )}
