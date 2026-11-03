@@ -11,6 +11,7 @@ import { priceRef } from '@/lib/market/priceReference'
 import { CATEGORY_LABELS, type NextAction } from '@/lib/nba/engine'
 import type { AttentionItem, BuyerCosts, DashboardProperty, FirstValue, OperationHealth, Uncertainty } from '@/lib/dashboard/firstValue'
 import { fetchActivity, getLastSeen, markSeen } from '@/lib/supabase/activity'
+import { fetchDocuments } from '@/lib/supabase/documents'
 import { newSince, isMilestone, familyOf } from '@/lib/activity/model'
 import type { SellerTaskState } from '@/lib/supabase/sellerTasks'
 
@@ -229,7 +230,17 @@ export function CostsCard({ costs }: { costs: BuyerCosts }) {
   )
 }
 
-export function DocsRow({ pending, operationId }: { pending: number; operationId: string }) {
+export function DocsRow({ operationId }: { operationId: string }) {
+  const [pending, setPending] = useState<number | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    fetchDocuments(operationId).then(docs => {
+      if (alive) setPending(docs.filter(d => d.status === 'PENDING').length)
+    }).catch(() => { if (alive) setPending(0) })
+    return () => { alive = false }
+  }, [operationId])
+
   return (
     <Link
       href={`/operacion/${operationId}?tab=documentos`}
@@ -237,7 +248,11 @@ export function DocsRow({ pending, operationId }: { pending: number; operationId
     >
       <FileText size={15} className="flex-shrink-0 text-slate-400" aria-hidden="true" />
       <span className="flex-1 text-sm text-slate-700">
-        {pending > 0 ? <><strong className="font-bold text-slate-900">{pending}</strong> {pending === 1 ? 'documento pendiente' : 'documentos pendientes'}</> : 'Sin documentos pendientes'}
+        {pending === null
+          ? <span className="text-slate-400">Cargando documentos…</span>
+          : pending > 0
+          ? <><strong className="font-bold text-slate-900">{pending}</strong> {pending === 1 ? 'documento pendiente' : 'documentos pendientes'}</>
+          : 'Sin documentos pendientes'}
       </span>
       <span className="text-xs font-semibold text-brand-600">Ver →</span>
     </Link>
@@ -364,7 +379,9 @@ export function NovedadesWidget({ operationId }: { operationId: string }) {
 // ───────────────────────── Venta ─────────────────────────
 
 /** Días estimados desde hoy para cada paso de una venta típica en Argentina. */
-const ESTIMATED_DAYS: Record<string, number> = { docs: 7, price: 3, photos: 10, publish: 14, visits: 30, offer: 60, escritura: 120 }
+const ESTIMATED_DAYS_SELL: Record<string, number> = { docs: 7, price: 3, photos: 10, publish: 14, visits: 30, offer: 60, escritura: 120 }
+/** Días estimados desde hoy para cada paso de una compra típica en Argentina. */
+const ESTIMATED_DAYS_BUY: Record<string, number> = { financiamiento: 14, docs: 21, visitas: 30, oferta: 45, reserva: 60, boleto: 75, escritura: 120 }
 
 export function isoDate(daysFromNow: number): string {
   const d = new Date()
@@ -372,8 +389,9 @@ export function isoDate(daysFromNow: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-export function estimatedDueDate(key: string): string {
-  return isoDate(ESTIMATED_DAYS[key] ?? 30)
+export function estimatedDueDate(key: string, type: 'SELL' | 'BUY' = 'SELL'): string {
+  const map = type === 'BUY' ? ESTIMATED_DAYS_BUY : ESTIMATED_DAYS_SELL
+  return isoDate(map[key] ?? 30)
 }
 
 function fmtDueDate(iso: string): string {
