@@ -399,21 +399,23 @@ function fmtDueDate(iso: string): string {
   return new Date(y, m - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
 }
 
-export function SellerChecklist({ tasks, onToggle, onDate, onEstimate }: {
+export function SellerChecklist({ tasks, onToggle, onDate, onEstimate, type = 'SELL' }: {
   tasks: SellerTaskState[]
   onToggle: (key: string) => void
   onDate: (key: string, date: string) => void
   onEstimate: () => void
+  type?: 'SELL' | 'BUY'
 }) {
   const [editing, setEditing] = useState<string | null>(null)
   if (tasks.length === 0) return null
   const done = tasks.filter(t => t.done).length
+  const planLabel = type === 'BUY' ? 'Tu plan de compra' : 'Tu plan de venta'
   return (
-    <section aria-label="Plan de venta" className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-card">
+    <section aria-label={planLabel} className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-card">
       <div className="flex items-center justify-between border-b border-slate-50 px-4 py-3.5">
         <div className="flex items-center gap-2.5">
           <CheckSquare size={15} className="text-amber-500" aria-hidden="true" />
-          <h2 className="text-sm font-bold text-slate-900">Tu plan de venta</h2>
+          <h2 className="text-sm font-bold text-slate-900">{planLabel}</h2>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={onEstimate} className="flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:text-brand-700">

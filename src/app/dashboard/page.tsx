@@ -130,15 +130,16 @@ function OperationView({ op, operations, onSelect, onDelete, getTransactionData 
 
       {kind === 'BUY' ? (
         <>
-          <SellerChecklist tasks={plan.tasks} onToggle={plan.toggle} onDate={plan.setDate} onEstimate={plan.estimate} />
+          <SellerChecklist tasks={plan.tasks} onToggle={plan.toggle} onDate={plan.setDate} onEstimate={plan.estimate} type="BUY" />
           {property && <PropertyCard property={property} label="La propiedad que estás mirando" />}
           <CostsCard costs={fv.costs} />
           <DocsRow operationId={op.id} />
         </>
       ) : (
         <>
-          <SellerChecklist tasks={plan.tasks} onToggle={plan.toggle} onDate={plan.setDate} onEstimate={plan.estimate} />
+          <SellerChecklist tasks={plan.tasks} onToggle={plan.toggle} onDate={plan.setDate} onEstimate={plan.estimate} type="SELL" />
           {property && <PropertyCard property={property} label="Tu propiedad" />}
+          <DocsRow operationId={op.id} />
           <SellerReferences province={op.province} />
         </>
       )}
