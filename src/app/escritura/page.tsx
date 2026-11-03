@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, FileSearch, Loader2, ChevronRight, AlertTriangle,
@@ -169,6 +169,7 @@ interface DocRow extends OperationDocumentRow {
   summary: DocSummary | null
   errorMsg: string | null
   analyzedAt?: string
+  retryFailed?: boolean
 }
 
 export default function EscrituraPage() {
@@ -180,6 +181,7 @@ export default function EscrituraPage() {
   const [selectedOpId, setSelectedOpId] = useState<string | null>(null)
   const [docs, setDocs] = useState<DocRow[]>([])
   const [docsLoading, setDocsLoading] = useState(false)
+  const analyzeDebounce = useRef<Set<string>>(new Set())
 
   const opId = selectedOpId ?? activeOperationId ?? activeOps[0]?.id ?? null
 
@@ -230,6 +232,11 @@ export default function EscrituraPage() {
   }, [opId])
 
   function analyze(docId: string) {
+    if (analyzeDebounce.current.has(docId)) return
+    analyzeDebounce.current.add(docId)
+    setTimeout(() => analyzeDebounce.current.delete(docId), 2000)
+
+
     let prevSummary: DocSummary | null = null
     let prevAnalyzedAt: string | undefined
     setDocs(prev =>
@@ -237,7 +244,7 @@ export default function EscrituraPage() {
         if (d.id === docId) {
           prevSummary = d.summary
           prevAnalyzedAt = d.analyzedAt
-          return { ...d, analysisState: 'loading' as const, errorMsg: null }
+          return { ...d, analysisState: 'loading' as const, errorMsg: null, retryFailed: false }
         }
         return d
       }),
@@ -256,7 +263,7 @@ export default function EscrituraPage() {
         const data = await res.json() as { summary: DocSummary }
         setDocs(prev =>
           prev.map(d => d.id === docId
-            ? { ...d, analysisState: 'done', summary: data.summary, analyzedAt: new Date().toISOString() }
+            ? { ...d, analysisState: 'done', summary: data.summary, analyzedAt: new Date().toISOString(), retryFailed: false }
             : d),
         )
       })
@@ -270,6 +277,7 @@ export default function EscrituraPage() {
                   summary: prevSummary,
                   analyzedAt: prevAnalyzedAt,
                   errorMsg: prevSummary ? null : 'No se pudo analizar el documento. Intentá de nuevo.',
+                  retryFailed: !!prevSummary,
                 }
               : d,
           ),
@@ -414,17 +422,24 @@ export default function EscrituraPage() {
                               </button>
                             )}
                             {canAnalyze && doc.analysisState === 'done' && (
-                              <div className="mt-2 flex items-center gap-3">
-                                <button
-                                  onClick={() => analyze(doc.id)}
-                                  className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 px-2.5 py-1 rounded-lg border border-slate-200 hover:border-brand-200 transition-colors"
-                                >
-                                  <Sparkles size={10} /> Re-analizar
-                                </button>
-                                {doc.analyzedAt && (
-                                  <span className="text-[10px] text-slate-400">
-                                    Analizado {new Date(doc.analyzedAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                  </span>
+                              <div className="mt-2 space-y-1">
+                                <div className="flex items-center gap-3">
+                                  <button
+                                    onClick={() => analyze(doc.id)}
+                                    className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 px-2.5 py-1 rounded-lg border border-slate-200 hover:border-brand-200 transition-colors"
+                                  >
+                                    <Sparkles size={10} /> Re-analizar
+                                  </button>
+                                  {doc.analyzedAt && (
+                                    <span className="text-[10px] text-slate-400">
+                                      Analizado {new Date(doc.analyzedAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </span>
+                                  )}
+                                </div>
+                                {doc.retryFailed && (
+                                  <p className="text-[10px] text-amber-600 flex items-center gap-1">
+                                    <AlertTriangle size={9} /> No se pudo re-analizar. Se muestra el análisis anterior.
+                                  </p>
                                 )}
                               </div>
                             )}

@@ -9,7 +9,6 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useOperations } from '@/hooks/useOperations'
-import { toggleSellerTask } from '@/lib/supabase/sellerTasks'
 import { loadPhotos, savePhoto, deletePhoto, updatePhotoMeta, setCoverPhoto } from '@/lib/photoStore'
 import { ApiError, apiErrorMessage, safeJson, userFacingError } from '@/lib/api/client'
 import {
