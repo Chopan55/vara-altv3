@@ -236,6 +236,7 @@ export default function EscrituraPage() {
     analyzeDebounce.current.add(docId)
     setTimeout(() => analyzeDebounce.current.delete(docId), 2000)
 
+
     let prevSummary: DocSummary | null = null
     let prevAnalyzedAt: string | undefined
     setDocs(prev =>
