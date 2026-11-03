@@ -10,7 +10,7 @@ import {
 } from '@/components/dashboard/DashboardParts'
 import { loadUserProperties, loadUserPropertyById, type UserProperty } from '@/lib/userProperties'
 import { buildFirstValue, pickDashboardProperty, shouldShowEmptyState, type OperationKind, type PlanStep } from '@/lib/dashboard/firstValue'
-import { fetchSellerTasks, setSellerTaskDueDate, toggleSellerTask, SELLER_TASK_DEFS, type SellerTaskState } from '@/lib/supabase/sellerTasks'
+import { fetchSellerTasks, fetchBuyerTasks, toggleOperationTask, setOperationTaskDueDate, SELLER_TASK_DEFS, BUYER_TASK_DEFS, type SellerTaskState } from '@/lib/supabase/sellerTasks'
 import type { Transaction, UserOperationSummary } from '@/types'
 
 /**
@@ -36,22 +36,23 @@ function useDashboardProperty(op: UserOperationSummary, kind: OperationKind) {
   return state
 }
 
-/** Plan de venta: pasos de la cuenta si existen; si no, el dashboard usa las tareas del motor regulatorio. */
-const LOCAL_TASKS_KEY = (opId: string) => `vara_seller_tasks_${opId}`
+/** Plan de operación: SELL usa tareas de vendedor; BUY usa tareas de comprador. */
+const LOCAL_TASKS_KEY = (opId: string, type: 'SELL' | 'BUY') => `vara_${type.toLowerCase()}_tasks_${opId}`
 
-function defaultLocalTasks(): SellerTaskState[] {
-  return SELLER_TASK_DEFS.map(d => ({ id: d.key, key: d.key, title: d.title, description: d.description, done: false }))
+function defaultLocalTasks(type: 'SELL' | 'BUY'): SellerTaskState[] {
+  const defs = type === 'BUY' ? BUYER_TASK_DEFS : SELLER_TASK_DEFS
+  return defs.map(d => ({ id: d.key, key: d.key, title: d.title, description: d.description, done: false }))
 }
 
-function useSellerPlan(operationId: string, enabled: boolean) {
+function useOperationPlan(operationId: string, type: 'SELL' | 'BUY') {
   const [tasks, setTasks] = useState<SellerTaskState[]>([])
-  const [loaded, setLoaded] = useState(!enabled)
+  const [loaded, setLoaded] = useState(false)
   const [isLocal, setIsLocal] = useState(false)
 
   useEffect(() => {
-    if (!enabled) return
     let alive = true
-    fetchSellerTasks(operationId)
+    const fetchFn = type === 'BUY' ? fetchBuyerTasks : fetchSellerTasks
+    fetchFn(operationId)
       .then(result => {
         if (!alive) return
         if (result) {
@@ -59,10 +60,10 @@ function useSellerPlan(operationId: string, enabled: boolean) {
         } else {
           // No Supabase session — use localStorage with default task definitions
           try {
-            const saved = localStorage.getItem(LOCAL_TASKS_KEY(operationId))
-            setTasks(saved ? JSON.parse(saved) as SellerTaskState[] : defaultLocalTasks())
+            const saved = localStorage.getItem(LOCAL_TASKS_KEY(operationId, type))
+            setTasks(saved ? JSON.parse(saved) as SellerTaskState[] : defaultLocalTasks(type))
           } catch {
-            setTasks(defaultLocalTasks())
+            setTasks(defaultLocalTasks(type))
           }
           setIsLocal(true)
         }
@@ -70,29 +71,29 @@ function useSellerPlan(operationId: string, enabled: boolean) {
       .catch(() => {})
       .finally(() => { if (alive) setLoaded(true) })
     return () => { alive = false }
-  }, [operationId, enabled])
+  }, [operationId, type])
 
   // Persist local tasks to localStorage when there's no Supabase session
   useEffect(() => {
     if (!isLocal || !loaded) return
-    try { localStorage.setItem(LOCAL_TASKS_KEY(operationId), JSON.stringify(tasks)) } catch {}
-  }, [tasks, isLocal, loaded, operationId])
+    try { localStorage.setItem(LOCAL_TASKS_KEY(operationId, type), JSON.stringify(tasks)) } catch {}
+  }, [tasks, isLocal, loaded, operationId, type])
 
   const toggle = async (key: string) => {
     const task = tasks.find(t => t.key === key)
     if (!task) return
     const next = !task.done
     setTasks(prev => prev.map(t => (t.key === key ? { ...t, done: next } : t)))
-    if (!isLocal) await toggleSellerTask(operationId, key, next)
+    if (!isLocal) await toggleOperationTask(operationId, key, next, type)
   }
   const setDate = async (key: string, date: string) => {
     setTasks(prev => prev.map(t => (t.key === key ? { ...t, dueDate: date || undefined } : t)))
-    if (!isLocal) await setSellerTaskDueDate(operationId, key, date || null)
+    if (!isLocal) await setOperationTaskDueDate(operationId, key, date || null, type)
   }
   const estimate = async () => {
     const updated = tasks.map(t => ({ ...t, dueDate: t.done ? t.dueDate : estimatedDueDate(t.key) }))
     setTasks(updated)
-    if (!isLocal) await Promise.all(updated.filter(t => !t.done && t.dueDate).map(t => setSellerTaskDueDate(operationId, t.key, t.dueDate!)))
+    if (!isLocal) await Promise.all(updated.filter(t => !t.done && t.dueDate).map(t => setOperationTaskDueDate(operationId, t.key, t.dueDate!, type)))
   }
   const steps: PlanStep[] | undefined = tasks.length > 0 ? tasks.map(t => ({ key: t.key, title: t.title, description: t.description, done: t.done })) : undefined
   return { loaded, tasks, steps, toggle, setDate, estimate }
@@ -107,12 +108,12 @@ function OperationView({ op, operations, onSelect, onDelete, getTransactionData 
 }) {
   const kind: OperationKind = op.type === 'SELL' ? 'SELL' : 'BUY'
   const { ready, property } = useDashboardProperty(op, kind)
-  const seller = useSellerPlan(op.id, kind === 'SELL')
+  const plan = useOperationPlan(op.id, kind)
 
   // Hasta saber qué propiedad corresponde no se decide nada: evita mostrar "cargá la propiedad" y corregirlo un segundo después.
-  if (!ready || !seller.loaded) return <DashboardLoading />
+  if (!ready || !plan.loaded) return <DashboardLoading />
 
-  const fv = buildFirstValue({ kind, operationId: op.id, transaction: getTransactionData(op.id), property, steps: seller.steps })
+  const fv = buildFirstValue({ kind, operationId: op.id, transaction: getTransactionData(op.id), property, steps: plan.steps })
   const refs = operations.map(o => ({ id: o.id, title: o.title, type: o.type, progress: o.progress }))
   const place = [op.city, op.province].filter(Boolean).join(', ')
 
@@ -129,13 +130,14 @@ function OperationView({ op, operations, onSelect, onDelete, getTransactionData 
 
       {kind === 'BUY' ? (
         <>
+          <SellerChecklist tasks={plan.tasks} onToggle={plan.toggle} onDate={plan.setDate} onEstimate={plan.estimate} />
           {property && <PropertyCard property={property} label="La propiedad que estás mirando" />}
           <CostsCard costs={fv.costs} />
           <DocsRow pending={fv.pendingDocs} operationId={op.id} />
         </>
       ) : (
         <>
-          <SellerChecklist tasks={seller.tasks} onToggle={seller.toggle} onDate={seller.setDate} onEstimate={seller.estimate} />
+          <SellerChecklist tasks={plan.tasks} onToggle={plan.toggle} onDate={plan.setDate} onEstimate={plan.estimate} />
           {property && <PropertyCard property={property} label="Tu propiedad" />}
           <SellerReferences province={op.province} />
         </>
