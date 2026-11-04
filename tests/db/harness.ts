@@ -44,10 +44,10 @@ alter default privileges in schema public grant all on sequences to anon, authen
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `
 
-export async function createDb(): Promise<Db> {
+export async function createDb(extra: string[] = []): Promise<Db> {
   const db = new PGlite()
   await db.exec(SUPABASE_STUB)
-  for (const file of MIGRATIONS) {
+  for (const file of [...MIGRATIONS, ...extra]) {
     const sql = readFileSync(join(process.cwd(), 'supabase', 'migrations', file), 'utf8')
     try {
       await db.exec(sql)

@@ -146,6 +146,38 @@ export type OperationParticipantRow = {
   updated_at: string
 }
 
+/** Invitación a una operación. Solo el dueño las ve; el invitado ve la suya una vez aceptada. */
+export type OperationMemberRow = {
+  id: string
+  operation_id: string
+  owner_id: string
+  invited_email: string
+  role: ParticipantRoleDb
+  invite_token: string
+  member_user_id: string | null
+  accepted_at: string | null
+  revoked_at: string | null
+  created_at: string
+}
+
+export type AcceptInviteResult =
+  | { ok: true; operationId: string }
+  | { ok: false; reason: 'NOT_SIGNED_IN' | 'INVALID' | 'OWNER' | 'USED' | 'EMAIL_MISMATCH'; invitedEmail?: string }
+
+/** Lo que ve un miembro: campos seguros, sin notas ni rutas de archivo. */
+export type SharedOperationView = {
+  role: ParticipantRoleDb
+  operation: {
+    id: string; type: string; status: string; title: string; province: string; city: string | null
+    currentStageKey: string | null; updatedAt: string; ownerName: string | null
+  }
+  documents: { name: string; category: string; status: string; updatedAt: string }[]
+}
+
+export type SharedOperationSummary = {
+  operationId: string; title: string; type: string; role: ParticipantRoleDb; acceptedAt: string
+}
+
 export type ActivityKindDb =
   | 'OPERATION_CREATED' | 'DOCUMENT_REQUESTED' | 'DOCUMENT_UPLOADED'
   | 'DOCUMENT_STATUS_CHANGED' | 'DOCUMENT_REMOVED' | 'OFFER_CREATED'
@@ -310,6 +342,9 @@ export type Database = {
         Returns: { ok: boolean; missing?: string[] }
       }
       reject_assignment: { Args: { p_booking_id: string; p_reason?: string }; Returns: undefined }
+      accept_operation_invite: { Args: { p_token: string }; Returns: AcceptInviteResult }
+      get_shared_operation: { Args: { p_operation_id: string }; Returns: SharedOperationView | null }
+      list_shared_operations: { Args: Record<string, never>; Returns: SharedOperationSummary[] }
     }
     Enums: Record<never, never>
     CompositeTypes: Record<never, never>
@@ -323,6 +358,7 @@ export type Database = {
       offers: Tbl<OfferRow, 'user_id' | 'operation_id' | 'amount'>
       activity_events: Tbl<ActivityEventRow, 'user_id' | 'operation_id' | 'kind' | 'summary'>
       operation_participants: Tbl<OperationParticipantRow, 'user_id' | 'operation_id' | 'name'>
+      operation_members: Tbl<OperationMemberRow, 'operation_id' | 'owner_id' | 'invited_email'>
       operation_risks: Tbl<OperationRiskRow, 'user_id' | 'operation_id' | 'severity' | 'category' | 'label'>
       operation_relations: Tbl<OperationRelationRow, 'user_id' | 'from_operation_id' | 'to_operation_id' | 'type'>
       visit_requests: Tbl<VisitRequestRow, 'user_id' | 'buyer_name' | 'visit_date'>
