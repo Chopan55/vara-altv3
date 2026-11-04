@@ -348,6 +348,40 @@ export type WorkflowRuleOverrideRow = {
 }
 
 /** Supabase exige Row/Insert/Update/Relationships en cada tabla. Sin Relationships infiere `never`. */
+/** Negociación del usuario (migración 20260928000000_negotiations). */
+export type NegotiationRow = {
+  id: string
+  user_id: string
+  operation_id: string | null
+  title: string
+  counterparty_role: string | null
+  counterparty_style: string | null
+  objetivo: string | null
+  target: string | null
+  walk_away: string | null
+  batna: string | null
+  deadline: string | null
+  current_offer: string | null
+  negotiation_history: string | null
+  other_context: string | null
+  next_action: string | null
+  status: 'active' | 'closed' | 'paused'
+  created_at: string
+  updated_at: string
+}
+
+/** Un análisis guardado de una negociación. `result` es la respuesta de /api/negotiation. */
+export type NegotiationMessageRow = {
+  id: string
+  negotiation_id: string
+  user_id: string
+  mode: string
+  channel: string | null
+  input_message: string | null
+  result: unknown
+  created_at: string
+}
+
 type Tbl<R, Req extends keyof R> = {
   Row: R
   Insert: Insert<R, Req>
@@ -404,6 +438,8 @@ export type Database = {
       operation_relations: Tbl<OperationRelationRow, 'user_id' | 'from_operation_id' | 'to_operation_id' | 'type'>
       visit_requests: Tbl<VisitRequestRow, 'user_id' | 'buyer_name' | 'visit_date'>
       publish_requests: Tbl<PublishRequestRow, 'user_id' | 'property_id' | 'portal'>
+      negotiations: Tbl<NegotiationRow, 'user_id'>
+      negotiation_messages: Tbl<NegotiationMessageRow, 'negotiation_id' | 'user_id' | 'mode'>
 
       // ── VARA Visit ── (filas en ./visitRows.ts)
       visit_partners: Tbl<V.VisitPartnerRow, 'user_id' | 'display_name' | 'initials'>

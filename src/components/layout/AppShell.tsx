@@ -7,10 +7,10 @@ import {
   MessageSquare, Eye, Share2,
   ChevronLeft, ChevronRight, Menu, X, Inbox,
   LogIn, LogOut, BookOpen, Search, Plus, Sparkles,
-  ShieldAlert, Users, Landmark, Tag, MapPin, CalendarCheck,
+  ShieldAlert, Users, MapPin, CalendarCheck,
   ClipboardCheck, Zap, BarChart2,
 } from 'lucide-react'
-import { tryCreateClient } from '@/lib/supabase/client'
+import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { isEnabled } from '@/lib/flags'
@@ -261,15 +261,17 @@ function SidebarContent({
 function AuthFooter({ collapsed, userName }: { collapsed: boolean; userName: string }) {
   const router = useRouter()
   const [email, setEmail] = useState<string | null>(null)
-  const [checked, setChecked] = useState(false)
+  // Sin base configurada no hay sesión que consultar.
+  const [done, setDone] = useState(false)
+  const checked = !isSupabaseConfigured || done
 
   useEffect(() => {
-    let alive = true
     const supabase = tryCreateClient()
-    if (!supabase) { setChecked(true); return }
+    if (!supabase) return
+    let alive = true
     supabase.auth.getUser()
       .then(({ data }) => { if (alive) setEmail(data.user?.email ?? null) })
-      .finally(() => { if (alive) setChecked(true) })
+      .finally(() => { if (alive) setDone(true) })
     return () => { alive = false }
   }, [])
 
@@ -394,6 +396,8 @@ function TopBar({
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           placeholder="Buscar en VARA: documentos, costos, visitas…"
           aria-label="Buscar en VARA"
+          role="combobox"
+          aria-autocomplete="list"
           aria-expanded={open && results.length > 0}
           aria-controls="vara-search-results"
           className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:bg-white focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100 transition-colors"
@@ -438,18 +442,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const changeJourney = (j: JourneyType) => vara.setJourneyType(journeyToStored(j))
 
   // Una pantalla de compra o de venta ajusta el modo a sí misma: menú, guía y contenido nunca se contradicen.
+  const { loaded: varaLoaded, setJourneyType } = vara
   useEffect(() => {
     // Una pantalla de compra o de venta fija el modo; abrir una operación fija el de esa operación.
     const opId = pathname.match(/^\/operacion\/([^/?]+)/)?.[1]
     const opType = opId ? allOps.find(o => o.id === opId)?.type : undefined
     const forced = forcedJourney(pathname) ?? opType ?? null
-    if (vara.loaded && forced && forced !== journey) vara.setJourneyType(journeyToStored(forced))
-  }, [pathname, journey, vara.loaded, allOps]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (varaLoaded && forced && forced !== journey) setJourneyType(journeyToStored(forced))
+  }, [pathname, journey, varaLoaded, allOps, setJourneyType])
 
-  useEffect(() => {
+  // Al navegar se cierran el menú lateral y el de la guía.
+  const [navPath, setNavPath] = useState(pathname)
+  if (pathname !== navPath) {
+    setNavPath(pathname)
     setDrawerOpen(false)
     setGuiaMenuOpen(false)
-  }, [pathname])
+  }
 
   // Visit Mode ocupa la pantalla entera: el partner lo usa parado en la puerta
   // de una casa, con una mano. Un sidebar ahi seria un estorbo.

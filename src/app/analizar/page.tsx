@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
+import { useBrowserValue } from '@/hooks/useHydrated'
 import { isBuyWowV3Enabled } from '@/lib/analysis/access'
 import { useBuyAnalysis } from '@/components/buy-v3/useBuyAnalysis'
 import { BlockedPaste, EntryForm, ProgressPanel } from '@/components/buy-v3/Entry'
@@ -14,26 +15,26 @@ import { ResultView } from '@/components/buy-v3/ResultView'
  * explicación de la interfaz. Si hay que explicarla, la UX falló.
  */
 export default function AnalizarPage() {
-  const [enabled, setEnabled] = useState<boolean | null>(null)
-  const [testMode, setTestMode] = useState(false)
-  const [initialUrl, setInitialUrl] = useState('')
-  const a = useBuyAnalysis()
-  const autoRan = useRef(false)
-
-  useEffect(() => {
+  // La URL solo existe en el navegador: se lee al hidratar (en el servidor, null = cargando).
+  const fromUrl = useBrowserValue(() => {
     const q = window.location.search
     const params = new URLSearchParams(q)
-    const on = isBuyWowV3Enabled(q)
-    setEnabled(on)
-    setTestMode(params.get('test') === '1')
-    const url = params.get('url') ?? ''
-    setInitialUrl(url)
-    if (on && url && !autoRan.current) {
+    return { enabled: isBuyWowV3Enabled(q), testMode: params.get('test') === '1', initialUrl: params.get('url') ?? '' }
+  }, null)
+  const enabled = fromUrl?.enabled ?? null
+  const testMode = fromUrl?.testMode ?? false
+  const initialUrl = fromUrl?.initialUrl ?? ''
+  const a = useBuyAnalysis()
+  const { submit } = a
+  const autoRan = useRef(false)
+
+  // ?url=... analiza el aviso apenas se abre la página, una sola vez.
+  useEffect(() => {
+    if (enabled && initialUrl && !autoRan.current) {
       autoRan.current = true
-      void a.submit(url)
+      void submit(initialUrl)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [enabled, initialUrl, submit])
 
   const { state } = a
   const busy = state.phase === 'reading' || state.phase === 'analyzing'

@@ -1,5 +1,6 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useLoad } from '@/hooks/useLoad'
 import Link from 'next/link'
 import { ArrowLeft, Check, ExternalLink, Loader2, Lock, X } from 'lucide-react'
 import { getMyRole } from '@/lib/supabase/visits'
@@ -66,7 +67,7 @@ export default function AdminIdentidadPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  useLoad(load)
 
   if (loading) {
     return <div role="status" className="flex min-h-[60vh] items-center justify-center"><Loader2 size={22} className="animate-spin text-slate-300" aria-label="Cargando" /></div>

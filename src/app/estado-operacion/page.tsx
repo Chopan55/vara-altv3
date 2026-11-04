@@ -5,7 +5,7 @@ import {
   ArrowLeft, Users, Loader2, ChevronRight, ClipboardCheck, AlertCircle,
 } from 'lucide-react'
 import { useOperations } from '@/hooks/useOperations'
-import { tryCreateClient } from '@/lib/supabase/client'
+import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { InviteManager } from '@/components/sharing/InviteManager'
 import { OperationTrustList } from '@/components/trust/OperationTrustList'
 import { cn } from '@/lib/utils'
@@ -37,41 +37,38 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 function useOperationParticipants(operationId: string | null) {
-  const [participants, setParticipants] = useState<ParticipantRow[]>([])
-  const [loading, setLoading] = useState(false)
+  // El resultado recuerda de qué operación es: "cargando" se deriva.
+  const [result, setResult] = useState<{ id: string; rows: ParticipantRow[] } | null>(null)
 
   useEffect(() => {
     if (!operationId) return
     const client = tryCreateClient()
     if (!client) return
-    setLoading(true)
+    let alive = true
     client
       .from('operation_participants')
       .select('id, name, role, email, phone')
       .eq('operation_id', operationId)
       .then(({ data }) => {
-        setParticipants((data as ParticipantRow[]) ?? [])
-        setLoading(false)
+        if (alive) setResult({ id: operationId, rows: (data as ParticipantRow[]) ?? [] })
       })
+    return () => { alive = false }
   }, [operationId])
 
+  const loading = isSupabaseConfigured && operationId !== null && result?.id !== operationId
+  const participants = result && result.id === operationId ? result.rows : []
   return { participants, loading }
 }
 
 export default function EstadoOperacionPage() {
   const { operations, loaded } = useOperations()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [chosenId, setSelectedId] = useState<string | null>(null)
+  // Sin elección, la primera operación.
+  const selectedId = chosenId ?? (loaded ? operations[0]?.id ?? null : null)
 
   const selected = operations.find(o => o.id === selectedId) ?? null
 
   const { participants, loading: loadingParticipants } = useOperationParticipants(selectedId)
-
-  // Auto-select first operation once loaded
-  useEffect(() => {
-    if (loaded && operations.length > 0 && !selectedId) {
-      setSelectedId(operations[0].id)
-    }
-  }, [loaded, operations, selectedId])
 
 
   return (

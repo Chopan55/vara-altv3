@@ -5,7 +5,7 @@ import {
   ArrowLeft, Shield, CheckCircle2, Circle,
   Award, FileText, Loader2, Info,
 } from 'lucide-react'
-import { tryCreateClient } from '@/lib/supabase/client'
+import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { getMyIdentity } from '@/lib/supabase/identity'
 import type { IdentityVerificationRow } from '@/lib/supabase/types'
 import { IdentityVerificationCard } from '@/components/trust/IdentityVerificationCard'
@@ -36,28 +36,33 @@ export default function TrustPassportPage() {
   const reloadIdentity = () => {
     void getMyIdentity().then(r => { setIdentity(r.data); setIdentityNotReady(r.error === 'NOT_READY') })
   }
-  const [loading, setLoading] = useState(true)
+  // Sin base configurada no hay nada que cargar.
+  const [done, setDone] = useState(false)
+  const loading = isSupabaseConfigured && !done
 
   useEffect(() => {
     const client = tryCreateClient()
-    if (!client) {
-      setLoading(false)
-      return
-    }
-    reloadIdentity()
+    if (!client) return
+    let alive = true
+    void getMyIdentity().then(r => {
+      if (!alive) return
+      setIdentity(r.data); setIdentityNotReady(r.error === 'NOT_READY')
+    })
     Promise.all([
       client.auth.getUser(),
       client.from('profiles').select('full_name, phone').maybeSingle(),
       client.from('operations').select('id', { count: 'exact', head: true }),
     ]).then(([{ data: authData }, { data: profileData }, { count }]) => {
+      if (!alive) return
       setUserEmail(authData.user?.email_confirmed_at ? (authData.user.email ?? null) : null)
       setProfile({
         hasName: !!profileData?.full_name?.trim(),
         hasPhone: !!profileData?.phone?.trim(),
       })
       setOperationsCount(count ?? 0)
-      setLoading(false)
-    }).catch(() => setLoading(false))
+      setDone(true)
+    }).catch(() => { if (alive) setDone(true) })
+    return () => { alive = false }
   }, [])
 
   const signals: TrustSignal[] = [

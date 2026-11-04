@@ -40,7 +40,7 @@ export function buildTransaction(op: StoredOperation, propertyPrice = 0): Transa
   const checklist = generateChecklist(op.provinceCode as ProvinceCode, opType, propertyPrice)
   const state = readTaskState(op.id)
 
-  const stages: TransactionStage[] = checklist.stages.map((st, i) => {
+  const stages: TransactionStage[] = checklist.stages.map(st => {
     const stageId = `stage-${st.order}`
     const tasks: Task[] = st.tasks.map(t => ({
       id: t.id,

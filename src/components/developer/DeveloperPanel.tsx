@@ -1,5 +1,6 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useLoad } from '@/hooks/useLoad'
 import Link from 'next/link'
 import { Check, Copy, KeyRound, Loader2, Plus, Webhook, X } from 'lucide-react'
 import {
@@ -45,7 +46,7 @@ export function DeveloperPanel() {
     setKeys(k.data); setHooks(h.data)
     setState(k.error === 'NO_SESSION' || k.error === 'NOT_READY' ? k.error : 'ready')
   }, [])
-  useEffect(() => { void load() }, [load])
+  useLoad(load)
 
   async function addKey(e: React.FormEvent) {
     e.preventDefault()

@@ -141,8 +141,10 @@ function SolicitarInner() {
   const [photosAllowed, setPhotosAllowed] = useState<'SI' | 'NO'>('NO')
 
   // Quién
-  const [partners, setPartners] = useState<PartnerPublicProfile[]>([])
-  const [loadingPartners, setLoadingPartners] = useState(false)
+  // Los partners recuerdan para qué servicio se pidieron: "cargando" se deriva.
+  const [partnersFor, setPartnersFor] = useState<{ type: string; list: PartnerPublicProfile[] } | null>(null)
+  const loadingPartners = !!serviceType && partnersFor?.type !== serviceType
+  const partners = partnersFor && partnersFor.type === serviceType ? partnersFor.list : NO_PARTNERS
   const [mode, setMode] = useState<'VARA_MATCH' | 'CLIENT_CHOICE'>('VARA_MATCH')
   const [chosenId, setChosenId] = useState<string | null>(null)
 
@@ -156,11 +158,11 @@ function SolicitarInner() {
   useEffect(() => { void hasSession().then(setSignedIn) }, [])
 
   // El servicio fija el contexto: mostrar mi propiedad = vendedor; acompañarme = comprador.
+  const { setJourneyType } = vara
   useEffect(() => {
     if (!serviceType) return
-    vara.setJourneyType(journeyToStored(serviceType === 'SHOW_PROPERTY' ? 'SELL' : 'BUY'))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serviceType])
+    setJourneyType(journeyToStored(serviceType === 'SHOW_PROPERTY' ? 'SELL' : 'BUY'))
+  }, [serviceType, setJourneyType])
 
   useEffect(() => {
     void loadUserProperties().then(list => {
@@ -179,10 +181,11 @@ function SolicitarInner() {
   // Partners del servicio apenas se elige: así el paso 2 puede avisar si la zona no tiene cobertura.
   useEffect(() => {
     if (!serviceType) return
-    setLoadingPartners(true)
+    let alive = true
     void listActivePartners(serviceType)
-      .then(setPartners)
-      .finally(() => setLoadingPartners(false))
+      .catch(() => [] as PartnerPublicProfile[])
+      .then(list => { if (alive) setPartnersFor({ type: serviceType, list }) })
+    return () => { alive = false }
   }, [serviceType])
 
   const zoneUncovered = !loadingPartners && locationLabel.trim().length >= 3
@@ -903,6 +906,9 @@ function SolicitarInner() {
     </div>
   )
 }
+
+/** Referencia fija: una lista vacía nueva en cada render invalidaría los cálculos memoizados. */
+const NO_PARTNERS: PartnerPublicProfile[] = []
 
 export default function SolicitarPage() {
   return (

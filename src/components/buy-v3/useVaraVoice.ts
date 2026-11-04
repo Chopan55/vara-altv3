@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
+import { useBrowserState } from '@/hooks/useHydrated'
 
 const VOICE_KEY = 'vara.voice'
 
@@ -21,17 +22,13 @@ export interface PreparedSpeech {
  * sigue de verdad lo que suena. Quien la silencia queda silenciado en ese navegador.
  */
 export function useVaraVoice(onLevel: (level: number) => void) {
-  const [voiceOn, setVoiceOn] = useState(true)
+  const [voiceOn, setVoiceOn] = useBrowserState(() => localStorage.getItem(VOICE_KEY) !== 'off', true)
   const levelRef = useRef(onLevel)
   const current = useRef<{ audio: HTMLAudioElement; url: string } | null>(null)
   const ctx = useRef<AudioContext | null>(null)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => { levelRef.current = onLevel }, [onLevel])
-
-  useEffect(() => {
-    try { if (localStorage.getItem(VOICE_KEY) === 'off') setVoiceOn(false) } catch { /* sin storage */ }
-  }, [])
 
   const stop = useCallback(() => {
     if (timer.current) clearInterval(timer.current)
@@ -55,7 +52,7 @@ export function useVaraVoice(onLevel: (level: number) => void) {
       if (!next) stop()
       return next
     })
-  }, [stop])
+  }, [stop, setVoiceOn])
 
   /** Pide el audio. Devuelve null si el servidor no lo da (sin permiso, tope o error): se sigue solo con texto. */
   const prepare = useCallback(async (text: string): Promise<PreparedSpeech | null> => {

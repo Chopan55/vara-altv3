@@ -26,14 +26,11 @@ interface OpTask {
 }
 
 function useCrossOpTasks(operations: { id: string; title: string; type: 'SELL' | 'BUY' }[], loaded: boolean) {
-  const [allTasks, setAllTasks] = useState<OpTask[]>([])
-  const [tasksLoaded, setTasksLoaded] = useState(false)
+  // El resultado recuerda para qué lista se calculó: "cargado" se deriva, no se prende a mano.
+  const [result, setResult] = useState<{ ops: typeof operations; tasks: OpTask[] } | null>(null)
 
   useEffect(() => {
-    if (!loaded || operations.length === 0) {
-      if (loaded) setTasksLoaded(true)
-      return
-    }
+    if (!loaded || operations.length === 0) return
     let alive = true
     Promise.all(
       operations.map(op =>
@@ -60,15 +57,16 @@ function useCrossOpTasks(operations: { id: string; title: string; type: 'SELL' |
           }
         }
         all.sort((a, b) => a.daysUntil - b.daysUntil)
-        setAllTasks(all)
-        setTasksLoaded(true)
+        setResult({ ops: operations, tasks: all })
       })
-      .catch(() => setTasksLoaded(true))
+      .catch(() => { if (alive) setResult({ ops: operations, tasks: [] }) })
     return () => {
       alive = false
     }
   }, [operations, loaded])
 
+  const tasksLoaded = loaded && (operations.length === 0 || result?.ops === operations)
+  const allTasks = operations.length > 0 ? (result?.tasks ?? []) : []
   return { allTasks, tasksLoaded }
 }
 

@@ -23,7 +23,6 @@ export type ContactCheck =
   | { ok: false; error: string }
 
 // Caracteres de control (incluye saltos de línea): no tienen lugar en un nombre ni en un mail.
-// eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u001f\u007f]/
 const EMAIL = /^[^\s@,;<>()[\]\\"]+@[^\s@,;<>()[\]\\"]+\.[^\s@,;<>()[\]\\"]{2,}$/
 

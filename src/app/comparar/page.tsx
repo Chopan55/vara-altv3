@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
+import { useBrowserState, useBrowserValue } from '@/hooks/useHydrated'
 import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -223,26 +224,28 @@ export default function CompararPage() {
   const [properties, setProperties] = useState<UserProperty[]>([])
   const [loaded, setLoaded] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
-  const [weights, setWeights] = useState<ScoringWeight[]>(() => weightsFromImportance(PRESETS[0].values))
-  const [manual, setManual] = useState<Record<string, ManualAttrs>>({})
+  const [weights, setWeights] = useBrowserState<ScoringWeight[]>(() => {
+    const raw = localStorage.getItem(WEIGHTS_KEY)
+    return raw ? mergeScoringWeights(JSON.parse(raw)) : weightsFromImportance(PRESETS[0].values)
+  }, weightsFromImportance(PRESETS[0].values))
+  const [manual, setManual] = useBrowserState<Record<string, ManualAttrs>>(() => {
+    const raw = localStorage.getItem(MANUAL_KEY)
+    return raw ? (JSON.parse(raw) as Record<string, ManualAttrs>) : {}
+  }, {})
   const [panelOpen, setPanelOpen] = useState(true)
-  const [fromProfile, setFromProfile] = useState<Partial<Record<ScoringCriterion, Importance>>>({})
+  const fromProfile = useBrowserValue<Partial<Record<ScoringCriterion, Importance>>>(
+    () => profileToImportance(loadProfile()) as Partial<Record<ScoringCriterion, Importance>>, {},
+  )
 
   useEffect(() => {
-    setFromProfile(profileToImportance(loadProfile()) as Partial<Record<ScoringCriterion, Importance>>)
+    let alive = true
     loadUserProperties().then(ps => {
+      if (!alive) return
       setProperties(ps)
       setSelected(prev => (prev.length === 0 ? ps.slice(0, MAX_COMPARE).map(p => p.id) : prev))
       setLoaded(true)
     })
-    try {
-      const raw = localStorage.getItem(WEIGHTS_KEY)
-      if (raw) setWeights(mergeScoringWeights(JSON.parse(raw)))
-    } catch {}
-    try {
-      const raw = localStorage.getItem(MANUAL_KEY)
-      if (raw) setManual(JSON.parse(raw) as Record<string, ManualAttrs>)
-    } catch {}
+    return () => { alive = false }
   }, [])
 
   const updateWeights = (next: ScoringWeight[]) => {

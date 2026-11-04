@@ -1,5 +1,6 @@
 'use client'
-import { useState, useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
+import { useBrowserState } from '@/hooks/useHydrated'
 import type { CountryCode } from '@/types'
 import { hasJurisdiction } from '@/lib/jurisdiction'
 
@@ -31,18 +32,14 @@ function readPref(): CountryCode {
 }
 
 export function useCountryPreference() {
-  const [country, setCountryState] = useState<CountryCode>('AR')
-
-  useEffect(() => {
-    setCountryState(readPref())
-  }, [])
+  const [country, setCountryState] = useBrowserState<CountryCode>(readPref, 'AR')
 
   const setCountry = useCallback((code: CountryCode) => {
     try {
       localStorage.setItem(LS_KEY, code)
     } catch {}
     setCountryState(code)
-  }, [])
+  }, [setCountryState])
 
   return { country, setCountry }
 }

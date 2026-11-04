@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { useOperations } from '@/hooks/useOperations'
-import { tryCreateClient } from '@/lib/supabase/client'
+import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import type { OperationDocumentRow } from '@/lib/supabase/types'
 import { isPdfPath, sanitizeDocSummary, summaryTone, type DocSummary } from '@/lib/documents/summary'
 import { apiErrorMessage } from '@/lib/api/client'
@@ -184,17 +184,18 @@ export default function EscrituraPage() {
   )
   const [selectedOpId, setSelectedOpId] = useState<string | null>(null)
   const [docs, setDocs] = useState<DocRow[]>([])
-  const [docsLoading, setDocsLoading] = useState(false)
+  // Para qué operación ya terminó la carga: "cargando" se deriva, no se prende a mano.
+  const [docsFor, setDocsFor] = useState<string | null>(null)
   const analyzeDebounce = useRef<Set<string>>(new Set())
 
   const opId = selectedOpId ?? activeOperationId ?? activeOps[0]?.id ?? null
+  const docsLoading = isSupabaseConfigured && opId !== null && docsFor !== opId
 
   useEffect(() => {
     if (!opId) return
     const client = tryCreateClient()
     if (!client) return
     let alive = true
-    setDocsLoading(true)
     void (async () => {
       try {
         const { data: docsData } = await client
@@ -228,7 +229,7 @@ export default function EscrituraPage() {
       } catch {
         // leave docs empty
       } finally {
-        if (alive) setDocsLoading(false)
+        if (alive) setDocsFor(opId)
       }
     })()
     return () => { alive = false }

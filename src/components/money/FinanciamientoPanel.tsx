@@ -2,7 +2,6 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { ArrowLeft, ChevronRight, Bitcoin, CheckCircle2, AlertCircle, Info } from 'lucide-react'
-import { VaraLogo } from '@/components/ui/VaraLogo'
 import { cn } from '@/lib/utils'
 
 type PaymentMethod = 'CASH' | 'MORTGAGE' | 'MIXED'

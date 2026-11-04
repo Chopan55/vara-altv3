@@ -18,12 +18,13 @@ export default function PropertyPackPage() {
   const [reviewed, setReviewed] = useState(false)
   const { op, loaded } = useSellOperation()
 
+  const opId = op?.id
   useEffect(() => {
     if (!loaded) return
     ;(async () => {
       let src: PackSource = {}
       try { src = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? '{}') as PackSource } catch {}
-      const docs = op ? readHave(op.id) : []
+      const docs = opId ? readHave(opId) : []
       setPack(buildPack(src, docs))
       try {
         const all = await loadSellerPhotos()
@@ -33,7 +34,7 @@ export default function PropertyPackPage() {
         setPhotos(pub.slice(0, 4).map(p => p.url))
       } catch {}
     })()
-  }, [loaded, op?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loaded, opId])
 
   if (!pack) return null
 

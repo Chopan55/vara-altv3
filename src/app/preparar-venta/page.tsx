@@ -1,14 +1,13 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useBrowserState } from '@/hooks/useHydrated'
 import { ArrowLeft, CheckCircle2, Circle } from 'lucide-react'
 import { useSellOperation } from '@/hooks/useSellOperation'
 import { readHave, sellDocumentsFromTxn, sellReadiness, toggleHave } from '@/lib/sellPrep'
 
 export default function PrepararVentaPage() {
   const { op, loaded, getTransactionData } = useSellOperation()
-  const [have, setHave] = useState<string[]>([])
-  useEffect(() => { if (op) setHave(readHave(op.id)) }, [op?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const [have, setHave] = useBrowserState<string[]>(() => (op ? readHave(op.id) : []), [], op?.id ?? null)
   const txn = op ? getTransactionData(op.id) : null
   const docs = txn ? sellDocumentsFromTxn(txn, have) : []
   const r = sellReadiness(docs)

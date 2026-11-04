@@ -1,5 +1,6 @@
 'use client'
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useCallback } from 'react'
+import { useLoad } from '@/hooks/useLoad'
 import {
   OPERATION_STORE,
   mockOperationRelations,
@@ -8,7 +9,7 @@ import type { UserOperationSummary, OperationRelation, Transaction } from '@/typ
 import type { StoredOperation } from '@/lib/userOperations'
 import { useVaraState } from '@/hooks/useVaraState'
 import { resolveOperationContext, type Journey } from '@/lib/journey'
-import { getOperations, toSummary, loadOperations, loadOperation, deleteOperationAnywhere } from '@/lib/userOperations'
+import { getOperations, toSummary, loadOperations, deleteOperationAnywhere } from '@/lib/userOperations'
 import { buildTransaction, clearTaskState } from '@/lib/operationFromChecklist'
 
 export interface OperationsState {
@@ -53,7 +54,7 @@ export function useOperations(): OperationsState {
       .finally(() => setLoaded(true))
   }, [])
 
-  useEffect(() => { reload() }, [reload])
+  useLoad(reload)
 
   const deleteOperation = useCallback((id: string) => {
     clearTaskState(id)

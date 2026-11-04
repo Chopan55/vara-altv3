@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
+import { useLoad } from '@/hooks/useLoad'
 import Link from 'next/link'
 import {
   MapPin, Clock, KeyRound, Eye, EyeOff, Star, ShieldAlert,
@@ -423,7 +424,7 @@ export default function MisVisitasPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  useLoad(load)
 
   if (loading) {
     return (

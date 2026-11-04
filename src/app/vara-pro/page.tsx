@@ -96,7 +96,7 @@ Authorization: Bearer vara_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     {
       "id": "8f2c…",
       "title": "Cabello 1234, CABA",
-      "type": "SELL",
+      "type": "SELL_PROPERTY",
       "status": "ACTIVE",
       "province_code": "CABA",
       "created_at": "2026-10-28T10:12:00Z",
@@ -105,7 +105,8 @@ Authorization: Bearer vara_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   ]
 }
 
-GET /api/v1/operations/{id}   // una operación`
+GET /api/v1/operations/{id}   // una operación
+// Referencia completa: /vara-pro/api`
 
 function PlanCard({ plan }: { plan: Plan }) {
   return (
@@ -261,7 +262,8 @@ export default function VaraProPage() {
           <h2 className="text-sm font-bold text-slate-800 mb-1">Tus claves y webhooks</h2>
           <p className="text-xs text-slate-500 mb-3">
             La API está en preview: si al llamarla recibís <code>disabled</code>, pedinos que la habilitemos.
-            Los webhooks necesitan la extensión pg_net activa en la base.
+            Los webhooks necesitan la extensión pg_net activa en la base.{' '}
+            <Link href="/vara-pro/api" className="font-semibold text-brand-700 underline">Ver la documentación de la API</Link>.
           </p>
           <DeveloperPanel />
         </div>

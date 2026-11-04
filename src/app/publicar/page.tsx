@@ -1,5 +1,6 @@
 'use client'
 import { useState, useCallback, useEffect } from 'react'
+import { useBrowserState } from '@/hooks/useHydrated'
 import Link from 'next/link'
 import { ArrowLeft, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -20,31 +21,26 @@ export default function PublicarPage() {
   const photosState = usePublishPhotos()
   const { photos } = photosState
 
-  const [form, setForm] = useState<PublishForm>(EMPTY_FORM)
+  // Recupera el borrador guardado; si no hay, pre-fill con datos reales de la operación.
+  const [form, setForm] = useBrowserState<PublishForm>(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY)
+      if (saved) return { ...EMPTY_FORM, ...JSON.parse(saved) }
+    } catch { /* borrador ilegible: se ignora */ }
+    const prop = activeTransactionData?.property
+    const partial: Partial<PublishForm> = {}
+    if (prop?.price) partial.price = String(prop.price)
+    if (prop?.surface) partial.surface = String(prop.surface)
+    if (activeTransactionData?.city) partial.city = activeTransactionData.city
+    if (activeTransactionData?.province) partial.neighborhood = activeTransactionData.province
+    if (sellOp?.title) partial.title = sellOp.title
+    // EMPTY_FORM tal cual (misma referencia) para no guardar un borrador vacío.
+    return Object.keys(partial).length > 0 ? { ...EMPTY_FORM, ...partial } : EMPTY_FORM
+  }, EMPTY_FORM, sellOp?.id ?? null)
   const [copyLoading, setCopyLoading] = useState(false)
   const [copyError, setCopyError] = useState<string | null>(null)
   const [highlights, setHighlights] = useState<string[]>([])
   const [copiedPortal, setCopiedPortal] = useState<string | null>(null)
-
-  // Recupera el borrador guardado; si no hay, pre-fill con datos reales de la operación.
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(DRAFT_KEY)
-      if (saved) { setForm({ ...EMPTY_FORM, ...JSON.parse(saved) }); return }
-    } catch {}
-    // Pre-fill desde la operación de venta activa si hay datos de propiedad
-    const prop = activeTransactionData?.property
-    if (prop || sellOp) {
-      const partial: Partial<PublishForm> = {}
-      if (prop?.price) partial.price = String(prop.price)
-      if (prop?.surface) partial.surface = String(prop.surface)
-      if (activeTransactionData?.city) partial.city = activeTransactionData.city
-      if (activeTransactionData?.province) partial.neighborhood = activeTransactionData.province
-      if (sellOp?.title) partial.title = sellOp.title
-      if (Object.keys(partial).length > 0) setForm(prev => ({ ...prev, ...partial }))
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sellOp?.id])
 
   useEffect(() => {
     if (form === EMPTY_FORM) return

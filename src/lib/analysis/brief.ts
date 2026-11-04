@@ -65,7 +65,6 @@ const MAX = { comparables: 6, risks: 5, missing: 8, lines: 8, list: 6 }
 export function clean(s: unknown, n = 300): string {
   if (typeof s !== 'string') return ''
   return s
-    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
     .replace(/[<>`]/g, '')
     .replace(/\s+/g, ' ')

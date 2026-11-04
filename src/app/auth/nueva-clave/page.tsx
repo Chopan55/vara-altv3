@@ -21,12 +21,14 @@ export default function NuevaClavePage() {
 
   // Sin sesión el link venció o ya se usó: mejor decirlo que dejar un form muerto.
   useEffect(() => {
+    let alive = true
     const supabase = tryCreateClient()
-    if (!supabase) { setChecking(false); return }
-    supabase.auth.getSession().then(({ data }) => {
-      setHasSession(Boolean(data.session))
+    void (supabase ? supabase.auth.getSession() : Promise.resolve(null)).then(r => {
+      if (!alive) return
+      setHasSession(Boolean(r?.data.session))
       setChecking(false)
     })
+    return () => { alive = false }
   }, [])
 
   const submit = async (e: React.FormEvent) => {

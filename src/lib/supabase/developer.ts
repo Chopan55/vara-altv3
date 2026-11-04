@@ -9,13 +9,7 @@ import type { ApiKeyRow, WebhookEndpointRow } from './types'
 
 export type DevError = 'NOT_READY' | 'NO_SESSION' | 'INVALID' | 'FAILED'
 
-export const WEBHOOK_EVENTS: { value: string; label: string }[] = [
-  { value: 'DOCUMENT_UPLOADED', label: 'Documento subido' },
-  { value: 'DOCUMENT_STATUS_CHANGED', label: 'Cambio de estado de un documento' },
-  { value: 'OFFER_CREATED', label: 'Oferta creada' },
-  { value: 'OFFER_STATUS_CHANGED', label: 'Cambio de estado de una oferta' },
-  { value: 'OPERATION_CREATED', label: 'Operación creada' },
-]
+export { WEBHOOK_EVENTS } from './developerEvents'
 
 function isMissingSchema(err: { code?: string; message?: string } | null): boolean {
   if (!err) return false

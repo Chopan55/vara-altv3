@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
-  ArrowLeft, ChevronDown, ChevronRight, Copy, Check,
+  ArrowLeft, ChevronDown, Copy, Check,
   AlertTriangle, Phone, FileText, BarChart3, Lightbulb,
   MessageCircle, Mail, HelpCircle, Zap, Shield,
   Target, Ban, Network, Sparkles, RefreshCw, Plus, Clock,
@@ -729,6 +729,7 @@ function OperationLinker({
 function ContextEditor({ ctx, onSave }: { ctx: NegotiationContext; onSave: (c: NegotiationContext) => void }) {
   const [draft, setDraft] = useState<NegotiationContext>(ctx)
   const [opCtxLoading, setOpCtxLoading] = useState(false)
+  const [opCtxError, setOpCtxError] = useState(false)
   const [linkedOp, setLinkedOp] = useState<string | null>(null)
 
   const f = (k: keyof NegotiationContext) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -737,9 +738,11 @@ function ContextEditor({ ctx, onSave }: { ctx: NegotiationContext; onSave: (c: N
   async function loadOperationContext(operationId: string) {
     if (!operationId) return
     setOpCtxLoading(true)
+    setOpCtxError(false)
     try {
-      const res = await fetch(`/api/negotiation/operation-context?operationId=${operationId}`)
+      const res = await fetch(`/api/negotiation/operation-context?operationId=${encodeURIComponent(operationId)}`)
       const data = await res.json()
+      if (!res.ok || !data.context) setOpCtxError(true)
       if (data.context) {
         const c = data.context
         setLinkedOp(c.operationTitle)
@@ -750,7 +753,7 @@ function ContextEditor({ ctx, onSave }: { ctx: NegotiationContext; onSave: (c: N
           deadline: d.deadline || (c.closingDate ?? d.deadline),
         }))
       }
-    } catch { /* silent */ }
+    } catch { setOpCtxError(true) }
     setOpCtxLoading(false)
   }
 
@@ -768,6 +771,9 @@ function ContextEditor({ ctx, onSave }: { ctx: NegotiationContext; onSave: (c: N
         loading={opCtxLoading}
         onLink={loadOperationContext}
       />
+      {opCtxError && (
+        <p role="alert" className="text-xs text-rose-600">No pudimos traer los datos de esa operación. Probá de nuevo.</p>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div>
