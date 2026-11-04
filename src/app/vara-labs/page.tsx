@@ -41,7 +41,7 @@ const FEATURES: LabFeature[] = [
     detalle: 'Seleccioná propiedades de tu lista y VARA las pone en una tabla comparativa. No hay un puntaje único: VARA marca cuál gana en cada dato y el peso te lo das vos.',
     estado: 'LISTO',
     href: '/propiedades',
-    icon: Sparkles,
+    icon: BarChart3,
     tag: 'Compradores',
   },
   {
@@ -78,7 +78,7 @@ const FEATURES: LabFeature[] = [
     id: 'lf-014',
     nombre: 'Cross-Transaction Intelligence',
     descripcion: 'Detecta conflictos entre operaciones: fechas, liquidez, dependencias.',
-    detalle: 'Si estás vendiendo tu departamento para comprar una casa, VARA cruza las dos operaciones: "La escritura de venta está pactada para el 15, pero la de compra requiere el dinero el 10. Hay un gap de 5 días — esto se puede resolver con un puente financiero". Hoy no existe nada así en el mercado.',
+    detalle: 'Si estás vendiendo tu departamento para comprar una casa, VARA cruza las dos operaciones: "La escritura de venta está pactada para el 15, pero la de compra requiere el dinero el 10. Hay un gap de 5 días — esto se puede resolver con un puente financiero".',
     estado: 'LISTO',
     href: '/inteligencia-cruzada',
     icon: Network,
@@ -99,8 +99,8 @@ const FEATURES: LabFeature[] = [
   {
     id: 'lf-010',
     nombre: 'LATAM Ready — Multi-país',
-    descripcion: 'VARA adaptado a México, Chile, Colombia y más países de LATAM.',
-    detalle: 'Selector de país con terminología local (escritura vs. escrituración vs. promesa de compraventa), moneda, locale y reglas fiscales por jurisdicción. Los Jurisdiction Packs reemplazan el hardcoding actual de Argentina. Primer target: México.',
+    descripcion: 'Argentina y México hoy. Chile, Colombia y más países, en camino.',
+    detalle: 'Elegís tu país y VARA usa su terminología, moneda y reglas. Hoy hay paquetes para Argentina y México. Los demás países se suman de a uno, a medida que validamos sus reglas con profesionales locales.',
     estado: 'BETA',
     href: '/configuracion',
     icon: Globe,
@@ -110,7 +110,7 @@ const FEATURES: LabFeature[] = [
     id: 'lf-011',
     nombre: 'Trust Passport',
     descripcion: 'Identidad, verificaciones y señales de confianza de todos los participantes.',
-    detalle: 'Cada comprador, vendedor, Visit Partner y profesional tiene un "pasaporte" con sus verificaciones (identidad, ingresos, referencias) y su historial en VARA. Permite que la contraparte sepa con quién está cerrando antes de avanzar.',
+    detalle: 'Hoy ves tus propias señales de confianza: email confirmado, nombre, teléfono e historial en VARA. Próximo paso: verificación de identidad y que la contraparte pueda ver tu pasaporte antes de avanzar.',
     estado: 'BETA',
     href: '/trust-passport',
     icon: Shield,
@@ -120,14 +120,13 @@ const FEATURES: LabFeature[] = [
     id: 'lf-013',
     nombre: 'Shared Transaction State',
     descripcion: 'Comprador, vendedor y profesionales trabajando en la misma operación.',
-    detalle: 'Una operación compartida donde cada parte ve lo que le corresponde con sus propios permisos. El comprador ve el estado de los documentos del vendedor. El escribano puede cargar tareas. El Visit Partner reporta desde el campo. Todo sincronizado en tiempo real.',
+    detalle: 'Hoy cargás a los participantes de tu operación (contraparte, escribano, inmobiliaria) y tenés sus datos a mano. En desarrollo: que cada uno entre a la operación con su cuenta y vea solo lo que le corresponde.',
     estado: 'BETA',
     href: '/estado-operacion',
     icon: Users,
     tag: 'Todos',
   },
 
-  // ── DISPONIBLES ──
   {
     id: 'lf-003',
     nombre: 'Resumen de escritura',
@@ -161,8 +160,8 @@ const FEATURES: LabFeature[] = [
   {
     id: 'lf-016',
     nombre: 'B2B / VARA Pro',
-    descripcion: 'API pública, white label e integración para inmobiliarias y desarrolladoras.',
-    detalle: 'VARA embebido en la plataforma de una inmobiliaria. API que alimenta sistemas propios. White label con marca del partner. Panel Enterprise con múltiples operaciones, usuarios y roles. La API v1 ya existe en modo preview.',
+    descripcion: 'API de lectura en preview. White label e integraciones, en roadmap.',
+    detalle: 'Hoy: una API v1 de lectura en preview para consultar operaciones desde otro sistema. En roadmap: webhooks, white label y panel para equipos con roles.',
     estado: 'BETA',
     href: '/vara-pro',
     icon: Building2,
@@ -207,42 +206,49 @@ function FeatureCard({ feature }: { feature: LabFeature }) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card overflow-hidden">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full text-left p-4 flex items-start gap-3"
-      >
+      <div className="p-4 flex items-start gap-3">
         <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0',
           isLocked ? 'bg-slate-100' : 'bg-brand-50')}>
-          <Icon size={16} className={isLocked ? 'text-slate-400' : 'text-brand-600'} />
+          <Icon size={16} className={isLocked ? 'text-slate-400' : 'text-brand-600'} aria-hidden="true" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <p className="font-semibold text-slate-900 text-sm">{feature.nombre}</p>
+          <p className="font-semibold text-slate-900 text-sm leading-snug">{feature.nombre}</p>
+          <div className="flex items-center gap-1.5 flex-wrap mt-1">
             <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-full', cfg.bg, cfg.color)}>
               {cfg.label}
             </span>
-            {feature.tag && (
-              <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">
+            {feature.tag && feature.tag !== 'Todos' && (
+              <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">
                 {feature.tag}
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-500 leading-relaxed">{feature.descripcion}</p>
+          <p className="text-xs text-slate-500 leading-relaxed mt-1.5">{feature.descripcion}</p>
+          <div className="flex items-center gap-4 mt-2.5">
+            {feature.href && (
+              <Link
+                href={feature.href}
+                className="inline-flex items-center gap-1 text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors"
+              >
+                Abrir <ChevronRight size={12} aria-hidden="true" />
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => setOpen(o => !o)}
+              aria-expanded={open}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700"
+            >
+              {open ? 'Menos' : 'Cómo funciona'}
+              <ChevronDown size={12} className={cn('transition-transform', open && 'rotate-180')} aria-hidden="true" />
+            </button>
+          </div>
         </div>
-        <ChevronDown size={14} className={cn('flex-shrink-0 mt-1 text-slate-400 transition-transform', open && 'rotate-180')} />
-      </button>
+      </div>
 
       {open && (
-        <div className="px-4 pb-4 pt-0 border-t border-slate-100">
+        <div className="px-4 pb-4 border-t border-slate-100">
           <p className="text-sm text-slate-700 leading-relaxed mt-3 whitespace-pre-line">{feature.detalle}</p>
-          {feature.href && (
-            <Link
-              href={feature.href}
-              className="flex items-center gap-1 mt-3 text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors"
-            >
-              Abrir ahora <ChevronRight size={12} />
-            </Link>
-          )}
         </div>
       )}
     </div>

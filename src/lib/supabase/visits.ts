@@ -304,12 +304,29 @@ export async function saveMyContact(
   const { error } = await supabase.from('partner_contacts').upsert({
     partner_id: partnerId,
     user_id: uid,
-    phone: c.phone ?? null,
-    email: c.email ?? null,
-    address_line: c.addressLine ?? null,
-    address_city: c.addressCity ?? null,
+    ...contactPatch(c),
   })
   return !error
+}
+
+/** Solo los campos que vinieron: un upsert con `null` borraría lo que ya estaba cargado. */
+export function contactPatch(
+  c: { phone?: string; email?: string; addressLine?: string; addressCity?: string },
+): { phone?: string; email?: string; address_line?: string; address_city?: string } {
+  return {
+    ...(c.phone !== undefined ? { phone: c.phone } : {}),
+    ...(c.email !== undefined ? { email: c.email } : {}),
+    ...(c.addressLine !== undefined ? { address_line: c.addressLine } : {}),
+    ...(c.addressCity !== undefined ? { address_city: c.addressCity } : {}),
+  }
+}
+
+export async function getMyContact(partnerId: string): Promise<{ phone: string; email: string } | null> {
+  const supabase = tryCreateClient()
+  if (!supabase) return null
+  const { data } = await supabase.from('partner_contacts').select('phone, email')
+    .eq('partner_id', partnerId).maybeSingle()
+  return data ? { phone: data.phone ?? '', email: data.email ?? '' } : null
 }
 
 // ───────────────────── Onboarding: referencias ─────────────────────
