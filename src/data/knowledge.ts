@@ -439,6 +439,49 @@ El notario no firma si hay adeudos de predial o agua: se pagan antes o con el di
     ],
   },
   {
+    id: 'mx-antilavado',
+    country: 'MX',
+    title: 'Ley antilavado y pago en efectivo',
+    terms: ['antilavado', 'efectivo', 'origen de recursos', 'beneficiario', 'lavado', 'pago'],
+    audience: 'BOTH',
+    stage: 'Documentación del comprador',
+    summary: 'Por qué el notario pregunta de dónde sale el dinero y por qué no conviene pagar en efectivo.',
+    body: `La compraventa de inmuebles es una actividad vigilada por la ley antilavado (Ley Federal para la Prevención e Identificación de Operaciones con Recursos de Procedencia Ilícita). El notario tiene que identificar a las partes, saber quién es el beneficiario real y, según el monto, avisar a la autoridad.
+
+La misma ley limita el uso de efectivo para comprar inmuebles por encima de cierto monto. En la práctica, el precio se paga por transferencia o cheque, y el notario deja constancia de cómo se pagó.`,
+    watchOut: [
+      'Guardá los comprobantes de cada pago, también los del apartado.',
+      'Si alguien te pide pagar una parte en efectivo "por fuera", es una señal de alerta.',
+    ],
+  },
+  {
+    id: 'mx-extranjeros',
+    country: 'MX',
+    title: 'Compra por extranjeros y zona restringida',
+    terms: ['extranjero', 'fideicomiso', 'zona restringida', 'sre', 'permiso', 'costa', 'frontera'],
+    audience: 'BUY',
+    stage: 'Documentación del comprador',
+    summary: 'Qué cambia si quien compra no es mexicano.',
+    body: `Cerca de fronteras y costas (la zona restringida: 100 km desde las fronteras y 50 km desde las costas) un extranjero no puede ser dueño directo: compra a través de un fideicomiso con un banco mexicano, que tiene costos de apertura y anuales.
+
+Fuera de esa zona puede comprar a su nombre, con un permiso de la Secretaría de Relaciones Exteriores. Los dos trámites suman tiempo, así que conviene empezarlos antes de la promesa.`,
+    watchOut: [
+      'Pedí al notario el costo del fideicomiso y su cuota anual antes de cerrar el precio.',
+    ],
+  },
+  {
+    id: 'mx-aviso-preventivo',
+    country: 'MX',
+    title: 'Aviso preventivo',
+    terms: ['aviso preventivo', 'aviso', 'folio', 'registro publico', 'rpp'],
+    audience: 'BUY',
+    stage: 'Certificados y avalúo',
+    summary: 'El aviso del notario al Registro que protege tu compra mientras se firma.',
+    body: `Antes de la firma, el notario presenta un aviso preventivo en el Registro Público de la Propiedad. Mientras está vigente, deja constancia de que el inmueble se está vendiendo y protege al comprador frente a otros actos que alguien quiera inscribir.
+
+Después de la firma, el notario presenta la escritura para su inscripción definitiva.`,
+  },
+  {
     id: 'mx-credito',
     country: 'MX',
     title: 'Crédito bancario e INFONAVIT',

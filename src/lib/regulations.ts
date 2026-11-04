@@ -27,7 +27,10 @@ const MX_DOCS_BUYER: ChecklistStage['tasks'] = [
   { id: 'mx-c2', title: 'RFC con homoclave', description: 'Registro Federal de Contribuyentes vigente. El notario lo requiere para la escritura.', responsibleParty: 'Comprador', documents: ['Constancia de RFC'] },
   { id: 'mx-c3', title: 'Constancia de situación fiscal (SAT)', description: 'Documento emitido por el SAT que acredita el RFC y la situación fiscal del comprador.', responsibleParty: 'Comprador', documents: ['Constancia de situación fiscal'] },
   { id: 'mx-c4', title: 'Documentación de estado civil', description: 'Acta de matrimonio o acta de nacimiento según estado civil. Los bienes de la sociedad conyugal requieren firma de ambos cónyuges.', responsibleParty: 'Comprador', documents: ['Acta de matrimonio o nacimiento'] },
-  { id: 'mx-c5', title: 'CURP', description: 'Clave Única de Registro de Población. Necesaria para trámites ante el RPC.', responsibleParty: 'Comprador', documents: ['Constancia CURP'] },
+  { id: 'mx-c5', title: 'CURP', description: 'Clave Única de Registro de Población. Necesaria para la escritura y el aviso al SAT.', responsibleParty: 'Comprador', documents: ['Constancia CURP'] },
+  { id: 'mx-c6', title: 'Origen de los recursos y forma de pago', description: 'Por la ley antilavado, el notario identifica a las partes, pide declarar de dónde sale el dinero y quién es el beneficiario real. La ley limita los pagos en efectivo para comprar inmuebles: pagá por transferencia o cheque.', responsibleParty: 'Comprador', documents: ['Comprobantes de transferencias', 'Estados de cuenta'], warnings: ['No pagues el precio en efectivo: el notario puede negarse a escriturar'] },
+  { id: 'mx-c7', title: 'Comprobante de domicilio', description: 'Reciente (luz, agua, teléfono o estado de cuenta). Lo pide el notario para identificar al comprador.', responsibleParty: 'Comprador', documents: ['Comprobante de domicilio'] },
+  { id: 'mx-c8', title: 'Si sos extranjero: permiso y fideicomiso', description: 'En la zona restringida (franja de 100 km de las fronteras y 50 km de las costas) un extranjero compra a través de un fideicomiso bancario; fuera de ella necesita un permiso de la Secretaría de Relaciones Exteriores. Si no aplica, marcalo como hecho.', responsibleParty: 'Comprador / Notario', documents: ['Permiso de la SRE', 'Contrato de fideicomiso (si aplica)'], warnings: ['Arrancá este trámite temprano: suma semanas al cierre'] },
 ]
 
 const MX_DOCS_SELLER: ChecklistStage['tasks'] = [
@@ -36,6 +39,8 @@ const MX_DOCS_SELLER: ChecklistStage['tasks'] = [
   { id: 'mx-v3', title: 'Boletas de predial y agua al corriente', description: 'Predial municipal e impuesto al agua al corriente de pago. El notario los requiere para la escritura.', responsibleParty: 'Vendedor', documents: ['Boleta predial', 'Boleta agua'] },
   { id: 'mx-v4', title: 'Certificado de libertad de gravamen', description: 'Emitido por el Registro Público de la Propiedad. Acredita que el inmueble no tiene hipotecas ni embargos.', responsibleParty: 'Vendedor', documents: ['Certificado de libertad de gravamen'] },
   { id: 'mx-v5', title: 'RFC con homoclave (vendedor)', description: 'Registro Federal de Contribuyentes del vendedor para la declaración fiscal de la operación.', responsibleParty: 'Vendedor', documents: ['Constancia de RFC vendedor'] },
+  { id: 'mx-v6', title: 'Acta de matrimonio o de nacimiento', description: 'Si estás casado por bienes mancomunados, tu cónyuge también firma la venta.', responsibleParty: 'Vendedor', documents: ['Acta de matrimonio o nacimiento'] },
+  { id: 'mx-v7', title: 'Comprobantes de que es tu casa habitación', description: 'Si vas a pedir la exención de ISR, el notario pide demostrar que vivís ahí: INE y recibos de luz o estados de cuenta con ese domicilio, a tu nombre.', responsibleParty: 'Vendedor', documents: ['Comprobantes de domicilio a nombre del vendedor'], warnings: ['Sin estos comprobantes la venta puede pagar ISR completo'] },
 ]
 
 const NOTARY_TASKS: ChecklistStage['tasks'] = [
@@ -53,6 +58,7 @@ const NOTARY_TASKS: ChecklistStage['tasks'] = [
  */
 const MX_NOTARY_TASKS: ChecklistStage['tasks'] = [
   { id: 'mxn-1', title: 'Certificado de libertad de gravamen', description: 'El notario lo pide al Registro Público de la Propiedad (RPP): confirma que el inmueble no tiene hipotecas, embargos ni limitaciones.', responsibleParty: 'Notario', documents: ['Certificado de libertad de gravamen'], warnings: ['Si aparece un gravamen, tiene que cancelarse antes o en la misma firma'] },
+  { id: 'mxn-1b', title: 'Aviso preventivo al RPP', description: 'El notario avisa al Registro Público de la Propiedad que se va a firmar la compraventa. Mientras está vigente, protege al comprador frente a otros actos sobre el inmueble.', responsibleParty: 'Notario', documents: ['Aviso preventivo'] },
   { id: 'mxn-2', title: 'Avalúo del inmueble', description: 'Lo hace un perito valuador autorizado. Sirve de base para el ISAI y, si hay crédito, lo exige el banco o INFONAVIT.', responsibleParty: 'Notario / Perito valuador', documents: ['Avalúo'] },
   { id: 'mxn-3', title: 'Constancias de no adeudo', description: 'Predial y agua al corriente; en condominio, constancia de no adeudo de cuotas de mantenimiento.', responsibleParty: 'Vendedor', documents: ['Constancia de no adeudo predial', 'Constancia de no adeudo de agua'] },
   { id: 'mxn-4', title: 'Cálculo del ISR del vendedor e ISAI del comprador', description: 'El notario calcula y retiene el ISR por la venta (puede estar exento si es casa habitación y se cumplen los requisitos del SAT) y el ISAI que paga el comprador.', responsibleParty: 'Notario', documents: ['Liquidación de impuestos'], warnings: ['La exención de ISR por casa habitación tiene requisitos y topes: confirmalos con el notario antes de pactar el precio'] },
@@ -64,6 +70,9 @@ export const MX_CODES = new Set([
   'CDMX', 'JALISCO', 'NUEVO_LEON', 'ESTADO_DE_MEXICO',
   'PUEBLA', 'GUANAJUATO', 'CHIHUAHUA', 'BAJA_CALIFORNIA', 'QUERETARO', 'YUCATAN',
 ])
+
+/** Trámites del notario que van en la etapa de firma; el resto, antes. */
+const MX_SIGNING_TASK_IDS = new Set(['mxn-4', 'mxn-5'])
 
 function makeCostLine(label: string, min: number, max: number, source: string, notes?: string): CostLine {
   return { label, minAmount: min, maxAmount: max, currency: 'USD', isEstimate: true, source, notes }
@@ -210,7 +219,7 @@ export function generateChecklist(
     },
     { order: 2, name: 'Documentación del vendedor', durationDays: '10-20 días', tasks: [...sellerDocs, ...provinceDocTasks] },
     { order: 3, name: 'Documentación del comprador', durationDays: '5-10 días', tasks: buyerDocs },
-    { order: 4, name: 'Certificados y avalúo', durationDays: '10-20 días', tasks: MX_NOTARY_TASKS.slice(0, 3) },
+    { order: 4, name: 'Certificados y avalúo', durationDays: '10-20 días', tasks: MX_NOTARY_TASKS.filter(t => !MX_SIGNING_TASK_IDS.has(t.id)) },
     {
       order: 5, name: 'Promesa de compraventa', durationDays: '1-3 días',
       tasks: [
@@ -220,7 +229,7 @@ export function generateChecklist(
     {
       order: 6, name: 'Firma ante notario', durationDays: '15-45 días',
       tasks: [
-        ...MX_NOTARY_TASKS.slice(3),
+        ...MX_NOTARY_TASKS.filter(t => MX_SIGNING_TASK_IDS.has(t.id)),
         {
           id: 'mx-firma', title: 'Firma de la escritura pública',
           description: 'Se paga el saldo, los honorarios del notario, el ISAI y los derechos de registro. El notario da fe de la compraventa.',

@@ -84,3 +84,18 @@ describe('costos de México como rango honesto', () => {
     expect(cl.costs.stampTaxBuyer.maxAmount).toBe(cl.costs.stampTaxBuyer.minAmount)
   })
 })
+
+describe('requisitos mexicanos que no pueden faltar', () => {
+  it('el checklist incluye antilavado, extranjeros, aviso preventivo y casa habitación', () => {
+    const t = text(generateChecklist('CDMX' as ProvinceCode, 'BUY_PROPERTY', 200_000).stages)
+    for (const must of ['antilavado', 'efectivo', 'fideicomiso', 'Relaciones Exteriores', 'Aviso preventivo', 'casa habitación', 'libertad de gravamen', 'Avalúo', 'INE', 'RFC', 'CURP'])
+      expect(t, must).toContain(must)
+  })
+
+  it('el aviso preventivo va antes de la firma y el ISR en la firma', () => {
+    const st = generateChecklist('CDMX' as ProvinceCode, 'BUY_PROPERTY', 200_000).stages
+    const stageOf = (id: string) => st.find(s => s.tasks.some(t => t.id === id))?.name
+    expect(stageOf('mxn-1b')).toBe('Certificados y avalúo')
+    expect(stageOf('mxn-4')).toBe('Firma ante notario')
+  })
+})
