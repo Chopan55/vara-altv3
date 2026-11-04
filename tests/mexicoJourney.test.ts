@@ -99,3 +99,14 @@ describe('requisitos mexicanos que no pueden faltar', () => {
     expect(stageOf('mxn-4')).toBe('Firma ante notario')
   })
 })
+
+describe('el país sobrevive a la base', () => {
+  it('sin columna country, el país sale de la jurisdicción', async () => {
+    const { rowToStored } = await import('@/lib/supabase/operations')
+    const base = { id: 'x', user_id: 'u', property_id: null, type: 'BUY_PROPERTY', status: 'ACTIVE', title: 'Mi compra', subtitle: null,
+      city: null, current_stage_key: null, stages_state: {}, created_at: '2026-11-01T00:00:00Z', updated_at: '2026-11-01T00:00:00Z', locale: null }
+    expect(rowToStored({ ...base, province: 'Ciudad de México', province_code: 'CDMX', country: null } as never).country).toBe('MX')
+    expect(rowToStored({ ...base, province: 'CABA', province_code: 'CABA', country: null } as never).country).toBe('AR')
+    expect(rowToStored({ ...base, province: 'CDMX', province_code: 'CDMX', country: 'MX' } as never).country).toBe('MX')
+  })
+})

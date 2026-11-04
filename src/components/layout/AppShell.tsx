@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, Menu, X, Inbox,
   LogIn, LogOut, BookOpen, Search, Plus, Sparkles,
   ShieldAlert, Users, MapPin, CalendarCheck,
-  ClipboardCheck, Zap, BarChart2,
+  ClipboardCheck, Zap, BarChart2, Globe,
 } from 'lucide-react'
 import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -86,6 +86,7 @@ const SECONDARY_NAV: NavItem[] = [
   { href: '/guia', icon: BookOpen, label: 'Guía' },
   { href: '/asistente', icon: MessageSquare, label: 'Asistente' },
   { href: '/compartida', icon: Users, label: 'Compartidas conmigo' },
+  { href: '/configuracion', icon: Globe, label: 'País' },
 ]
 
 /** Lo que todavía está en prueba, aparte del menú principal. */
