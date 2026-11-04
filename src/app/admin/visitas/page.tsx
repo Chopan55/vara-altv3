@@ -355,8 +355,13 @@ function CoverageTab({ requests }: { requests: CoverageRequestRow[] }) {
   if (requests.length === 0) return <Empty>Nadie pidió cobertura todavía.</Empty>
 
   // Agrupado por zona: dice a qué barrio conviene ir a buscar partners.
+  const labels: Record<string, string> = {}
+  // "Pilar", "pilar " y "Pilár" son la misma zona: se agrupa por la forma normalizada y se muestra la primera escrita.
   const byZone = requests.reduce<Record<string, number>>((acc, r) => {
-    acc[r.zone_label] = (acc[r.zone_label] ?? 0) + 1
+    const key = r.zone_label.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase()
+    if (!key) return acc
+    labels[key] ??= r.zone_label.trim()
+    acc[key] = (acc[key] ?? 0) + 1
     return acc
   }, {})
 
@@ -371,7 +376,7 @@ function CoverageTab({ requests }: { requests: CoverageRequestRow[] }) {
           .sort((a, b) => b[1] - a[1])
           .map(([zone, count]) => (
             <li key={zone} className="flex items-center justify-between py-2.5">
-              <span className="text-sm text-slate-800">{zone}</span>
+              <span className="text-sm text-slate-800">{labels[zone]}</span>
               <span className="text-sm font-bold text-slate-900 tabular-nums">
                 {count} pedido{count > 1 ? 's' : ''}
               </span>
