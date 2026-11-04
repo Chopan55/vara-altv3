@@ -85,6 +85,7 @@ const SECONDARY_NAV: NavItem[] = [
   { href: '/vara-visit', icon: MapPin, label: 'VARA Visit' },
   { href: '/guia', icon: BookOpen, label: 'Guía' },
   { href: '/asistente', icon: MessageSquare, label: 'Asistente' },
+  { href: '/compartida', icon: Users, label: 'Compartidas conmigo' },
 ]
 
 /** Lo que todavía está en prueba, aparte del menú principal. */

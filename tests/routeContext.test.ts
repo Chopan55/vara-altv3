@@ -15,7 +15,7 @@ describe('mapa de rutas', () => {
   })
 
   it('la operación, Dinero y compartidas no fuerzan nada', () => {
-    for (const r of ['/operacion/abc', '/operacion/abc?tab=documentos', '/dinero', '/dashboard', '/guia', '/asistente', '/acciones', '/vara-visit', '/planes']) {
+    for (const r of ['/operacion/abc', '/operacion/abc?tab=documentos', '/dinero', '/dashboard', '/guia', '/asistente', '/acciones', '/vara-visit', '/planes', '/compartida', '/compartida/abc', '/invitacion/abc']) {
       expect(forcedJourney(r), r).toBeNull()
     }
     expect(routeArea('/operacion/abc')).toBe('OPERATION')
