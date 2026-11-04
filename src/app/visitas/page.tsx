@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, CheckCircle2, Circle, ChevronDown, ChevronUp,
@@ -8,11 +8,17 @@ import {
 import { mockVisitChecklist } from '@/data/mock'
 import { cn } from '@/lib/utils'
 import { useOperations } from '@/hooks/useOperations'
+import { fetchVisitChecklist, saveVisitChecklist, pickNewer, type SavedVisitChecklist } from '@/lib/supabase/visitChecklist'
 
 type ChecklistItem = { id: string; section: string; label: string; checked: boolean; note?: string }
 type UserNotes = Record<string, string>
 
 const SECTION_ORDER = ['Exterior', 'Interior', 'Entorno', 'Documentación']
+
+const freshItems = (): ChecklistItem[] => mockVisitChecklist.map(i => ({ ...i, checked: false, note: undefined }))
+const fromChecked = (ids: string[]): ChecklistItem[] => freshItems().map(i => ({ ...i, checked: ids.includes(i.id) }))
+const toSaved = (items: ChecklistItem[], notes: UserNotes, updatedAt: string): SavedVisitChecklist =>
+  ({ checked: items.filter(i => i.checked).map(i => i.id), notes, updatedAt })
 
 const SECTION_META: Record<string, { tip: string; emoji: string; weight: number }> = {
   Exterior:      { tip: 'Revisá la fachada y techo antes de entrar. El mantenimiento exterior refleja el cuidado general del inmueble.', emoji: '🏠', weight: 25 },
@@ -60,35 +66,68 @@ export default function VisitasPage() {
   const scopeId = activeOperationId ?? operations[0]?.id ?? 'default'
   const checklistKey = `vara_visit_checklist_${scopeId}`
   const notesKey = `vara_visit_notes_${scopeId}`
+  const updatedKey = `vara_visit_updated_${scopeId}`
 
-  const [items, setItems] = useState<ChecklistItem[]>(() => mockVisitChecklist.map(i => ({ ...i, checked: false, note: undefined })))
+  const [items, setItems] = useState<ChecklistItem[]>(freshItems)
   const [notes, setNotes] = useState<UserNotes>({})
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(SECTION_ORDER))
   const [editingNote, setEditingNote] = useState<string | null>(null)
   const [noteInput, setNoteInput] = useState('')
+  const [synced, setSynced] = useState(false)
+  const touched = useRef(false)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Re-load from localStorage whenever the active operation changes
+  // Al cambiar de operación: primero lo del navegador (instantáneo), después la cuenta si es más nueva.
   useEffect(() => {
+    let alive = true
+    touched.current = false
+    let localItems = freshItems()
+    let localNotes: UserNotes = {}
+    let localUpdated: string | null = null
     try {
-      const saved = localStorage.getItem(checklistKey)
-      setItems(saved ? JSON.parse(saved) as ChecklistItem[] : mockVisitChecklist.map(i => ({ ...i, checked: false, note: undefined })))
-    } catch { setItems(mockVisitChecklist.map(i => ({ ...i, checked: false, note: undefined }))) }
+      const savedItems = localStorage.getItem(checklistKey)
+      if (savedItems) localItems = JSON.parse(savedItems) as ChecklistItem[]
+      const savedNotes = localStorage.getItem(notesKey)
+      if (savedNotes) localNotes = JSON.parse(savedNotes) as UserNotes
+      localUpdated = localStorage.getItem(updatedKey)
+    } catch { /* storage bloqueado: arranca vacío */ }
+    setItems(localItems)
+    setNotes(localNotes)
+    setSynced(false)
+
+    void fetchVisitChecklist(scopeId).then(remote => {
+      if (!alive || !remote || touched.current) return
+      const local = localUpdated ? toSaved(localItems, localNotes, localUpdated) : null
+      if (pickNewer(local, remote) === remote) {
+        setItems(fromChecked(remote.checked))
+        setNotes(remote.notes)
+      }
+      setSynced(true)
+    })
+    return () => { alive = false }
+  }, [scopeId, checklistKey, notesKey, updatedKey])
+
+  /** Única vía de escritura: navegador al instante, cuenta con un pequeño retraso. */
+  const commit = (nextItems: ChecklistItem[], nextNotes: UserNotes) => {
+    touched.current = true
+    setItems(nextItems)
+    setNotes(nextNotes)
+    const updatedAt = new Date().toISOString()
     try {
-      const saved = localStorage.getItem(notesKey)
-      setNotes(saved ? JSON.parse(saved) as UserNotes : {})
-    } catch { setNotes({}) }
-  }, [checklistKey, notesKey])
+      localStorage.setItem(checklistKey, JSON.stringify(nextItems))
+      localStorage.setItem(notesKey, JSON.stringify(nextNotes))
+      localStorage.setItem(updatedKey, updatedAt)
+    } catch { /* sin storage: queda en memoria */ }
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      void saveVisitChecklist(scopeId, toSaved(nextItems, nextNotes, updatedAt)).then(ok => { if (ok) setSynced(true) })
+    }, 800)
+  }
 
-  useEffect(() => {
-    try { localStorage.setItem(checklistKey, JSON.stringify(items)) } catch {}
-  }, [items, checklistKey])
-
-  useEffect(() => {
-    try { localStorage.setItem(notesKey, JSON.stringify(notes)) } catch {}
-  }, [notes, notesKey])
+  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current) }, [])
 
   const toggle = (id: string) =>
-    setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i))
+    commit(items.map(i => i.id === id ? { ...i, checked: !i.checked } : i), notes)
 
   const toggleSection = (s: string) =>
     setOpenSections(prev => {
@@ -98,18 +137,11 @@ export default function VisitasPage() {
     })
 
   const saveNote = (id: string, text: string) => {
-    setNotes(prev => ({ ...prev, [id]: text }))
+    commit(items, { ...notes, [id]: text })
     setEditingNote(null)
   }
 
-  const resetAll = () => {
-    setItems(mockVisitChecklist.map(i => ({ ...i, checked: false, note: undefined })))
-    setNotes({})
-    try {
-      localStorage.removeItem(checklistKey)
-      localStorage.removeItem(notesKey)
-    } catch {}
-  }
+  const resetAll = () => commit(freshItems(), {})
 
   const total = items.length
   const done = items.filter(i => i.checked).length
@@ -147,6 +179,9 @@ export default function VisitasPage() {
                 propiedad, así que decimos eso en vez de inventar cuál.
               */}
               <p className="text-sm text-slate-500 mt-1">Qué mirar y qué preguntar cuando vas a ver una propiedad</p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {synced ? 'Guardado en tu cuenta: lo ves desde cualquier dispositivo.' : 'Guardado en este dispositivo.'}
+              </p>
             </div>
             <button onClick={resetAll}
               className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors">
