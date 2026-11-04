@@ -9,7 +9,7 @@ export interface DocAlert {
   taskKey: string
   taskTitle: string
   severity: AlertSeverity
-  reason: 'OVERDUE' | 'DUE_SOON' | 'MISSING' | 'NO_DATE'
+  reason: 'OVERDUE' | 'DUE_SOON' | 'MISSING' | 'NO_DATE' | 'DOC_EXPIRED' | 'DOC_REJECTED' | 'DOC_PENDING'
   daysUntil?: number
   message: string
 }
@@ -26,7 +26,16 @@ export interface OpDocStatus {
   overdue: number
   dueSoon: number
   noDate: number
+  /** Documentos vencidos o rechazados: hay que reemplazarlos. */
+  docProblems: number
   alerts: DocAlert[]
+}
+
+/** Lo mínimo de un documento para alertar. */
+export interface AlertDoc {
+  id: string
+  name: string
+  status: 'PENDING' | 'RECEIVED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'EXPIRED'
 }
 
 function daysFromToday(dateStr: string): number {
@@ -36,7 +45,16 @@ function daysFromToday(dateStr: string): number {
   return Math.round((due.getTime() - today.getTime()) / 86400000)
 }
 
-const HIGH_PRIORITY_KEYS = new Set(['docs', 'offer', 'escritura'])
+// Venta: docs, offer, escritura. Compra: financiamiento, docs, oferta, reserva, boleto, escritura.
+const HIGH_PRIORITY_KEYS = new Set(['docs', 'offer', 'escritura', 'financiamiento', 'oferta', 'reserva', 'boleto'])
+
+function docAlert(operationId: string, operationTitle: string, operationType: 'BUY' | 'SELL', doc: AlertDoc): DocAlert | null {
+  const base = { operationId, operationTitle, operationType, taskKey: `doc:${doc.id}`, taskTitle: doc.name }
+  if (doc.status === 'EXPIRED') return { ...base, severity: 'CRITICAL', reason: 'DOC_EXPIRED', message: 'Documento vencido: pedí uno actualizado' }
+  if (doc.status === 'REJECTED') return { ...base, severity: 'HIGH', reason: 'DOC_REJECTED', message: 'Documento rechazado: hay que reemplazarlo' }
+  if (doc.status === 'PENDING') return { ...base, severity: 'MEDIUM', reason: 'DOC_PENDING', message: 'Todavía no lo recibiste' }
+  return null
+}
 
 function buildAlert(
   operationId: string,
@@ -120,12 +138,21 @@ export function buildOpDocStatus(
   operationTitle: string,
   operationType: 'BUY' | 'SELL',
   tasks: SellerTaskState[],
+  docs: AlertDoc[] = [],
 ): OpDocStatus {
   const alerts: DocAlert[] = []
   let done = 0
   let overdue = 0
   let dueSoon = 0
   let noDate = 0
+  let docProblems = 0
+
+  for (const doc of docs) {
+    const alert = docAlert(operationId, operationTitle, operationType, doc)
+    if (!alert) continue
+    alerts.push(alert)
+    if (alert.reason === 'DOC_EXPIRED' || alert.reason === 'DOC_REJECTED') docProblems++
+  }
 
   for (const task of tasks) {
     if (task.done) { done++; continue }
@@ -150,6 +177,7 @@ export function buildOpDocStatus(
     overdue,
     dueSoon,
     noDate,
+    docProblems,
     alerts,
   }
 }

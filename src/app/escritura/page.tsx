@@ -9,7 +9,8 @@ import {
 import { useOperations } from '@/hooks/useOperations'
 import { tryCreateClient } from '@/lib/supabase/client'
 import type { OperationDocumentRow } from '@/lib/supabase/types'
-import type { DocSummary } from '@/app/api/doc-intelligence/route'
+import { isPdfPath, sanitizeDocSummary, summaryTone, type DocSummary } from '@/lib/documents/summary'
+import { apiErrorMessage } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -42,48 +43,51 @@ function statusChipClass(status: string) {
   return 'bg-slate-100 text-slate-500'
 }
 
+const TONE = {
+  unreadable: { bg: 'bg-slate-100', text: 'text-slate-700', icon: Info, iconCls: 'text-slate-500' },
+  issues: { bg: 'bg-red-50', text: 'text-red-800', icon: AlertCircle, iconCls: 'text-red-500' },
+  alerts: { bg: 'bg-amber-50', text: 'text-amber-800', icon: AlertTriangle, iconCls: 'text-amber-600' },
+  clear: { bg: 'bg-emerald-50', text: 'text-emerald-800', icon: CheckCircle2, iconCls: 'text-emerald-500' },
+} as const
+
 function DocSummaryCard({ summary }: { summary: DocSummary }) {
-  const hasIssues = summary.encumbrances.length > 0 || summary.restrictions.length > 0
-  const hasAlerts = summary.alerts.length > 0
-  const [open, setOpen] = useState(hasAlerts || hasIssues)
+  const tone = summaryTone(summary)
+  const [open, setOpen] = useState(tone !== 'clear')
+  const t = TONE[tone]
+  const Icon = t.icon
+  const issues = summary.encumbrances.length + summary.restrictions.length
 
   return (
     <div className="mt-3 rounded-xl border border-slate-200 overflow-hidden">
-      {/* Semáforo */}
-      <div
-        className={cn(
-          'flex items-center gap-2 px-4 py-3',
-          hasAlerts ? 'bg-amber-50' : hasIssues ? 'bg-red-50' : 'bg-emerald-50',
-        )}
-      >
-        {hasAlerts ? (
-          <AlertTriangle size={14} className="text-amber-600 flex-shrink-0" />
-        ) : hasIssues ? (
-          <AlertCircle size={14} className="text-red-500 flex-shrink-0" />
-        ) : (
-          <CheckCircle2 size={14} className="text-emerald-500 flex-shrink-0" />
-        )}
-        <p
-          className={cn(
-            'text-xs font-bold flex-1',
-            hasAlerts ? 'text-amber-800' : hasIssues ? 'text-red-800' : 'text-emerald-800',
-          )}
-        >
-          {hasAlerts
+      {/* Semáforo: las cargas pesan más que las alertas, y "no se pudo leer" nunca se muestra como verde */}
+      <div className={cn('flex items-center gap-2 px-4 py-3', t.bg)}>
+        <Icon size={14} className={cn('flex-shrink-0', t.iconCls)} aria-hidden="true" />
+        <p className={cn('text-xs font-bold flex-1', t.text)}>
+          {tone === 'unreadable'
+            ? 'No pudimos leer el texto de este PDF'
+            : tone === 'issues'
+            ? `${issues} carga${issues !== 1 ? 's' : ''} o restricción${issues !== 1 ? 'es' : ''} detectada${issues !== 1 ? 's' : ''}`
+            : tone === 'alerts'
             ? `${summary.alerts.length} alerta${summary.alerts.length !== 1 ? 's' : ''} para revisar con un profesional`
-            : hasIssues
-            ? 'Se detectaron cargas o restricciones'
-            : 'Sin cargas ni restricciones detectadas'}
+            : 'No se detectaron cargas ni restricciones en el texto'}
         </p>
         <button
           onClick={() => setOpen(v => !v)}
+          aria-label={open ? 'Ocultar detalle' : 'Ver detalle'}
           className="text-slate-400 hover:text-slate-700 flex-shrink-0"
         >
           {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
       </div>
 
-      {open && (
+      {open && tone === 'unreadable' && (
+        <p className="p-4 bg-white text-xs text-slate-600 leading-relaxed">
+          Puede ser un escaneo o una foto convertida a PDF. Que no veamos cargas no significa que no las tenga:
+          pedí una copia digital del documento o revisalo con tu escribano.
+        </p>
+      )}
+
+      {open && tone !== 'unreadable' && (
         <div className="p-4 space-y-4 bg-white">
           {/* Titulares */}
           {summary.holders.length > 0 && (
@@ -165,7 +169,7 @@ function DocSummaryCard({ summary }: { summary: DocSummary }) {
 }
 
 interface DocRow extends OperationDocumentRow {
-  analysisState: 'idle' | 'loading' | 'done' | 'error' | 'unavailable'
+  analysisState: 'idle' | 'loading' | 'done' | 'error'
   summary: DocSummary | null
   errorMsg: string | null
   analyzedAt?: string
@@ -193,23 +197,22 @@ export default function EscrituraPage() {
     setDocsLoading(true)
     void (async () => {
       try {
-        const [{ data: docsData }, { data: summariesData }] = await Promise.all([
-          client
-            .from('operation_documents')
-            .select('*')
-            .eq('operation_id', opId)
-            .order('created_at', { ascending: false }),
-          client
-            .from('document_ai_summaries')
-            .select('document_id, summary, updated_at'),
-        ])
+        const { data: docsData } = await client
+          .from('operation_documents')
+          .select('*')
+          .eq('operation_id', opId)
+          .order('created_at', { ascending: false })
+        const ids = (docsData ?? []).map(d => d.id)
+        const { data: summariesData } = ids.length
+          ? await client.from('document_ai_summaries').select('document_id, summary, updated_at').in('document_id', ids)
+          : { data: [] }
         if (!alive) return
-        const summaryMap = new Map<string, { summary: DocSummary; updated_at: string }>(
-          (summariesData ?? []).map(s => [
-            s.document_id,
-            { summary: s.summary as unknown as DocSummary, updated_at: s.updated_at as string },
-          ]),
-        )
+        // Los análisis guardados también pasan por la validación: uno viejo o roto no rompe la pantalla.
+        const summaryMap = new Map<string, { summary: DocSummary; updated_at: string }>()
+        for (const row of summariesData ?? []) {
+          const summary = sanitizeDocSummary(row.summary)
+          if (summary) summaryMap.set(row.document_id, { summary, updated_at: row.updated_at as string })
+        }
         setDocs(
           (docsData ?? []).map(d => {
             const saved = summaryMap.get(d.id)
@@ -255,15 +258,21 @@ export default function EscrituraPage() {
       body: JSON.stringify({ documentId: docId }),
     })
       .then(async res => {
-        if (res.status === 403) {
-          setDocs(prev => prev.map(d => d.id === docId ? { ...d, analysisState: 'unavailable' } : d))
+        const data = await res.json().catch(() => ({})) as { summary?: unknown; error?: string }
+        if (!res.ok) {
+          // Los códigos ("ai_unavailable") no se muestran; las frases del control de IA sí.
+          const human = typeof data.error === 'string' && data.error.includes(' ') ? data.error : undefined
+          const msg = res.status === 403 && !human ? 'Análisis IA no disponible en este momento.' : apiErrorMessage(res.status, human)
+          setDocs(prev => prev.map(d => d.id === docId
+            ? { ...d, analysisState: d.summary ? 'done' : 'error', errorMsg: d.summary ? null : msg, retryFailed: !!d.summary }
+            : d))
           return
         }
-        if (!res.ok) throw new Error(`${res.status}`)
-        const data = await res.json() as { summary: DocSummary }
+        const summary = sanitizeDocSummary(data.summary)
+        if (!summary) throw new Error('respuesta inválida')
         setDocs(prev =>
           prev.map(d => d.id === docId
-            ? { ...d, analysisState: 'done', summary: data.summary, analyzedAt: new Date().toISOString(), retryFailed: false }
+            ? { ...d, analysisState: 'done', summary, analyzedAt: new Date().toISOString(), retryFailed: false }
             : d),
         )
       })
@@ -385,8 +394,7 @@ export default function EscrituraPage() {
                 </h2>
                 <div className="space-y-3">
                   {docs.map(doc => {
-                    const canAnalyze = !!doc.storage_path &&
-                      (doc.storage_path.endsWith('.pdf') || doc.category === 'ESCRITURA')
+                    const canAnalyze = isPdfPath(doc.storage_path)
                     return (
                       <div
                         key={doc.id}
@@ -451,19 +459,15 @@ export default function EscrituraPage() {
                               </div>
                             )}
 
-                            {doc.analysisState === 'unavailable' && (
-                              <p className="mt-2 text-[10px] text-slate-400">
-                                Análisis IA no disponible en este momento.
-                              </p>
-                            )}
-
                             {doc.analysisState === 'error' && (
                               <p className="mt-2 text-[10px] text-red-500">{doc.errorMsg}</p>
                             )}
 
-                            {!canAnalyze && !doc.storage_path && (
+                            {!canAnalyze && (
                               <p className="mt-1.5 text-[10px] text-slate-400">
-                                Sin archivo — subí el PDF para activar el análisis IA
+                                {doc.storage_path
+                                  ? 'El análisis IA lee solo PDF. Subí este documento en PDF para analizarlo.'
+                                  : 'Sin archivo — subí el PDF para activar el análisis IA'}
                               </p>
                             )}
                           </div>

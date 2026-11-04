@@ -6,6 +6,7 @@ import {
   Loader2, ChevronDown, Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { apiErrorMessage } from '@/lib/api/client'
 import type {
   NegotiationMode, NegotiationContext, NegotiationResponse, EmotionAlert,
 } from '@/app/api/negotiation/route'
@@ -124,8 +125,8 @@ export function OperationNegotiation({ operationTitle, operationCity, country = 
       if (res.status === 402) { setError('Sin crédito de IA. Contactá soporte.'); return }
       if (res.status === 429) { setError('Demasiados pedidos. Esperá un minuto.'); return }
 
-      const data = await res.json() as { result?: NegotiationResponse; error?: string }
-      if (data.error) { setError(data.error); return }
+      const data = await res.json() as { result?: NegotiationResponse; error?: string; message?: string }
+      if (data.error || !res.ok) { setError(apiErrorMessage(res.status, data.message)); return }
       if (data.result) setResult(data.result)
     } catch {
       setError('No pudimos conectarnos. Revisá tu conexión.')

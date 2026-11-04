@@ -3,13 +3,18 @@ import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, Workflow, Zap, ChevronDown, ChevronRight,
-  ToggleLeft, ToggleRight, Info, Loader2,
+  ToggleLeft, ToggleRight, Info, Loader2, BellRing,
 } from 'lucide-react'
 import {
-  BUILT_IN_RULES, CATEGORY_LABELS, TRIGGER_LABELS, ACTION_LABELS,
-  type WorkflowRule,
+  BUILT_IN_RULES, CATEGORY_LABELS, TRIGGER_LABELS, ACTION_LABELS, runWorkflows,
+  type WorkflowRule, type WorkflowSnapshot,
 } from '@/lib/workflowEngine'
 import { fetchWorkflowOverrides } from '@/lib/supabase/workflowOverrides'
+import { useOperations } from '@/hooks/useOperations'
+import { fetchOperationTasks } from '@/lib/supabase/sellerTasks'
+import { fetchDocuments } from '@/lib/supabase/documents'
+import { fetchOffers } from '@/lib/supabase/offers'
+import { fetchActivity } from '@/lib/supabase/activity'
 import { cn } from '@/lib/utils'
 
 const CATEGORY_ORDER: WorkflowRule['category'][] = [
@@ -119,7 +124,32 @@ function RuleCard({
   )
 }
 
+/** Estado real de cada operación, para correr las reglas contra él. */
+function useSnapshots() {
+  const { operations, loaded } = useOperations()
+  const [snaps, setSnaps] = useState<(WorkflowSnapshot & { title: string })[] | null>(null)
+  useEffect(() => {
+    if (!loaded) return
+    let alive = true
+    void Promise.all(operations.map(async op => {
+      const [tasks, docs, offers, activity] = await Promise.all([
+        fetchOperationTasks(op.id, op.type), fetchDocuments(op.id), fetchOffers(op.id), fetchActivity(op.id, 1),
+      ])
+      return {
+        operationId: op.id, title: op.title, type: op.type,
+        tasks: tasks ?? [], docs, offers,
+        lastActivityAt: activity[0]?.createdAt,
+      }
+    })).then(list => { if (alive) setSnaps(list) }).catch(() => { if (alive) setSnaps([]) })
+    return () => { alive = false }
+  }, [operations, loaded])
+  return snaps
+}
+
+const PRIORITY_DOT = { HIGH: 'bg-red-500', MEDIUM: 'bg-amber-400', LOW: 'bg-slate-300' } as const
+
 export default function WorkflowsPage() {
+  const snaps = useSnapshots()
   const [rules, setRules] = useState<WorkflowRule[]>(BUILT_IN_RULES)
   const [saving, setSaving] = useState(false)
   const [loadingOverrides, setLoadingOverrides] = useState(true)
@@ -137,6 +167,10 @@ export default function WorkflowsPage() {
   }, [])
 
   const enabledCount = rules.filter(r => r.enabled).length
+  const fired = useMemo(
+    () => (snaps ?? []).flatMap(sn => runWorkflows(sn, rules).map(r => ({ ...r, opTitle: sn.title }))),
+    [snaps, rules],
+  )
 
   const grouped = useMemo(
     () => CATEGORY_ORDER.map(cat => ({
@@ -158,7 +192,9 @@ export default function WorkflowsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled }),
     })
+      .then(res => { if (!res.ok) throw new Error(String(res.status)) })
       .catch(() => {
+        // Sin guardar no se muestra como cambiada: volvería a su estado al recargar.
         setRules(prev => prev.map(r => r.id === id ? { ...r, enabled: prevEnabled } : r))
       })
       .finally(() => setSaving(false))
@@ -196,13 +232,46 @@ export default function WorkflowsPage() {
             <div>
               <p className="text-xs font-bold text-brand-700 mb-1">Qué son las automatizaciones</p>
               <p className="text-xs text-brand-600 leading-relaxed">
-                Reglas del tipo <strong>Si X pasa → hacé Y</strong>. VARA evalúa el estado de tus
-                operaciones y activa la acción automáticamente. Activá o desactivá cada regla
-                según tu estilo de trabajo.
+                Reglas del tipo <strong>Si X pasa → VARA te avisa</strong>. Cada vez que abrís VARA,
+                las reglas activas revisan tus tareas, documentos, ofertas y actividad, y te muestran
+                lo que encontraron acá abajo. Por ahora son avisos dentro de la app: no mandan mails
+                ni crean tareas solas.
               </p>
             </div>
           </div>
         </div>
+
+        {/* Lo que las reglas activas detectan hoy, con el estado real de tus operaciones */}
+        <section aria-label="Lo que detectan hoy" className="mb-6 rounded-2xl border border-slate-200/70 bg-white shadow-card">
+          <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+            <BellRing size={14} className="text-brand-500" aria-hidden="true" />
+            <h2 className="text-sm font-bold text-slate-800">Lo que tus reglas detectan hoy</h2>
+          </div>
+          {snaps === null ? (
+            <p role="status" className="flex items-center justify-center gap-2 py-5 text-xs text-slate-400">
+              <Loader2 size={13} className="animate-spin" aria-hidden="true" /> Revisando tus operaciones…
+            </p>
+          ) : snaps.length === 0 ? (
+            <p className="px-4 py-4 text-xs text-slate-500">Cuando tengas una operación, las reglas activas la revisan acá.</p>
+          ) : fired.length === 0 ? (
+            <p className="px-4 py-4 text-xs text-slate-500">Nada para avisar: ninguna regla activa se disparó en tus operaciones.</p>
+          ) : (
+            <ul className="divide-y divide-slate-50">
+              {fired.map(r => (
+                <li key={`${r.operationId}-${r.ruleId}-${r.taskKey ?? ''}`}>
+                  <Link href={`/operacion/${r.operationId}`} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50">
+                    <span aria-hidden="true" className={cn('mt-1.5 h-2 w-2 flex-shrink-0 rounded-full', PRIORITY_DOT[r.priority])} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm text-slate-800">{r.message}</span>
+                      <span className="block text-[11px] text-slate-400">{r.opTitle}{r.taskKey ? ` · tarea ${r.taskKey}` : ''} · {r.ruleName}</span>
+                    </span>
+                    <ChevronRight size={13} className="mt-1 flex-shrink-0 text-slate-300" aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         {/* Reglas por categoría */}
         <div className="space-y-6">

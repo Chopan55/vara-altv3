@@ -2,9 +2,14 @@
  * VARA Workflow Engine — lf-015
  *
  * Motor de reglas basado en eventos para operaciones inmobiliarias.
- * Las reglas se evalúan del lado del cliente contra el estado actual de la operación.
- * En el futuro, las reglas se guardarán en Supabase y el engine se ejecutará en el servidor.
+ *
+ * `deriveEvents` lee el estado real de una operación (tareas, documentos, ofertas,
+ * última actividad) y `runWorkflows` evalúa las reglas activas contra esos eventos.
+ * Se ejecuta cuando el usuario abre VARA: las acciones son avisos y sugerencias en
+ * la app. No manda mails ni crea tareas solo: eso necesitaría un servidor programado.
  */
+
+import type { AlertDoc } from '@/lib/docAlerts'
 
 export type WorkflowTrigger =
   | 'TASK_OVERDUE'
@@ -50,6 +55,10 @@ export interface WorkflowEvent {
   operationId: string
   taskKey?: string
   documentCategory?: string
+  /** TASK_DUE_SOON: días que faltan. Se compara con `daysThreshold` de la regla. */
+  daysUntil?: number
+  /** OPERATION_STALLED: días sin actividad. Se compara con `stallDays`. */
+  idleDays?: number
   timestamp: Date
 }
 
@@ -59,6 +68,8 @@ export interface WorkflowResult {
   action: WorkflowAction
   message: string
   priority: 'HIGH' | 'MEDIUM' | 'LOW'
+  operationId?: string
+  taskKey?: string
 }
 
 /** Reglas built-in de VARA para el mercado argentino */
@@ -69,7 +80,7 @@ export const BUILT_IN_RULES: WorkflowRule[] = [
     name: 'Alerta de documentos vencidos',
     description: 'Cuando una tarea de documentación vence, VARA genera una alerta inmediata y sugiere el próximo paso.',
     trigger: 'TASK_OVERDUE',
-    triggerConfig: { taskKeys: ['docs', 'escritura', 'offer'] },
+    triggerConfig: { taskKeys: ['docs', 'escritura', 'offer', 'financiamiento', 'oferta', 'reserva', 'boleto'] },
     action: 'SEND_ALERT',
     actionConfig: { message: 'Revisá esta tarea urgente', priority: 'HIGH' },
     operationType: 'BOTH',
@@ -81,7 +92,7 @@ export const BUILT_IN_RULES: WorkflowRule[] = [
     name: 'Recordatorio 3 días antes',
     description: 'VARA te avisa 3 días antes de que venza cualquier tarea crítica (docs, oferta, escritura).',
     trigger: 'TASK_DUE_SOON',
-    triggerConfig: { taskKeys: ['docs', 'offer', 'escritura'], daysThreshold: 3 },
+    triggerConfig: { taskKeys: ['docs', 'offer', 'escritura', 'financiamiento', 'oferta', 'reserva', 'boleto'], daysThreshold: 3 },
     action: 'SEND_ALERT',
     actionConfig: { message: 'Tarea próxima a vencer', priority: 'MEDIUM' },
     operationType: 'BOTH',
@@ -103,7 +114,7 @@ export const BUILT_IN_RULES: WorkflowRule[] = [
   {
     id: 'wr-004',
     name: 'Inhibición cargada → Tarea de revisión legal',
-    description: 'Cuando se sube un documento de inhibición, VARA crea automáticamente una tarea de revisión legal.',
+    description: 'Cuando se sube un documento de inhibición, VARA te sugiere revisarlo con un profesional.',
     trigger: 'DOCUMENT_UPLOADED',
     triggerConfig: {},
     action: 'CREATE_FOLLOW_UP_TASK',
@@ -143,7 +154,7 @@ export const BUILT_IN_RULES: WorkflowRule[] = [
   {
     id: 'wr-007',
     name: 'Reserva aceptada → Lista escritura',
-    description: 'Cuando la tarea de oferta/reserva está completa, VARA crea automáticamente la lista de tareas de escrituración.',
+    description: 'Cuando la tarea de oferta/reserva está completa, VARA te sugiere arrancar con la escrituración.',
     trigger: 'TASK_COMPLETED',
     triggerConfig: { taskKeys: ['offer'] },
     action: 'CREATE_FOLLOW_UP_TASK',
@@ -155,7 +166,7 @@ export const BUILT_IN_RULES: WorkflowRule[] = [
   {
     id: 'wr-008',
     name: 'Escritura próxima → Checklist final',
-    description: '3 días antes de la escritura, VARA genera un checklist de verificación final.',
+    description: '3 días antes de la escritura, VARA te recuerda revisar el checklist final.',
     trigger: 'TASK_DUE_SOON',
     triggerConfig: { taskKeys: ['escritura'], daysThreshold: 3 },
     action: 'SUGGEST_NEXT_STEP',
@@ -179,10 +190,12 @@ export function evaluateEvent(
     if (rule.operationType !== 'BOTH' && rule.operationType !== operationType) continue
     if (rule.trigger !== event.type) continue
 
-    const { taskKeys } = rule.triggerConfig
+    const { taskKeys, daysThreshold, stallDays } = rule.triggerConfig
     if (taskKeys && taskKeys.length > 0 && event.taskKey) {
       if (!taskKeys.includes(event.taskKey)) continue
     }
+    if (daysThreshold !== undefined && event.daysUntil !== undefined && event.daysUntil > daysThreshold) continue
+    if (stallDays !== undefined && (event.idleDays ?? 0) < stallDays) continue
 
     results.push({
       ruleId: rule.id,
@@ -190,6 +203,8 @@ export function evaluateEvent(
       action: rule.action,
       message: rule.actionConfig.message ?? rule.name,
       priority: rule.actionConfig.priority ?? 'MEDIUM',
+      operationId: event.operationId,
+      taskKey: event.taskKey,
     })
   }
 
@@ -220,4 +235,77 @@ export const ACTION_LABELS: Record<WorkflowAction, string> = {
   SUGGEST_NEXT_STEP: 'Sugerir próximo paso',
   NOTIFY_PARTY: 'Notificar a la contraparte',
   ESCALATE: 'Escalar',
+}
+
+// ─────────────────────── Ejecución contra el estado real ───────────────────────
+
+export interface WorkflowSnapshot {
+  operationId: string
+  type: 'BUY' | 'SELL'
+  tasks: { key: string; done: boolean; dueDate?: string }[]
+  docs: AlertDoc[]
+  offers: { party: 'BUYER' | 'SELLER'; status: string }[]
+  /** Última actividad registrada (ms). Sin dato no se considera estancada. */
+  lastActivityAt?: number
+}
+
+const DAY = 86_400_000
+
+function daysBetween(from: number, isoDay: string): number {
+  const today = new Date(from)
+  today.setHours(0, 0, 0, 0)
+  return Math.round((new Date(isoDay + 'T00:00:00').getTime() - today.getTime()) / DAY)
+}
+
+/** Traduce el estado de una operación a los eventos que las reglas entienden. */
+export function deriveEvents(s: WorkflowSnapshot, now: number = Date.now()): WorkflowEvent[] {
+  const ts = new Date(now)
+  const ev: WorkflowEvent[] = []
+  for (const t of s.tasks) {
+    if (t.done) {
+      ev.push({ type: 'TASK_COMPLETED', operationId: s.operationId, taskKey: t.key, timestamp: ts })
+    } else if (t.dueDate) {
+      const days = daysBetween(now, t.dueDate)
+      ev.push(days < 0
+        ? { type: 'TASK_OVERDUE', operationId: s.operationId, taskKey: t.key, timestamp: ts }
+        : { type: 'TASK_DUE_SOON', operationId: s.operationId, taskKey: t.key, daysUntil: days, timestamp: ts })
+    }
+  }
+  if (s.docs.length > 0 && s.docs.every(d => d.status === 'RECEIVED' || d.status === 'APPROVED')) {
+    ev.push({ type: 'ALL_DOCS_COMPLETE', operationId: s.operationId, timestamp: ts })
+  }
+  // Oferta de la contraparte esperando respuesta.
+  const counterparty = s.type === 'SELL' ? 'BUYER' : 'SELLER'
+  if (s.offers.some(o => o.party === counterparty && (o.status === 'SENT' || o.status === 'COUNTERED'))) {
+    ev.push({ type: 'OFFER_RECEIVED', operationId: s.operationId, timestamp: ts })
+  }
+  if (s.lastActivityAt !== undefined) {
+    ev.push({ type: 'OPERATION_STALLED', operationId: s.operationId, idleDays: Math.floor((now - s.lastActivityAt) / DAY), timestamp: ts })
+  }
+  return ev
+}
+
+/**
+ * Corre las reglas activas contra una operación. Una sugerencia cuyo próximo paso
+ * ya está hecho no se muestra: "iniciá la escrituración" no sirve si ya se escrituró.
+ */
+export function runWorkflows(s: WorkflowSnapshot, rules: WorkflowRule[], now: number = Date.now()): WorkflowResult[] {
+  const done = new Set(s.tasks.filter(t => t.done).map(t => t.key))
+  const seen = new Set<string>()
+  const out: WorkflowResult[] = []
+  for (const event of deriveEvents(s, now)) {
+    for (const r of evaluateEvent(event, rules, s.type)) {
+      const rule = rules.find(x => x.id === r.ruleId)
+      const next = rule?.actionConfig.nextTaskKey
+      if (next && done.has(next)) continue
+      // TASK_COMPLETED sin tareas configuradas no aplica: dispararía por cada tarea hecha.
+      if (event.type === 'TASK_COMPLETED' && !rule?.triggerConfig.taskKeys?.length) continue
+      const key = `${r.ruleId}:${r.taskKey ?? ''}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(r)
+    }
+  }
+  const rank = { HIGH: 0, MEDIUM: 1, LOW: 2 }
+  return out.sort((a, b) => rank[a.priority] - rank[b.priority])
 }

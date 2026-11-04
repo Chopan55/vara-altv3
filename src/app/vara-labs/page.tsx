@@ -150,8 +150,8 @@ const FEATURES: LabFeature[] = [
   {
     id: 'lf-015',
     nombre: 'Event Engine + Workflow Engine',
-    descripcion: 'Automatizaciones, triggers y workflows configurables por país.',
-    detalle: 'La base técnica para que VARA pueda automatizar: "cuando el comprador sube la inhibición, notificá al escribano y creá la tarea de revisión". Habilita integraciones B2B y customización por país sin tocar código.',
+    descripcion: 'Reglas que revisan tus operaciones y te avisan: tareas vencidas, ofertas sin responder, operaciones frenadas.',
+    detalle: 'Activás las reglas que te sirven y, cada vez que abrís VARA, revisan tus tareas, documentos, ofertas y actividad. Lo que detectan aparece en Automatizaciones. Por ahora son avisos dentro de la app: todavía no mandan mails ni crean tareas solas.',
     estado: 'LISTO',
     href: '/workflows',
     icon: Workflow,

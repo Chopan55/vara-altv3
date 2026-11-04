@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useOperations } from '@/hooks/useOperations'
 import { fetchOperationTasks } from '@/lib/supabase/sellerTasks'
+import { fetchDocuments } from '@/lib/supabase/documents'
 import { buildOpDocStatus, mergeAndRankAlerts, type OpDocStatus, type DocAlert } from '@/lib/docAlerts'
 import { cn } from '@/lib/utils'
 
@@ -58,13 +59,14 @@ function useDocStatuses(
     let alive = true
     Promise.all(
       operations.map(op =>
-        fetchOperationTasks(op.id, op.type as 'SELL' | 'BUY').then(tasks => ({ op, tasks: tasks ?? [] })),
+        Promise.all([fetchOperationTasks(op.id, op.type as 'SELL' | 'BUY'), fetchDocuments(op.id)])
+          .then(([tasks, docs]) => ({ op, tasks: tasks ?? [], docs })),
       ),
     )
       .then(results => {
         if (!alive) return
-        const built = results.map(({ op, tasks }) =>
-          buildOpDocStatus(op.id, op.title, op.type as 'BUY' | 'SELL', tasks),
+        const built = results.map(({ op, tasks, docs }) =>
+          buildOpDocStatus(op.id, op.title, op.type as 'BUY' | 'SELL', tasks, docs),
         )
         setStatuses(built)
       })
@@ -237,6 +239,11 @@ export default function AlertasPage() {
                         {status.dueSoon > 0 && status.overdue === 0 && (
                           <span className="text-[10px] text-amber-600 font-semibold">
                             {status.dueSoon} por vencer
+                          </span>
+                        )}
+                        {status.docProblems > 0 && (
+                          <span className="text-[10px] text-red-600 font-semibold">
+                            {status.docProblems} doc. para reemplazar
                           </span>
                         )}
                       </div>

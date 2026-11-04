@@ -1,11 +1,15 @@
 'use client'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, BarChart3, Plus, Trash2, Loader2,
-  TrendingUp, TrendingDown, Minus, ChevronRight,
+  TrendingUp, TrendingDown, ChevronRight, Download, Lock,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useOperations } from '@/hooks/useOperations'
+import { fetchOffers } from '@/lib/supabase/offers'
+import { chainStats } from '@/lib/negotiation/chain'
+import { apiErrorMessage, safeJson } from '@/lib/api/client'
+import type { Offer } from '@/lib/offers/model'
 
 /**
  * Negotiation Intelligence Avanzada — análisis de la cadena de ofertas.
@@ -61,26 +65,37 @@ const QUIEN_LABELS: Record<OfferRound['quien'], string> = {
   inmobiliaria: 'Inmobiliaria',
 }
 
-function momentumLabel(rounds: OfferRound[]): { label: string; icon: React.ElementType; color: string } | null {
-  if (rounds.length < 2) return null
-  const parsedAmounts = rounds
-    .map(r => parseFloat(r.monto.replace(/[^0-9.-]/g, '')))
-    .filter(n => !isNaN(n))
-  if (parsedAmounts.length < 2) return null
-  const first = parsedAmounts[0]
-  const last = parsedAmounts[parsedAmounts.length - 1]
-  const delta = ((last - first) / first) * 100
-  if (delta < -1) return { label: `Ajuste acumulado: ${delta.toFixed(1)}%`, icon: TrendingDown, color: 'text-emerald-600' }
-  if (delta > 1) return { label: `Ajuste acumulado: +${delta.toFixed(1)}%`, icon: TrendingUp, color: 'text-red-500' }
-  return { label: 'Precio prácticamente sin cambio', icon: Minus, color: 'text-slate-500' }
-}
-
 export default function CadenaNegociacionPage() {
   const [rounds, setRounds] = useState<OfferRound[]>([newRound(1)])
   const [objetivo, setObjetivo] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ChainAnalysis | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [walkAway, setWalkAway] = useState('')
+  const { activeOperationId, operations } = useOperations()
+  const opId = activeOperationId ?? operations[0]?.id ?? null
+  const [offers, setOffers] = useState<Offer[]>([])
+
+  // Las ofertas reales de la operación: la cadena no tiene por qué tipearse dos veces.
+  useEffect(() => {
+    if (!opId) return
+    let alive = true
+    void fetchOffers(opId).then(list => { if (alive) setOffers(list) })
+    return () => { alive = false }
+  }, [opId])
+
+  const importOffers = useCallback(() => {
+    const sorted = [...offers].sort((a, b) => a.createdAt - b.createdAt).slice(-MAX_ROUNDS)
+    setRounds(sorted.map((o, i) => ({
+      id: o.id,
+      ronda: i + 1,
+      quien: o.party === 'BUYER' ? 'comprador' : 'vendedor',
+      monto: `${o.currency} ${o.amount.toLocaleString('es-AR')}`,
+      fecha: new Date(o.createdAt).toISOString().slice(0, 10),
+      nota: o.conditions.length ? o.conditions.join(', ') : undefined,
+    })))
+    setResult(null)
+  }, [offers])
 
   const addRound = useCallback(() => {
     setRounds(prev => [...prev, newRound(prev.length + 1)])
@@ -109,8 +124,10 @@ export default function CadenaNegociacionPage() {
       const history = buildHistoryText(rounds)
       const body = {
         mode: 'strategy',
+        message: `Cadena de ofertas:\n${history}`,
         context: {
           objetivo: objetivo || undefined,
+          walkAway: walkAway.trim() || undefined,
           negotiationHistory: history,
           otherContext: `Analizar la cadena completa de ${rounds.length} ronda${rounds.length !== 1 ? 's' : ''} de negociación. ¿En qué ronda estamos? ¿Qué margen queda? ¿Cuál es el próximo movimiento óptimo?`,
         },
@@ -120,8 +137,13 @@ export default function CadenaNegociacionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      if (!res.ok) throw new Error(`Error ${res.status}`)
-      const data = await res.json()
+      const payload = await safeJson<{ result?: Partial<ChainAnalysis>; error?: string; message?: string }>(res)
+      if (!res.ok) {
+        setError(apiErrorMessage(res.status, payload.message))
+        return
+      }
+      const data = payload.result
+      if (!data?.nextAction) throw new Error('respuesta vacía')
       setResult({
         nextAction: data.nextAction,
         strategy: data.strategy,
@@ -134,9 +156,10 @@ export default function CadenaNegociacionPage() {
     } finally {
       setLoading(false)
     }
-  }, [rounds, objetivo])
+  }, [rounds, objetivo, walkAway])
 
-  const momentum = momentumLabel(rounds)
+  const stats = chainStats(rounds)
+  const fmtPct = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(1)}%`
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -166,11 +189,29 @@ export default function CadenaNegociacionPage() {
             placeholder="Ej: Comprar el departamento a USD 120.000"
             className="w-full text-sm text-slate-800 placeholder-slate-300 bg-slate-50 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-brand-200"
           />
+          <label htmlFor="walkaway" className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-slate-600 mb-2">
+            <Lock size={11} aria-hidden="true" /> Tu límite (opcional, privado)
+          </label>
+          <input
+            id="walkaway"
+            value={walkAway}
+            onChange={e => setWalkAway(e.target.value)}
+            placeholder="Ej: no pagar más de USD 130.000"
+            className="w-full text-sm text-slate-800 placeholder-slate-300 bg-slate-50 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-brand-200"
+          />
+          <p className="text-[11px] text-slate-400 mt-1">VARA lo usa para calibrar la estrategia y nunca lo incluye en una respuesta.</p>
         </div>
+
+        {offers.length > 0 && (
+          <button onClick={importOffers}
+            className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50 py-2.5 text-xs font-semibold text-brand-700 hover:bg-brand-100">
+            <Download size={13} aria-hidden="true" /> Cargar las {offers.length} oferta{offers.length > 1 ? 's' : ''} de tu operación
+          </button>
+        )}
 
         {/* Rondas */}
         <div className="space-y-3 mb-4">
-          {rounds.map((r, idx) => (
+          {rounds.map(r => (
             <div
               key={r.id}
               className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-4"
@@ -261,11 +302,21 @@ export default function CadenaNegociacionPage() {
           )}
         </div>
 
-        {/* Momentum preview */}
-        {momentum && (
-          <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 mb-4">
-            <momentum.icon size={13} className={momentum.color} />
-            <span className={cn('text-xs font-semibold', momentum.color)}>{momentum.label}</span>
+        {/* Dónde está la negociación: cada parte comparada consigo misma */}
+        {(stats.gapPct !== null || stats.sellerMovePct !== null || stats.buyerMovePct !== null) && (
+          <div className="grid grid-cols-3 gap-2 mb-4" aria-label="Estado de la negociación">
+            <div className="rounded-xl bg-slate-50 px-3 py-2">
+              <p className="text-[10px] text-slate-400">Brecha actual</p>
+              <p className="text-sm font-bold text-slate-800">{stats.gapPct !== null ? `${stats.gapPct.toFixed(1)}%` : '—'}</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 px-3 py-2">
+              <p className="text-[10px] text-slate-400 flex items-center gap-1"><TrendingDown size={10} aria-hidden="true" /> Vendedor</p>
+              <p className="text-sm font-bold text-slate-800">{stats.sellerMovePct !== null ? fmtPct(stats.sellerMovePct) : '—'}</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 px-3 py-2">
+              <p className="text-[10px] text-slate-400 flex items-center gap-1"><TrendingUp size={10} aria-hidden="true" /> Comprador</p>
+              <p className="text-sm font-bold text-slate-800">{stats.buyerMovePct !== null ? fmtPct(stats.buyerMovePct) : '—'}</p>
+            </div>
           </div>
         )}
 
