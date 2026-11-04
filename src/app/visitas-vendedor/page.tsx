@@ -163,8 +163,8 @@ export default function VisitasVendedorPage() {
           country: 'AR',
         }),
       })
-      const data = await res.json() as { suggestedReply?: string; analysis?: string; error?: string }
-      const text = data.analysis ?? data.suggestedReply ?? data.error ?? 'Sin análisis disponible.'
+      const data = await res.json() as { result?: { suggestedReply?: string; analysis?: string }; error?: string; message?: string }
+      const text = data.result?.analysis ?? data.result?.suggestedReply ?? data.message ?? (data.error ? 'No pudimos analizar el mensaje. Probá de nuevo en un momento.' : 'Sin análisis disponible.')
       setAnalysis(prev => ({ ...prev, [id]: text }))
     } catch {
       setAnalysis(prev => ({ ...prev, [id]: 'No se pudo analizar. Revisá tu conexión.' }))

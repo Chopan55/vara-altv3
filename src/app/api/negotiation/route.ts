@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+import { scrubWalkAway } from '@/lib/negotiation/walkAway'
 import { NextResponse } from 'next/server'
 import { log } from '@/lib/observability/logger'
 import type { CountryCode } from '@/types'
@@ -359,7 +360,8 @@ export async function POST(req: Request) {
     if (!res.ok) throw new Error(`openai: ${res.status}`)
 
     const data = await res.json() as { choices: Array<{ message: { content: string } }> }
-    const result: NegotiationResponse = JSON.parse(data.choices[0].message.content)
+    // El límite privado se tapa acá aunque el modelo desobedezca el prompt.
+    const result = scrubWalkAway(JSON.parse(data.choices[0].message.content) as NegotiationResponse, ctx.walkAway)
 
     log.info('negotiation.ok', { mode, channel: ctx.channel, country })
     return NextResponse.json({ result })
