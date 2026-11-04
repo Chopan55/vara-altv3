@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { isEnabled } from '@/lib/flags'
+import { anonClient, apiKeyFrom, hashApiKey, isMissingRpc } from '@/lib/api/v1Auth'
 
 /**
  * GET /api/v1/operations/:id
@@ -25,6 +26,18 @@ export async function GET(
 
   const { id } = await params
 
+  // Con clave de API: la base valida la clave y devuelve solo lo del dueño.
+  const apiKey = apiKeyFrom(req)
+  if (apiKey) {
+    const client = anonClient()
+    if (!client) return NextResponse.json({ error: 'internal' }, { status: 500 })
+    const { data, error } = await client.rpc('api_get_operation', { p_key_hash: hashApiKey(apiKey), p_operation_id: id })
+    if (error) return NextResponse.json({ error: isMissingRpc(error) ? 'not_ready' : 'internal' }, { status: isMissingRpc(error) ? 503 : 500 })
+    if (data && 'error' in data) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
+    if (!data) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    return NextResponse.json({ data })
+  }
+
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -42,7 +55,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('operations')
-    .select('id, title, type, status, province_code, property_value_usd, created_at, updated_at')
+    .select('id, title, type, status, province_code, created_at, updated_at')
     .eq('id', id)
     .eq('user_id', user.id)
     .maybeSingle()

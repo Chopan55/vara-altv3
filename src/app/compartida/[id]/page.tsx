@@ -7,6 +7,7 @@ import { getSharedOperation, ROLE_LABELS, type SharingError } from '@/lib/supaba
 import { DOCUMENT_CATEGORY_LABELS, DOCUMENT_STATUS_LABELS, type DocumentCategory, type DocumentStatus } from '@/lib/documents/model'
 import type { SharedOperationView } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
+import { OperationTrustList } from '@/components/trust/OperationTrustList'
 
 /** Vista de solo lectura para quien fue invitado a una operación. */
 
@@ -116,6 +117,8 @@ export default function SharedOperationPage() {
           </ul>
         )}
       </section>
+
+      <OperationTrustList operationId={op.id} />
 
       <p className="flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-[11px] leading-relaxed text-slate-500">
         <Lock size={12} className="mt-0.5 flex-shrink-0" aria-hidden="true" />

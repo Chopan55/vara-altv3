@@ -6,6 +6,9 @@ import {
   Award, FileText, Loader2, Info,
 } from 'lucide-react'
 import { tryCreateClient } from '@/lib/supabase/client'
+import { getMyIdentity } from '@/lib/supabase/identity'
+import type { IdentityVerificationRow } from '@/lib/supabase/types'
+import { IdentityVerificationCard } from '@/components/trust/IdentityVerificationCard'
 import { cn } from '@/lib/utils'
 
 interface TrustSignal {
@@ -28,6 +31,11 @@ export default function TrustPassportPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [profile, setProfile] = useState<ProfileData>({ hasName: false, hasPhone: false })
   const [operationsCount, setOperationsCount] = useState(0)
+  const [identity, setIdentity] = useState<IdentityVerificationRow | null>(null)
+  const [identityNotReady, setIdentityNotReady] = useState(false)
+  const reloadIdentity = () => {
+    void getMyIdentity().then(r => { setIdentity(r.data); setIdentityNotReady(r.error === 'NOT_READY') })
+  }
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -36,6 +44,7 @@ export default function TrustPassportPage() {
       setLoading(false)
       return
     }
+    reloadIdentity()
     Promise.all([
       client.auth.getUser(),
       client.from('profiles').select('full_name, phone').maybeSingle(),
@@ -79,8 +88,12 @@ export default function TrustPassportPage() {
     {
       id: 'identity',
       label: 'Identidad verificada',
-      description: 'DNI o pasaporte cargado y validado.',
-      verified: false,
+      description: identity?.status === 'VERIFIED'
+        ? 'DNI y selfie revisados por VARA.'
+        : identity?.status === 'SUBMITTED'
+        ? 'Documentos enviados, en revisión.'
+        : 'DNI y selfie revisados por una persona de VARA.',
+      verified: identity?.status === 'VERIFIED',
       icon: FileText,
       points: 30,
     },
@@ -212,6 +225,8 @@ export default function TrustPassportPage() {
               </div>
             </div>
 
+            <IdentityVerificationCard row={identity} notReady={identityNotReady} onSubmitted={reloadIdentity} />
+
             {/* Info */}
             <div className="bg-brand-50 rounded-2xl border border-brand-100 p-4">
               <div className="flex items-start gap-2">
@@ -219,9 +234,9 @@ export default function TrustPassportPage() {
                 <div>
                   <p className="text-xs font-bold text-brand-700 mb-1">¿Para qué sirve?</p>
                   <p className="text-xs text-brand-600 leading-relaxed">
-                    Cuando avancés con una contraparte, ambos pueden ver el nivel de
-                    verificación del otro antes de comprometerse. Un puntaje alto genera más
-                    confianza y puede acelerar el cierre de la operación.
+                    Cuando compartís una operación, vos y tus invitados ven las señales del otro
+                    (email confirmado, teléfono, identidad verificada) antes de avanzar. Nunca se
+                    muestran tus archivos ni tus datos de contacto.
                   </p>
                 </div>
               </div>

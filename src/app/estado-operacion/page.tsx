@@ -7,6 +7,7 @@ import {
 import { useOperations } from '@/hooks/useOperations'
 import { tryCreateClient } from '@/lib/supabase/client'
 import { InviteManager } from '@/components/sharing/InviteManager'
+import { OperationTrustList } from '@/components/trust/OperationTrustList'
 import { cn } from '@/lib/utils'
 
 /**
@@ -148,6 +149,8 @@ export default function EstadoOperacionPage() {
                 </div>
 
                 <InviteManager operationId={selected.id} />
+
+                <OperationTrustList operationId={selected.id} />
 
                 {/* Participantes */}
                 <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card overflow-hidden">
