@@ -4,7 +4,7 @@ export const MX_PACK: JurisdictionPack = {
   countryCode: 'MX',
   readiness: 'validation',
   hasCostEngine: true,
-  readinessNote: 'Costos con confianza parcial: validar con un notario de México.',
+  readinessNote: 'Proceso y documentos de México listos. Impuestos como rango estimado: confirmar con el notario.',
   countryName: 'México',
   locale: 'es-MX',
   timezone: 'America/Mexico_City',
@@ -28,7 +28,7 @@ export const MX_PACK: JurisdictionPack = {
 
   defaultProvinceCode: 'CDMX',
   closingStageLabel: 'Firma ante notario',
-  transferTaxLabel: 'ISR',
+  transferTaxLabel: 'ISAI',
   depositLabel: 'Apartado',
 
   neighborhoodLabel: 'Colonia',

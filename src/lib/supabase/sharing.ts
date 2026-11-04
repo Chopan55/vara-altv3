@@ -19,16 +19,6 @@ function isMissingSchema(err: { code?: string; message?: string } | null): boole
     || /does not exist|could not find/i.test(err.message ?? '')
 }
 
-export const ROLE_LABELS: Record<ParticipantRoleDb, string> = {
-  COUNTERPARTY: 'Contraparte',
-  NOTARY: 'Escribano/a',
-  BROKER: 'Inmobiliaria',
-  LAWYER: 'Abogado/a',
-  ACCOUNTANT: 'Contador/a',
-  APPRAISER: 'Tasador/a',
-  BANK: 'Banco',
-  OTHER: 'Otro',
-}
 
 export function inviteUrl(token: string, origin: string): string {
   return `${origin}/invitacion/${token}`

@@ -21,6 +21,34 @@ export const SELLER_TASK_DEFS: SellerTaskDef[] = [
   { key: 'escritura', title: 'Escriturar',                        description: 'Con escribano y comprador',             priority: 'HIGH' },
 ]
 
+/** México: mismas claves (el avance guardado se conserva), nombres y trámites locales. */
+const SELLER_TASK_DEFS_MX: SellerTaskDef[] = [
+  { key: 'docs',      title: 'Reunir documentación del inmueble', description: 'Escritura inscrita, predial y agua al corriente', priority: 'HIGH' },
+  { key: 'price',     title: 'Definir precio de publicación',     description: 'Basado en comparables de la colonia',            priority: 'HIGH' },
+  { key: 'photos',    title: 'Fotos profesionales',               description: 'Al menos 12 fotos de buena calidad',             priority: 'MEDIUM' },
+  { key: 'publish',   title: 'Publicar en portales',              description: 'Inmuebles24, Lamudi, Vivanuncios',               priority: 'MEDIUM' },
+  { key: 'visits',    title: 'Organizar visitas',                 description: 'Coordinar con potenciales compradores',          priority: 'MEDIUM' },
+  { key: 'offer',     title: 'Evaluar ofertas recibidas',         description: 'Apartado y contrato de promesa de compraventa',  priority: 'HIGH' },
+  { key: 'escritura', title: 'Firmar ante notario',               description: 'Escritura pública con el notario y el comprador', priority: 'HIGH' },
+]
+
+const BUYER_TASK_DEFS_MX: SellerTaskDef[] = [
+  { key: 'financiamiento', title: 'Definir financiamiento',          description: 'Crédito bancario, INFONAVIT, FOVISSSTE o recursos propios', priority: 'HIGH' },
+  { key: 'docs',           title: 'Documentación personal',          description: 'INE, RFC, CURP y comprobante de domicilio',                 priority: 'HIGH' },
+  { key: 'visitas',        title: 'Visitar propiedades',             description: 'Coordinar visitas con asesor o vendedor',                   priority: 'MEDIUM' },
+  { key: 'oferta',         title: 'Hacer oferta',                    description: 'Oferta por escrito con condiciones y plazos',              priority: 'HIGH' },
+  { key: 'reserva',        title: 'Dar el apartado',                 description: 'Depósito para separar el inmueble, con recibo',            priority: 'HIGH' },
+  { key: 'boleto',         title: 'Firmar promesa de compraventa',   description: 'Contrato privado: precio, plazos y penas',                 priority: 'HIGH' },
+  { key: 'escritura',      title: 'Firmar ante notario',             description: 'Escritura pública, pago de ISAI e inscripción en el RPP',  priority: 'HIGH' },
+]
+
+/** Las tareas del plan según tipo de operación y país. */
+export function taskDefsFor(type: 'SELL' | 'BUY', country?: string | null): SellerTaskDef[] {
+  const mx = country === 'MX'
+  if (type === 'BUY') return mx ? BUYER_TASK_DEFS_MX : BUYER_TASK_DEFS
+  return mx ? SELLER_TASK_DEFS_MX : SELLER_TASK_DEFS
+}
+
 export const BUYER_TASK_DEFS: SellerTaskDef[] = [
   { key: 'financiamiento', title: 'Definir financiamiento',          description: 'Crédito hipotecario, ahorros o financiación privada', priority: 'HIGH' },
   { key: 'docs',           title: 'Documentación personal',          description: 'DNI, constancias de ingresos, CUIL',                  priority: 'HIGH' },
@@ -122,22 +150,23 @@ async function fetchChecklist(
   })
 }
 
-export async function fetchSellerTasks(operationId: string): Promise<SellerTaskState[] | null> {
-  return fetchChecklist(operationId, SELLER_STAGE, SELLER_TASK_DEFS)
+export async function fetchSellerTasks(operationId: string, country?: string | null): Promise<SellerTaskState[] | null> {
+  return fetchChecklist(operationId, SELLER_STAGE, taskDefsFor('SELL', country))
 }
 
-export async function fetchBuyerTasks(operationId: string): Promise<SellerTaskState[] | null> {
-  return fetchChecklist(operationId, BUYER_STAGE, BUYER_TASK_DEFS)
+export async function fetchBuyerTasks(operationId: string, country?: string | null): Promise<SellerTaskState[] | null> {
+  return fetchChecklist(operationId, BUYER_STAGE, taskDefsFor('BUY', country))
 }
 
 /** Unificado: elige automáticamente SELLER o BUYER según el tipo de operación. */
 export async function fetchOperationTasks(
   operationId: string,
   type: 'SELL' | 'BUY',
+  country?: string | null,
 ): Promise<SellerTaskState[] | null> {
   return type === 'BUY'
-    ? fetchBuyerTasks(operationId)
-    : fetchSellerTasks(operationId)
+    ? fetchBuyerTasks(operationId, country)
+    : fetchSellerTasks(operationId, country)
 }
 
 export async function toggleOperationTask(

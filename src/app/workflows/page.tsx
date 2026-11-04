@@ -133,7 +133,7 @@ function useSnapshots() {
     let alive = true
     void Promise.all(operations.map(async op => {
       const [tasks, docs, offers, activity] = await Promise.all([
-        fetchOperationTasks(op.id, op.type), fetchDocuments(op.id), fetchOffers(op.id), fetchActivity(op.id, 1),
+        fetchOperationTasks(op.id, op.type, op.country), fetchDocuments(op.id), fetchOffers(op.id), fetchActivity(op.id, 1),
       ])
       return {
         operationId: op.id, title: op.title, type: op.type,

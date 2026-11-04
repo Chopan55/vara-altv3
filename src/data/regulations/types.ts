@@ -20,7 +20,13 @@ export type ProvinceCode = ARProvinceCode | MXStateCode
 export type DataConfidence = 'VERIFIED' | 'PARTIAL' | 'ESTIMATED' | 'UNVERIFIED'
 
 export interface StampTaxRule {
+  /** Tasa (o el piso del rango, si hay `totalRateMax`). */
   totalRate: number
+  /**
+   * Techo del rango cuando la tasa no es una sola: tarifa progresiva, varía por
+   * municipio o las fuentes no coinciden. Los costos se muestran como rango.
+   */
+  totalRateMax?: number
   buyerShare: number
   sellerShare: number
   base: 'PRICE_OR_FISCAL' | 'VIR' | 'FISCAL_ONLY' | 'PRICE_ONLY'

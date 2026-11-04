@@ -32,7 +32,7 @@ interface DateRow {
 }
 
 function useDateRows(
-  operations: { id: string; title: string; type: 'SELL' | 'BUY' }[],
+  operations: { id: string; title: string; type: 'SELL' | 'BUY'; country?: string }[],
   loaded: boolean,
 ): { rows: DateRow[]; dateLoaded: boolean } {
   const [rows, setRows] = useState<DateRow[]>([])
@@ -43,7 +43,7 @@ function useDateRows(
     let alive = true
     Promise.all(
       operations.map(op =>
-        fetchOperationTasks(op.id, op.type).then(tasks => ({ op, tasks: tasks ?? [] }))
+        fetchOperationTasks(op.id, op.type, op.country).then(tasks => ({ op, tasks: tasks ?? [] }))
       )
     ).then(results => {
       if (!alive) return

@@ -9,7 +9,7 @@ import { cleanChatReply } from '@/lib/ai/cleanReply'
 
 
 /** Carga el contexto verificado de una operación desde Supabase (H18). */
-async function loadOperationContext(operationId: string): Promise<string | null> {
+async function loadOperationContext(operationId: string): Promise<{ text: string; country: string } | null> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!supabaseUrl || !supabaseKey) return null
@@ -42,11 +42,21 @@ async function loadOperationContext(operationId: string): Promise<string | null>
       `- País: ${op.country ?? 'AR'}`,
     ]
     if (op.property_id) lines.push(`- Propiedad asociada ID: ${op.property_id}`)
-    return lines.join('\n')
+    return { text: lines.join('\n'), country: op.country ?? 'AR' }
   } catch {
     return null
   }
 }
+
+/** Operaciones en México: la terminología y la normativa son otras. */
+const MX_ADDENDUM = `IMPORTANTE — ESTA OPERACIÓN ES EN MÉXICO, no en Argentina.
+Usá la terminología y el proceso mexicanos: notario (no escribano), apartado (no seña),
+contrato de promesa de compraventa (no boleto), firma ante notario, ISAI (lo paga el comprador),
+ISR del vendedor (puede estar exento si es casa habitación), Registro Público de la Propiedad (RPP),
+certificado de libertad de gravamen, avalúo, predial y agua al corriente, INE, RFC y CURP,
+crédito bancario o INFONAVIT/FOVISSSTE, precios en MXN o USD.
+No menciones DNI, CUIT, UIF, impuesto de sellos, ITI, expensas ni organismos argentinos.
+Si un dato depende del estado o del notario, decilo y recomendá confirmarlo con el notario.`
 
 const SYSTEM_PROMPT = `Sos VARA, el asistente de la plataforma VARA para operaciones inmobiliarias en Argentina.
 
@@ -113,8 +123,15 @@ export async function POST(req: NextRequest) {
       : typeof context === 'string' && /compr/i.test(context) ? 'BUY'
       : undefined
 
+    // Si se provee operationId, cargar contexto verificado desde Supabase (H18).
+    // El país de la operación decide la guía y la terminología.
+    const verified = typeof operationId === 'string' && operationId
+      ? await loadOperationContext(operationId)
+      : null
+    const country = verified?.country === 'MX' ? 'MX' : 'AR'
+
     const entries = typeof lastUser?.content === 'string'
-      ? findKnowledge(lastUser.content, audience, 3)
+      ? findKnowledge(lastUser.content, audience, 3, country)
       : []
 
     const kb = entries.length
@@ -130,14 +147,10 @@ export async function POST(req: NextRequest) {
         ].join('\n\n')
       : ''
 
-    // Si se provee operationId, cargar contexto verificado desde Supabase (H18)
-    const verifiedContext = typeof operationId === 'string' && operationId
-      ? await loadOperationContext(operationId)
-      : null
-
     const contextParts: string[] = [SYSTEM_PROMPT]
-    if (verifiedContext) {
-      contextParts.push('', verifiedContext)
+    if (country === 'MX') contextParts.push('', MX_ADDENDUM)
+    if (verified) {
+      contextParts.push('', verified.text)
     }
     // El context del cliente es adicional (info de página), no fuente de verdad
     if (typeof context === 'string' && context) {

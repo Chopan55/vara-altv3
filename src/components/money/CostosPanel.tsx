@@ -5,7 +5,7 @@ import { formatPrice } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
 import { useOperations } from '@/hooks/useOperations'
 import { useJurisdiction } from '@/hooks/useJurisdiction'
-import { generateChecklist, formatPercent, getProvinceListGrouped } from '@/lib/regulations'
+import { generateChecklist, formatPercent, getProvinceListGrouped, resolveProvinceCode } from '@/lib/regulations'
 import type { ProvinceCode } from '@/data/regulations/types'
 
 const PROVINCE_GROUPS = getProvinceListGrouped()
@@ -17,10 +17,14 @@ interface CostosPanelProps {
 
 export function CostosPanel({ operationPropertyId }: CostosPanelProps = {}) {
   const vara = useVaraState()
-  const { journey } = useOperations()
+  const { journey, activeOperation } = useOperations()
   const isSeller = vara.loaded && journey === 'SELL'
-  const j = useJurisdiction()
-  const [selectedProvince, setSelectedProvince] = useState<string>(j.defaultProvinceCode)
+  // País y jurisdicción de la operación activa; sin operación, el mercado por defecto.
+  const country = activeOperation?.country ?? null
+  const j = useJurisdiction(country)
+  const opProvinceCode = activeOperation?.province ? resolveProvinceCode(activeOperation.province, country) : null
+  const [chosenProvince, setSelectedProvince] = useState<string | null>(null)
+  const selectedProvince = chosenProvince ?? opProvinceCode ?? j.defaultProvinceCode
 
   /*
    * Arranca en 0, no en 185.000.
@@ -66,11 +70,12 @@ export function CostosPanel({ operationPropertyId }: CostosPanelProps = {}) {
 
   const hasPrice = propertyPrice > 0
 
-  const checklist = generateChecklist(selectedProvince as ProvinceCode, 'BUY_PROPERTY', propertyPrice)
+  const checklist = generateChecklist(selectedProvince as ProvinceCode, 'BUY_PROPERTY', propertyPrice, country)
   const { costs } = checklist
 
   const buyerCosts = [costs.stampTaxBuyer, costs.notaryFeeBuyer, costs.registryFee, costs.certificates]
-  const sellerCosts = [costs.stampTaxSeller, costs.notaryFeeSeller]
+  // Un impuesto que la parte vendedora no paga (p. ej. el ISAI en México) no se lista en cero.
+  const sellerCosts = [costs.stampTaxSeller, costs.notaryFeeSeller].filter(c => c.maxAmount > 0 || !hasPrice)
 
   const totalMinBuyer = costs.totalBuyer.min
   const totalMaxBuyer = costs.totalBuyer.max
@@ -114,7 +119,7 @@ export function CostosPanel({ operationPropertyId }: CostosPanelProps = {}) {
               onChange={e => setSelectedProvince(e.target.value)}
               className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-brand-400 pr-8"
             >
-              {PROVINCE_GROUPS.map(group => (
+              {PROVINCE_GROUPS.filter(g => !country || g.country === country).map(group => (
                 <optgroup key={group.country} label={group.label}>
                   {group.items.map(p => (
                     <option key={p.code} value={p.code}>{p.displayName}</option>
@@ -147,8 +152,8 @@ export function CostosPanel({ operationPropertyId }: CostosPanelProps = {}) {
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-6 text-center">
             <p className="text-sm font-semibold text-slate-800 mb-1">Falta el valor de la propiedad</p>
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
-              Poné el precio arriba y calculamos sellos, honorarios y gastos de
-              registro con las alícuotas vigentes de la provincia que elijas.
+              Poné el precio arriba y calculamos {j.transferTaxLabel === 'ITI' ? 'sellos' : 'impuestos'}, honorarios y gastos de
+              registro con las tasas vigentes de la jurisdicción que elijas.
             </p>
           </div>
         )}
@@ -164,8 +169,11 @@ export function CostosPanel({ operationPropertyId }: CostosPanelProps = {}) {
             {costs.totalBuyer.percentMin.toFixed(1)}% – {costs.totalBuyer.percentMax.toFixed(1)}% del valor de la propiedad
           </p>
           <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2">
-            <span className="text-xs opacity-50">Sellos {checklist.provinceName}:</span>
-            <span className="text-xs font-semibold text-brand-400">{formatPercent(costs.stampTaxBuyer.minAmount / propertyPrice)} comprador</span>
+            <span className="text-xs opacity-50">{country === 'MX' ? 'ISAI' : 'Sellos'} {checklist.provinceName}:</span>
+            <span className="text-xs font-semibold text-brand-400">
+              {formatPercent(costs.stampTaxBuyer.minAmount / propertyPrice)}
+              {costs.stampTaxBuyer.maxAmount > costs.stampTaxBuyer.minAmount && ` – ${formatPercent(costs.stampTaxBuyer.maxAmount / propertyPrice)}`} comprador
+            </span>
           </div>
         </div>
 
@@ -246,7 +254,7 @@ export function CostosPanel({ operationPropertyId }: CostosPanelProps = {}) {
         <div className="flex gap-2 bg-amber-50 rounded-2xl p-4">
           <Info size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-amber-700 leading-relaxed">
-            Valores estimativos basados en fuentes oficiales y secundarias. Confianza del dato: <strong>{checklist.dataConfidence === 'VERIFIED' ? 'VERIFICADO' : checklist.dataConfidence === 'PARTIAL' ? 'PARCIAL' : 'ESTIMADO'}</strong>. Consultá con {j.professionalLabels.CLOSING_PROFESSIONAL.toLowerCase()} matriculado/a en {checklist.provinceName} para la liquidación exacta.
+            Valores estimativos basados en fuentes oficiales y secundarias. Confianza del dato: <strong>{checklist.dataConfidence === 'VERIFIED' ? 'VERIFICADO' : checklist.dataConfidence === 'PARTIAL' ? 'PARCIAL' : 'ESTIMADO'}</strong>. Consultá con un/a {j.professionalLabels.CLOSING_PROFESSIONAL.toLowerCase()} de {checklist.provinceName} para la liquidación exacta.
           </p>
         </div>
 

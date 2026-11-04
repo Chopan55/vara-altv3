@@ -1,5 +1,6 @@
 'use client'
 import { useState, useMemo, useCallback, useEffect, Suspense } from 'react'
+import { getJurisdiction } from '@/lib/jurisdiction'
 import { useBrowserState, useHydrated } from '@/hooks/useHydrated'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -463,7 +464,7 @@ function OnboardingInner() {
             {checklist.dataConfidence !== 'VERIFIED' && (
               <div className="flex gap-2 bg-amber-50 rounded-xl p-3 mb-3">
                 <AlertCircle size={13} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-700">Datos de {checklist.provinceName} son estimados. Verificar con tu escribano antes de firmar.</p>
+                <p className="text-xs text-amber-700">Datos de {checklist.provinceName} son estimados. Verificar con tu {getJurisdiction(country).professionalLabels.CLOSING_PROFESSIONAL.toLowerCase()} antes de firmar.</p>
               </div>
             )}
 

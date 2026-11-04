@@ -46,8 +46,34 @@ const NOTARY_TASKS: ChecklistStage['tasks'] = [
   { id: 'n-5', title: 'Inscripción en el Registro de la Propiedad', description: 'Una vez firmada la escritura, el escribano la presenta al Registro para inscribir el cambio de titularidad a nombre del comprador.', responsibleParty: 'Escribano', documents: ['Escritura inscripta'] },
 ]
 
+/**
+ * Trámites del notario en México. Proceso general de una compraventa con
+ * escritura pública; cada estado tiene variantes (las que conocemos están en
+ * `particularities` de cada estado). Se valida con un notario local.
+ */
+const MX_NOTARY_TASKS: ChecklistStage['tasks'] = [
+  { id: 'mxn-1', title: 'Certificado de libertad de gravamen', description: 'El notario lo pide al Registro Público de la Propiedad (RPP): confirma que el inmueble no tiene hipotecas, embargos ni limitaciones.', responsibleParty: 'Notario', documents: ['Certificado de libertad de gravamen'], warnings: ['Si aparece un gravamen, tiene que cancelarse antes o en la misma firma'] },
+  { id: 'mxn-2', title: 'Avalúo del inmueble', description: 'Lo hace un perito valuador autorizado. Sirve de base para el ISAI y, si hay crédito, lo exige el banco o INFONAVIT.', responsibleParty: 'Notario / Perito valuador', documents: ['Avalúo'] },
+  { id: 'mxn-3', title: 'Constancias de no adeudo', description: 'Predial y agua al corriente; en condominio, constancia de no adeudo de cuotas de mantenimiento.', responsibleParty: 'Vendedor', documents: ['Constancia de no adeudo predial', 'Constancia de no adeudo de agua'] },
+  { id: 'mxn-4', title: 'Cálculo del ISR del vendedor e ISAI del comprador', description: 'El notario calcula y retiene el ISR por la venta (puede estar exento si es casa habitación y se cumplen los requisitos del SAT) y el ISAI que paga el comprador.', responsibleParty: 'Notario', documents: ['Liquidación de impuestos'], warnings: ['La exención de ISR por casa habitación tiene requisitos y topes: confirmalos con el notario antes de pactar el precio'] },
+  { id: 'mxn-5', title: 'Inscripción en el Registro Público de la Propiedad', description: 'Después de la firma, el notario inscribe la escritura en el RPP y entrega el testimonio al comprador.', responsibleParty: 'Notario', documents: ['Testimonio de la escritura inscrita'] },
+]
+
+/** Códigos de los estados de México con datos regulatorios. */
+export const MX_CODES = new Set([
+  'CDMX', 'JALISCO', 'NUEVO_LEON', 'ESTADO_DE_MEXICO',
+  'PUEBLA', 'GUANAJUATO', 'CHIHUAHUA', 'BAJA_CALIFORNIA', 'QUERETARO', 'YUCATAN',
+])
+
 function makeCostLine(label: string, min: number, max: number, source: string, notes?: string): CostLine {
   return { label, minAmount: min, maxAmount: max, currency: 'USD', isEstimate: true, source, notes }
+}
+
+/** País de una jurisdicción a partir de su nombre o código (p. ej. "Ciudad de México" → MX). */
+export function countryOfProvince(province: string | null | undefined): CountryCode {
+  if (!province) return 'AR'
+  const code = ONBOARDING_PROVINCE_TO_CODE[province] ?? province
+  return MX_CODES.has(code) ? 'MX' : 'AR'
 }
 
 export function getRegulation(provinceCode: string, country?: CountryCode | null) {
@@ -68,11 +94,16 @@ export function generateChecklist(
 ): RegulatoryChecklist {
   const defaultCode = getJurisdiction(country).defaultProvinceCode
   const reg = PROVINCE_MAP[provinceCode] ?? PROVINCE_MAP[defaultCode] ?? PROVINCE_MAP['BUENOS_AIRES']
+  // El país lo define la jurisdicción: un estado de México siempre usa el proceso mexicano,
+  // aunque quien llama no pase `country` (H13: MX usa INE/RFC/CURP, notario e ISAI).
+  const isMX = MX_CODES.has(reg.code) || country === 'MX'
+  const notary = isMX ? 'notario' : 'escribano'
 
-  const stampBuyerRate = reg.stampTax.totalRate * reg.stampTax.buyerShare
-  const stampSellerRate = reg.stampTax.totalRate * reg.stampTax.sellerShare
-  const stampBuyerUSD = propertyValueUSD * stampBuyerRate
-  const stampSellerUSD = propertyValueUSD * stampSellerRate
+  const rateMax = reg.stampTax.totalRateMax ?? reg.stampTax.totalRate
+  const stampBuyerUSD = propertyValueUSD * reg.stampTax.totalRate * reg.stampTax.buyerShare
+  const stampSellerUSD = propertyValueUSD * reg.stampTax.totalRate * reg.stampTax.sellerShare
+  const stampBuyerMaxUSD = propertyValueUSD * rateMax * reg.stampTax.buyerShare
+  const stampSellerMaxUSD = propertyValueUSD * rateMax * reg.stampTax.sellerShare
   const notaryMin = propertyValueUSD * reg.notaryFee.minRate
   const notaryMax = propertyValueUSD * reg.notaryFee.maxRate
   const notaryBuyerMin = notaryMin * reg.notaryFee.buyerShare
@@ -96,54 +127,62 @@ export function generateChecklist(
     currency: 'USD',
     propertyValue: propertyValueUSD,
     stampTaxBuyer: makeCostLine(
-      `Sellos ${reg.displayName} (parte comprador)`,
-      stampBuyerUSD, stampBuyerUSD,
+      isMX ? `ISAI ${reg.displayName} (comprador)` : `Sellos ${reg.displayName} (parte comprador)`,
+      stampBuyerUSD, stampBuyerMaxUSD,
       reg.stampTax.sourceUrl ?? `Org. impositivo ${reg.displayName}`,
       reg.stampTax.confidence !== 'VERIFIED' ? `Estimado — verificar en ${reg.displayName}` : reg.stampTax.notes
     ),
     stampTaxSeller: makeCostLine(
-      `Sellos ${reg.displayName} (parte vendedor)`,
-      stampSellerUSD, stampSellerUSD,
+      isMX ? `ISAI ${reg.displayName} (vendedor)` : `Sellos ${reg.displayName} (parte vendedor)`,
+      stampSellerUSD, stampSellerMaxUSD,
       reg.stampTax.sourceUrl ?? `Org. impositivo ${reg.displayName}`,
     ),
     notaryFeeBuyer: makeCostLine(
-      'Honorarios escribano (parte comprador)',
+      `Honorarios ${notary} (parte comprador)`,
       notaryBuyerMin, notaryBuyerMax,
-      reg.entities.find(e => e.role === 'COLEGIO_ESCRIBANOS')?.url ?? 'Colegio de Escribanos provincial',
+      reg.entities.find(e => e.role === 'COLEGIO_ESCRIBANOS')?.url ?? (isMX ? 'Colegio de Notarios del estado' : 'Colegio de Escribanos provincial'),
       reg.notaryFee.notes
     ),
     notaryFeeSeller: makeCostLine(
-      'Honorarios escribano (parte vendedor)',
+      `Honorarios ${notary} (parte vendedor)`,
       notarySellerMin, notarySellerMax,
-      reg.entities.find(e => e.role === 'COLEGIO_ESCRIBANOS')?.url ?? 'Colegio de Escribanos provincial',
+      reg.entities.find(e => e.role === 'COLEGIO_ESCRIBANOS')?.url ?? (isMX ? 'Colegio de Notarios del estado' : 'Colegio de Escribanos provincial'),
     ),
     registryFee: makeCostLine(
-      'Inscripción Registro de la Propiedad',
+      isMX ? 'Derechos de inscripción en el RPP' : 'Inscripción Registro de la Propiedad',
       registryFeeUSD, registryFeeUSD,
-      reg.entities.find(e => e.role === 'REGISTRO')?.url ?? 'Registro de la Propiedad provincial',
+      reg.entities.find(e => e.role === 'REGISTRO')?.url ?? (isMX ? 'Registro Público de la Propiedad del estado' : 'Registro de la Propiedad provincial'),
       reg.registryFee.notes
     ),
-    certificates: makeCostLine('Certificados, informes y gestiones', certsMin, certsMax, 'Estimado promedio'),
+    certificates: makeCostLine(
+      isMX ? 'Avalúo, certificados y gestiones' : 'Certificados, informes y gestiones',
+      certsMin, certsMax, 'Estimado promedio',
+    ),
     totalBuyer: {
       min: stampBuyerUSD + notaryBuyerMin + registryFeeUSD + certsMin,
-      max: stampBuyerUSD + notaryBuyerMax + registryFeeUSD + certsMax,
+      max: stampBuyerMaxUSD + notaryBuyerMax + registryFeeUSD + certsMax,
       percentMin: pct(stampBuyerUSD + notaryBuyerMin + registryFeeUSD + certsMin),
-      percentMax: pct(stampBuyerUSD + notaryBuyerMax + registryFeeUSD + certsMax),
+      percentMax: pct(stampBuyerMaxUSD + notaryBuyerMax + registryFeeUSD + certsMax),
       currency: 'USD',
     },
     totalSeller: {
       min: stampSellerUSD + notarySellerMin,
-      max: stampSellerUSD + notarySellerMax,
+      max: stampSellerMaxUSD + notarySellerMax,
       percentMin: pct(stampSellerUSD + notarySellerMin),
-      percentMax: pct(stampSellerUSD + notarySellerMax),
+      percentMax: pct(stampSellerMaxUSD + notarySellerMax),
       currency: 'USD',
     },
-    notes: [
+    notes: (isMX ? [
+      reg.stampTax.notes ?? '',
+      `Fuente del ISAI: ${reg.stampTax.confidence === 'VERIFIED' ? 'VERIFICADA (fuente oficial)' : reg.stampTax.confidence === 'PARTIAL' ? 'PARCIAL — confirmar con el notario' : 'ESTIMADA — verificar con el notario o la tesorería del estado'}`,
+      'ISR del vendedor: no se incluye. Depende de la ganancia y puede estar exento si es casa habitación; lo calcula el notario.',
+      'Valores en USD al tipo de cambio vigente. El notario liquida en MXN.',
+    ] : [
       reg.stampTax.notes ?? '',
       `Fuente de sellos: ${reg.stampTax.confidence === 'VERIFIED' ? 'VERIFICADA (fuente oficial)' : reg.stampTax.confidence === 'PARTIAL' ? 'PARCIAL — confirmar con escribano' : 'ESTIMADA — verificar en organismo provincial'}`,
       'ITI derogado desde 07/2024 — vendedor persona física no habitual sin impuesto nacional',
       'Valores en USD al tipo de cambio vigente. El escribano liquida en ARS.',
-    ].filter(Boolean),
+    ]).filter(Boolean),
   }
 
   const provinceDocTasks: ChecklistStage['tasks'] = [
@@ -151,18 +190,47 @@ export function generateChecklist(
       id: `prov-doc-${i}`,
       title: doc.name,
       description: doc.notes ?? `Requerido por ${reg.displayName} para la transmisión de dominio.`,
-      responsibleParty: doc.responsibleParty === 'ESCRIBANO' ? 'Escribano' : doc.responsibleParty === 'VENDEDOR' ? 'Vendedor' : 'Comprador',
+      responsibleParty: doc.responsibleParty === 'ESCRIBANO' ? (isMX ? 'Notario' : 'Escribano') : doc.responsibleParty === 'VENDEDOR' ? 'Vendedor' : 'Comprador',
       documents: [doc.name],
       isProvinceSpecific: true,
     })),
   ]
 
-  // Seleccionar documentos según país (H13): MX usa INE/RFC/CURP, no DNI/CUIT/UIF
-  const isMX = country === 'MX'
   const buyerDocs = isMX ? MX_DOCS_BUYER : UNIVERSAL_DOCS_BUYER
   const sellerDocs = isMX ? MX_DOCS_SELLER : UNIVERSAL_DOCS_SELLER
 
-  const stages: ChecklistStage[] = [
+  const stages: ChecklistStage[] = isMX ? [
+    {
+      order: 1, name: 'Apartado', durationDays: '3-10 días',
+      tasks: [
+        { id: 'mx1-1', title: 'Oferta y negociación de precio', description: 'Acordar precio, forma de pago (contado, crédito bancario o INFONAVIT), fecha de firma y condiciones.', responsibleParty: 'Ambas partes / Asesor inmobiliario', documents: [] },
+        { id: 'mx1-2', title: 'Apartado', description: 'Depósito para separar el inmueble mientras se revisa la documentación. Dejar por escrito el monto, el plazo y qué pasa si alguna parte desiste.', responsibleParty: 'Comprador', documents: ['Recibo de apartado'], warnings: ['Pedir siempre recibo con datos completos del inmueble y del vendedor'] },
+        { id: 'mx1-3', title: 'Verificación básica de titularidad', description: 'Confirmar que el vendedor es el titular según la escritura inscrita, antes de comprometer más dinero.', responsibleParty: 'Comprador / Notario', documents: [] },
+      ],
+    },
+    { order: 2, name: 'Documentación del vendedor', durationDays: '10-20 días', tasks: [...sellerDocs, ...provinceDocTasks] },
+    { order: 3, name: 'Documentación del comprador', durationDays: '5-10 días', tasks: buyerDocs },
+    { order: 4, name: 'Certificados y avalúo', durationDays: '10-20 días', tasks: MX_NOTARY_TASKS.slice(0, 3) },
+    {
+      order: 5, name: 'Promesa de compraventa', durationDays: '1-3 días',
+      tasks: [
+        { id: 'mxp-1', title: 'Firma del contrato de promesa de compraventa', description: 'Contrato privado que fija precio, plazos, anticipo y penas por incumplimiento hasta la firma ante notario. No siempre se usa, pero protege a las dos partes.', responsibleParty: 'Ambas partes', documents: ['Contrato de promesa de compraventa', 'Comprobante de anticipo'], warnings: ['Revisarlo con el notario o un abogado antes de firmar'] },
+      ],
+    },
+    {
+      order: 6, name: 'Firma ante notario', durationDays: '15-45 días',
+      tasks: [
+        ...MX_NOTARY_TASKS.slice(3),
+        {
+          id: 'mx-firma', title: 'Firma de la escritura pública',
+          description: 'Se paga el saldo, los honorarios del notario, el ISAI y los derechos de registro. El notario da fe de la compraventa.',
+          responsibleParty: 'Ambas partes + Notario',
+          documents: ['Escritura pública'],
+          warnings: reg.particularities.length > 0 ? reg.particularities.slice(0, 2) : undefined,
+        },
+      ],
+    },
+  ] : [
     {
       order: 1, name: 'Reserva', durationDays: '3-10 días',
       tasks: [
@@ -206,7 +274,7 @@ export function generateChecklist(
 
   const warnings: string[] = [
     ...reg.particularities,
-    ...(reg.dataConfidence !== 'VERIFIED' ? [`⚠️ Datos regulatorios de ${reg.displayName} son ${reg.dataConfidence} — verificar en organismo impositivo antes de operar`] : []),
+    ...(reg.dataConfidence !== 'VERIFIED' ? [`⚠️ Datos regulatorios de ${reg.displayName} son ${reg.dataConfidence} — verificar ${isMX ? 'con el notario' : 'en organismo impositivo'} antes de operar`] : []),
     ...reg.stampTax.exemptions.map(e => `Posible exención: ${e.description} — ${e.condition}`),
   ]
 
@@ -223,10 +291,6 @@ export function getProvinceList() {
   }))
 }
 
-const MX_CODES = new Set([
-  'CDMX', 'JALISCO', 'NUEVO_LEON', 'ESTADO_DE_MEXICO',
-  'PUEBLA', 'GUANAJUATO', 'CHIHUAHUA', 'BAJA_CALIFORNIA', 'QUERETARO', 'YUCATAN',
-])
 
 export function getProvinceListGrouped() {
   const all = getProvinceList()

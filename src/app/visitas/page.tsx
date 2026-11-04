@@ -16,8 +16,16 @@ type UserNotes = Record<string, string>
 
 const SECTION_ORDER = ['Exterior', 'Interior', 'Entorno', 'Documentación']
 
-const freshItems = (): ChecklistItem[] => mockVisitChecklist.map(i => ({ ...i, checked: false, note: undefined }))
-const fromChecked = (ids: string[]): ChecklistItem[] => freshItems().map(i => ({ ...i, checked: ids.includes(i.id) }))
+/** Ítems con nombre local: en México no hay ABL ni expensas. */
+const MX_LABELS: Record<string, string> = {
+  'vc-17': 'Predial y agua al corriente',
+  'vc-18': 'Cuotas de mantenimiento al corriente',
+}
+const freshItems = (country?: string): ChecklistItem[] => mockVisitChecklist.map(i => ({
+  ...i, checked: false, note: undefined,
+  label: country === 'MX' ? (MX_LABELS[i.id] ?? i.label) : i.label,
+}))
+const fromChecked = (ids: string[], country?: string): ChecklistItem[] => freshItems(country).map(i => ({ ...i, checked: ids.includes(i.id) }))
 const toSaved = (items: ChecklistItem[], notes: UserNotes, updatedAt: string): SavedVisitChecklist =>
   ({ checked: items.filter(i => i.checked).map(i => i.id), notes, updatedAt })
 
@@ -65,6 +73,7 @@ function varaRecommendation(progress: number, docsOk: boolean, interiorPct: numb
 export default function VisitasPage() {
   const { operations, activeOperationId } = useOperations()
   const scopeId = activeOperationId ?? operations[0]?.id ?? 'default'
+  const country = operations.find(o => o.id === scopeId)?.country
   const checklistKey = `vara_visit_checklist_${scopeId}`
   const notesKey = `vara_visit_notes_${scopeId}`
   const updatedKey = `vara_visit_updated_${scopeId}`
@@ -72,8 +81,8 @@ export default function VisitasPage() {
   // Al cambiar de operación: primero lo del navegador (instantáneo), después la cuenta si es más nueva.
   const [items, setItems] = useBrowserState<ChecklistItem[]>(() => {
     const saved = localStorage.getItem(checklistKey)
-    return saved ? (JSON.parse(saved) as ChecklistItem[]) : freshItems()
-  }, freshItems(), scopeId)
+    return saved ? (JSON.parse(saved) as ChecklistItem[]) : freshItems(country)
+  }, freshItems(country), `${scopeId}|${country ?? ''}`)
   const [notes, setNotes] = useBrowserState<UserNotes>(() => {
     const saved = localStorage.getItem(notesKey)
     return saved ? (JSON.parse(saved) as UserNotes) : {}
@@ -98,7 +107,7 @@ export default function VisitasPage() {
       const savedNotes = localStorage.getItem(notesKey)
       if (updated) {
         local = toSaved(
-          savedItems ? (JSON.parse(savedItems) as ChecklistItem[]) : freshItems(),
+          savedItems ? (JSON.parse(savedItems) as ChecklistItem[]) : freshItems(country),
           savedNotes ? (JSON.parse(savedNotes) as UserNotes) : {},
           updated,
         )
@@ -108,13 +117,13 @@ export default function VisitasPage() {
     void fetchVisitChecklist(scopeId).then(remote => {
       if (!alive || !remote || touched.current) return
       if (pickNewer(local, remote) === remote) {
-        setItems(fromChecked(remote.checked))
+        setItems(fromChecked(remote.checked, country))
         setNotes(remote.notes)
       }
       setSyncedFor(scopeId)
     })
     return () => { alive = false }
-  }, [scopeId, checklistKey, notesKey, updatedKey, setItems, setNotes])
+  }, [scopeId, country, checklistKey, notesKey, updatedKey, setItems, setNotes])
 
   /** Única vía de escritura: navegador al instante, cuenta con un pequeño retraso. */
   const commit = (nextItems: ChecklistItem[], nextNotes: UserNotes) => {
@@ -151,7 +160,7 @@ export default function VisitasPage() {
     setEditingNote(null)
   }
 
-  const resetAll = () => commit(freshItems(), {})
+  const resetAll = () => commit(freshItems(country), {})
 
   const total = items.length
   const done = items.filter(i => i.checked).length

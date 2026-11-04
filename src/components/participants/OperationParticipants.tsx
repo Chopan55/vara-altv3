@@ -16,24 +16,9 @@ import { Users, Plus, Trash2, Mail, Phone, Loader2, AlertCircle } from 'lucide-r
 import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import type { OperationParticipantRow, ParticipantRoleDb } from '@/lib/supabase/types'
 import type { CountryCode } from '@/types'
+import { PARTICIPANT_ROLES, participantRoleLabels } from '@/lib/participants/roles'
 
-const ROLE_LABELS_BASE: Record<ParticipantRoleDb, string> = {
-  NOTARY: 'Escribano/a',
-  BROKER: 'Martillero / inmobiliaria',
-  ACCOUNTANT: 'Contador/a',
-  LAWYER: 'Abogado/a',
-  APPRAISER: 'Tasador/a',
-  COUNTERPARTY: 'La otra parte',
-  BANK: 'Banco',
-  OTHER: 'Otro',
-}
-
-function getRoleLabels(country?: CountryCode): Record<ParticipantRoleDb, string> {
-  if (country === 'MX') return { ...ROLE_LABELS_BASE, NOTARY: 'Notario/a' }
-  return ROLE_LABELS_BASE
-}
-
-const ROLES = Object.keys(ROLE_LABELS_BASE) as ParticipantRoleDb[]
+const ROLES = PARTICIPANT_ROLES
 
 interface Participant {
   id: string
@@ -120,7 +105,7 @@ function AddForm({ onAdd, busy, roleLabels }: { onAdd: (v: FormValues) => void; 
 }
 
 export function OperationParticipants({ operationId, country }: { operationId: string; country?: CountryCode }) {
-  const roleLabels = getRoleLabels(country)
+  const roleLabels = participantRoleLabels(country)
   const [people, setPeople] = useState<Participant[]>([])
   // Sin base configurada: sin sesión y nada que esperar.
   const [sessionState, setSession] = useState<boolean | null>(null)
