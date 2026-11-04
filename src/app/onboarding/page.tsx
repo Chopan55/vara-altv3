@@ -1,5 +1,6 @@
 'use client'
 import { useState, useMemo, useCallback, useEffect, Suspense } from 'react'
+import { useCountryPreference, OPERABLE_COUNTRIES } from '@/hooks/useCountryPreference'
 import { getJurisdiction } from '@/lib/jurisdiction'
 import { useBrowserState, useHydrated } from '@/hooks/useHydrated'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -150,7 +151,13 @@ function OnboardingInner() {
   const [step, setStep] = useState(intentType ? 3 : 1)
   const [name, setName] = useState('')
   const [type, setType] = useState(intentType)
-  const [country, setCountry] = useState<CountryCode>('AR')
+  // País inicial: ?country=MX (desde Configuración) o el último que usó; se puede cambiar abajo.
+  const { country: preferred } = useCountryPreference()
+  const countryParam = searchParams.get('country') as CountryCode | null
+  const [chosenCountry, setCountry] = useState<CountryCode | null>(null)
+  const country: CountryCode = chosenCountry
+    ?? (countryParam && OPERABLE_COUNTRIES.includes(countryParam) ? countryParam
+      : OPERABLE_COUNTRIES.includes(preferred) ? preferred : 'AR')
   const [province, setProvince] = useState('')
   // El link que pegó en el hero queda en este navegador hasta usarlo acá.
   const [propertyUrl, setPropertyUrl] = useBrowserState(

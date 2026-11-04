@@ -1,12 +1,28 @@
 'use client'
 import Link from 'next/link'
 import { ArrowLeft, Globe, Check } from 'lucide-react'
-import { useCountryPreference, SUPPORTED_COUNTRIES } from '@/hooks/useCountryPreference'
+import { useRouter } from 'next/navigation'
+import { useCountryPreference, SUPPORTED_COUNTRIES, OPERABLE_COUNTRIES } from '@/hooks/useCountryPreference'
+import { useOperations } from '@/hooks/useOperations'
+import { useVaraState } from '@/hooks/useVaraState'
 import { getJurisdiction } from '@/lib/jurisdiction'
+import { journeyToStored } from '@/lib/journey'
 import { cn } from '@/lib/utils'
 
 export default function ConfiguracionPage() {
   const { country, setCountry } = useCountryPreference()
+  const router = useRouter()
+  const vara = useVaraState()
+  const { operations, activeOperation } = useOperations()
+  const opsHere = operations.filter(o => (o.country ?? 'AR') === country)
+  const canOperate = OPERABLE_COUNTRIES.includes(country)
+
+  // Pasar a una operación es cambiar de país: cada operación guarda el suyo.
+  const openOperation = (id: string, type: 'BUY' | 'SELL') => {
+    vara.setJourneyType(journeyToStored(type))
+    vara.setOperationId(id)
+    router.push('/dashboard')
+  }
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -24,13 +40,20 @@ export default function ConfiguracionPage() {
         <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-5 mb-4">
           <div className="flex items-center gap-2 mb-4">
             <Globe size={16} className="text-brand-500" />
-            <h2 className="text-sm font-bold text-slate-800">País de tu operación</h2>
+            <h2 className="text-sm font-bold text-slate-800">País</h2>
           </div>
           <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-            VARA adapta la terminología, las etapas, los impuestos y los profesionales al
-            país que elijas. Podés cambiarlo cuando quieras — el cambio aplica a nuevas
-            operaciones.
+            Cada operación tiene su país y VARA adapta a él las etapas, los documentos, los impuestos
+            y los profesionales. Podés tener operaciones en Argentina y en México a la vez: para
+            pasar de un país a otro, abrí una operación de ese país. El país que elijas acá es el que
+            aparece primero al crear una operación nueva.
           </p>
+          {activeOperation && (
+            <p className="mb-4 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              Ahora estás en <strong>{activeOperation.title}</strong> ·{' '}
+              {getJurisdiction(activeOperation.country ?? 'AR').countryName}
+            </p>
+          )}
 
           <div className="grid gap-3">
             {SUPPORTED_COUNTRIES.map(c => {
@@ -111,6 +134,40 @@ export default function ConfiguracionPage() {
               </div>
             )
           })()}
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-5 mb-4">
+          <h2 className="text-sm font-bold text-slate-800 mb-1">
+            Tus operaciones en {getJurisdiction(country).countryName}
+          </h2>
+          {opsHere.length > 0 ? (
+            <ul className="mt-3 space-y-2">
+              {opsHere.map(o => (
+                <li key={o.id}>
+                  <button type="button" onClick={() => openOperation(o.id, o.type)}
+                    className={cn('flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-sm',
+                      o.id === activeOperation?.id ? 'border-brand-300 bg-brand-50' : 'border-slate-200 hover:border-brand-200')}>
+                    <span className="min-w-0 truncate font-semibold text-slate-800">{o.title}</span>
+                    <span className="ml-2 flex-shrink-0 text-xs text-slate-500">
+                      {o.type === 'SELL' ? 'Venta' : 'Compra'} · {o.id === activeOperation?.id ? 'Activa' : 'Abrir'}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-1 text-xs text-slate-500">Todavía no tenés operaciones en este país.</p>
+          )}
+          {canOperate ? (
+            <Link href={`/onboarding?country=${country}`}
+              className="mt-3 inline-block rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white">
+              Nueva operación en {getJurisdiction(country).countryName}
+            </Link>
+          ) : (
+            <p className="mt-3 text-xs text-amber-700">
+              Todavía no se pueden crear operaciones en {getJurisdiction(country).countryName}.
+            </p>
+          )}
         </div>
 
         <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">

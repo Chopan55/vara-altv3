@@ -1,5 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useCountryPreference } from '@/hooks/useCountryPreference'
+import { useOperations } from '@/hooks/useOperations'
 import Link from 'next/link'
 import {
   ArrowLeft, ChevronDown, Copy, Check,
@@ -851,9 +853,10 @@ function ContextEditor({ ctx, onSave }: { ctx: NegotiationContext; onSave: (c: N
 
 export default function NegociacionPage() {
   const store = useNegotiationStore()
-  const country: CountryCode = (() => {
-    try { return (localStorage.getItem('vara_country') as CountryCode) || 'AR' } catch { return 'AR' }
-  })()
+  // El país de la operación activa; sin operación, el país por defecto de la persona.
+  const { activeOperation } = useOperations()
+  const { country: preferred } = useCountryPreference()
+  const country: CountryCode = activeOperation?.country ?? preferred
   const [mode, setMode] = useState<NegotiationMode>('reply')
   const [channel, setChannel] = useState<Channel>('whatsapp')
   const [message, setMessage] = useState('')
