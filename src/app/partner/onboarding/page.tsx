@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, ArrowRight, Check, Loader2, Plus, X, ShieldCheck,
@@ -19,9 +19,10 @@ import {
   getMyPartner, createMyPartner, updateMyPartner, saveMyContact,
   listMyReferences, addReference, deleteReference,
   getMyTraining, markModuleCompleted, saveQuizResult,
-  getMyVerification, hasSession,
+  getMyVerification, hasSession, getMyContact,
 } from '@/lib/supabase/visits'
 import { isRateWithinBand } from '@/lib/varaVisit/pricing'
+import { resumeStep } from '@/lib/varaVisit/onboarding'
 
 /**
  * Alta de Visit Partner — 7 pasos.
@@ -87,10 +88,22 @@ function PersonalStep({
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // El contacto vive en otra tabla: sin precargarlo, guardar de nuevo lo pisaba con vacío.
+  useEffect(() => {
+    if (!partner) return
+    void getMyContact(partner.id).then(c => {
+      if (!c) return
+      setPhone(prev => prev || c.phone)
+      setEmail(prev => prev || c.email)
+    })
+  }, [partner])
 
   async function save() {
     if (!name.trim()) return
     setBusy(true)
+    setError(null)
     const draft = {
       displayName: name.trim(),
       profession: profession.trim() || undefined,
@@ -98,10 +111,13 @@ function PersonalStep({
       bio: bio.trim() || undefined,
     }
     let id: string | null = partner?.id ?? null
-    if (partner) await updateMyPartner(partner.id, draft)
-    else id = await createMyPartner(draft)
-    if (id) await saveMyContact(id, { phone: phone.trim(), email: email.trim() })
+    const ok = partner ? await updateMyPartner(partner.id, draft) : Boolean(id = await createMyPartner(draft))
+    if (ok && id) await saveMyContact(id, { phone: phone.trim(), email: email.trim() })
     setBusy(false)
+    if (!ok || !id) {
+      setError('No pudimos guardar tus datos. Revisá tu conexión o volvé a entrar a tu cuenta.')
+      return
+    }
     onSaved()
   }
 
@@ -146,6 +162,7 @@ function PersonalStep({
         </div>
       </Card>
 
+      {error && <SaveError>{error}</SaveError>}
       <button onClick={save} disabled={busy || !name.trim()}
         className="w-full rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-40 py-3 text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2">
         {busy
@@ -153,6 +170,14 @@ function PersonalStep({
           : <>Guardar y continuar <ArrowRight size={15} aria-hidden="true" /></>}
       </button>
     </div>
+  )
+}
+
+function SaveError({ children }: { children: React.ReactNode }) {
+  return (
+    <p role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700">
+      <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" aria-hidden="true" />{children}
+    </p>
   )
 }
 
@@ -165,13 +190,15 @@ function ZoneStep({ partner, onSaved }: { partner: PartnerPublicProfile; onSaved
   const [duration, setDuration] = useState(30)
   const [rate, setRate] = useState(String(partner.ratePerVisit || bandFor(30).defaultPrice))
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const band = bandFor(duration)
   const rateOk = isRateWithinBand(Number(rate), duration)
 
   async function save() {
     setBusy(true)
-    await updateMyPartner(partner.id, {
+    setError(null)
+    const ok = await updateMyPartner(partner.id, {
       homeZoneLabel: homeZone.trim(),
       coverageZones: zones,
       maxTravelRadiusKm: Number(radius) || 10,
@@ -179,6 +206,10 @@ function ZoneStep({ partner, onSaved }: { partner: PartnerPublicProfile; onSaved
       ratePerVisit: Number(rate),
     })
     setBusy(false)
+    if (!ok) {
+      setError('No pudimos guardar tu zona. Revisá tu conexión o volvé a entrar a tu cuenta.')
+      return
+    }
     onSaved()
   }
 
@@ -189,7 +220,7 @@ function ZoneStep({ partner, onSaved }: { partner: PartnerPublicProfile; onSaved
   function addZone() {
     const z = zoneDraft.trim()
     if (!z) return
-    setZones([...zones, z])
+    if (!zones.some(x => x.toLowerCase() === z.toLowerCase())) setZones([...zones, z])
     setZoneDraft('')
   }
 
@@ -292,6 +323,7 @@ function ZoneStep({ partner, onSaved }: { partner: PartnerPublicProfile; onSaved
         )}
       </Card>
 
+      {error && <SaveError>{error}</SaveError>}
       <button onClick={save} disabled={busy || !homeZone.trim() || services.length === 0 || !rateOk}
         className="w-full rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-40 py-3 text-sm font-semibold text-white transition-colors flex items-center justify-center gap-2">
         {busy
@@ -740,6 +772,7 @@ export default function PartnerOnboardingPage() {
   const [training, setTraining] = useState<PartnerTraining | null>(null)
   const [verification, setVerification] = useState<PartnerVerification | null>(null)
   const [step, setStep] = useState<PartnerOnboardingStep>('PERSONAL_DATA')
+  const resumed = useRef(false)
 
   const load = useCallback(async () => {
     const ok = await hasSession()
@@ -747,10 +780,23 @@ export default function PartnerOnboardingPage() {
     if (ok) {
       const me = await getMyPartner()
       setPartner(me)
+      const refs = me ? await listMyReferences(me.id) : []
+      const tr = me ? await getMyTraining(me.id) : null
       if (me) {
-        setReferences(await listMyReferences(me.id))
-        setTraining(await getMyTraining(me.id))
+        setReferences(refs)
+        setTraining(tr)
         setVerification(await getMyVerification(me.id))
+      }
+      // Solo al entrar: quien vuelve sigue donde quedó, no en el paso 1.
+      if (!resumed.current) {
+        resumed.current = true
+        setStep(resumeStep({
+          hasProfile: !!me,
+          homeZoneLabel: me?.homeZoneLabel ?? '',
+          serviceCount: me?.serviceTypes.length ?? 0,
+          referenceCount: refs.length,
+          certificationStatus: tr?.certificationStatus ?? null,
+        }))
       }
     }
     setLoading(false)
