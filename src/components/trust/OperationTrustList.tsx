@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import { Check, ShieldCheck, X } from 'lucide-react'
 import { getOperationTrust } from '@/lib/supabase/identity'
 import { tryCreateClient } from '@/lib/supabase/client'
-import { ROLE_LABELS } from '@/lib/supabase/sharing'
-import type { OperationTrustEntry, ParticipantRoleDb } from '@/lib/supabase/types'
+import { participantRoleLabel } from '@/lib/participants/roles'
+import type { OperationTrustEntry } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
 
 function Signal({ ok, label }: { ok: boolean; label: string }) {
@@ -17,7 +17,7 @@ function Signal({ ok, label }: { ok: boolean; label: string }) {
 }
 
 /** Señales de confianza de los demás participantes de una operación compartida. */
-export function OperationTrustList({ operationId }: { operationId: string }) {
+export function OperationTrustList({ operationId, country }: { operationId: string; country?: string }) {
   const [entries, setEntries] = useState<OperationTrustEntry[] | null>(null)
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export function OperationTrustList({ operationId }: { operationId: string }) {
             <p className="text-sm font-semibold text-slate-800">
               {e.name ?? 'Sin nombre cargado'}
               <span className="ml-1.5 text-xs font-normal text-slate-500">
-                {e.isOwner ? 'Dueño de la operación' : ROLE_LABELS[e.role as ParticipantRoleDb] ?? e.role}
+                {e.isOwner ? 'Dueño de la operación' : participantRoleLabel(e.role, country)}
               </span>
             </p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">

@@ -589,7 +589,7 @@ export default function OperacionPage() {
                 </div>
                 <p className="font-bold text-slate-900">Falta el precio de la propiedad</p>
                 <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
-                  Los sellos, los honorarios y los aranceles se calculan sobre el precio.
+                  {country === 'MX' ? 'El ISAI, los honorarios del notario y los derechos de registro' : 'Los sellos, los honorarios y los aranceles'} se calculan sobre el precio.
                   Sin ese dato podriamos darte un numero, pero no seria el tuyo.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2 mt-4">

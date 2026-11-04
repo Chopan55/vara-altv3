@@ -324,7 +324,7 @@ export function OperationDocuments({ operationId, country }: { operationId: stri
         <p className="text-sm font-semibold text-slate-800 mb-1">Tus archivos</p>
         <p className="text-xs text-slate-500 leading-relaxed">
           Para subir documentos necesitás iniciar sesión. Los archivos van a un espacio privado
-          tuyo — una escritura tiene nombre, DNI y domicilio de personas reales, así que no los
+          tuyo — una escritura tiene nombres, documentos de identidad y domicilios de personas reales, así que no los
           guardamos en el navegador.
         </p>
       </div>

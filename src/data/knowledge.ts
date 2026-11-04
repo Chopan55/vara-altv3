@@ -11,6 +11,8 @@
 
 export type Audience = 'BUY' | 'SELL' | 'BOTH'
 
+export type KnowledgeCountry = 'AR' | 'MX'
+
 export type KnowledgeStage =
   | 'Reserva'
   | 'Documentación del vendedor'
@@ -18,6 +20,17 @@ export type KnowledgeStage =
   | 'Estudio de títulos y certificaciones'
   | 'Boleto de compraventa'
   | 'Escrituración'
+  // México
+  | 'Apartado'
+  | 'Certificados y avalúo'
+  | 'Promesa de compraventa'
+  | 'Firma ante notario'
+
+/** Etapas en el orden en que se viven, por país (coinciden con generateChecklist). */
+export const STAGES_BY_COUNTRY: Record<KnowledgeCountry, KnowledgeStage[]> = {
+  AR: ['Reserva', 'Documentación del vendedor', 'Documentación del comprador', 'Estudio de títulos y certificaciones', 'Boleto de compraventa', 'Escrituración'],
+  MX: ['Apartado', 'Documentación del vendedor', 'Documentación del comprador', 'Certificados y avalúo', 'Promesa de compraventa', 'Firma ante notario'],
+}
 
 export interface KnowledgeEntry {
   id: string
@@ -25,6 +38,8 @@ export interface KnowledgeEntry {
   /** Palabras con las que se busca esta entrada. En minúscula y sin tildes. */
   terms: string[]
   audience: Audience
+  /** País al que aplica. Sin valor: Argentina (el contenido original). */
+  country?: KnowledgeCountry
   stage?: KnowledgeStage
   summary: string
   body: string
@@ -271,6 +286,172 @@ Si el inmueble está ocupado —por inquilinos o por el mismo vendedor— la fec
       'Si algo del estado acordado no se cumple, planteálo antes de firmar, no después.',
     ],
   },
+
+  // ── México ─────────────────────────────────────────────────────────────────
+  // Proceso general; cada estado y cada notaría tienen variantes. Sin montos ni
+  // porcentajes (los calcula el motor regulatorio). Validar con un notario local.
+  {
+    id: 'mx-apartado',
+    country: 'MX',
+    title: 'Apartado',
+    terms: ['apartado', 'apartar', 'deposito', 'anticipo', 'separar', 'reserva'],
+    audience: 'BOTH',
+    stage: 'Apartado',
+    summary: 'El primer dinero para separar el inmueble mientras se revisan los papeles.',
+    body: `El apartado es un depósito que entrega el comprador para que el inmueble deje de ofrecerse mientras se revisa la documentación. Normalmente se descuenta del precio.
+
+Lo que importa es qué dice el recibo: a quién se paga, cuánto, hasta cuándo vale y qué pasa si alguna de las partes se echa para atrás (si se devuelve, si se pierde o si hay una pena).
+
+Si te piden un apartado alto antes de ver la escritura y el certificado de libertad de gravamen, es una señal para frenar.`,
+    watchOut: [
+      'Pedí recibo con la dirección completa del inmueble y el nombre de quien recibe.',
+      'Si quien recibe no es el propietario según la escritura, pedí el poder notarial que lo autoriza.',
+      'Que quede por escrito qué pasa con el dinero si la operación no se hace.',
+    ],
+  },
+  {
+    id: 'mx-promesa',
+    country: 'MX',
+    title: 'Contrato de promesa de compraventa',
+    terms: ['promesa', 'contrato', 'compraventa', 'preliminar', 'pena convencional'],
+    audience: 'BOTH',
+    stage: 'Promesa de compraventa',
+    summary: 'Un contrato privado que compromete a las partes, pero todavía no te hace dueño.',
+    body: `La promesa de compraventa fija precio, anticipo, forma de pago, fecha de firma ante notario y las penas si alguien no cumple. Se firma entre las partes, sin notario.
+
+Firmar la promesa no te hace propietario. La propiedad se transmite con la escritura pública ante notario y queda firme frente a terceros con la inscripción en el Registro Público de la Propiedad.
+
+Conviene firmarla cuando ya viste la escritura del vendedor y el certificado de libertad de gravamen.`,
+    watchOut: [
+      'Que diga la fecha concreta de firma ante notario y qué pasa si no se cumple.',
+      'Que aclare quién paga cada gasto e impuesto.',
+      'Revisala con el notario o un abogado antes de firmar.',
+    ],
+  },
+  {
+    id: 'mx-escritura',
+    country: 'MX',
+    title: 'Firma ante notario e inscripción en el RPP',
+    terms: ['notario', 'escritura', 'firma', 'testimonio', 'rpp', 'registro publico', 'inscripcion'],
+    audience: 'BOTH',
+    stage: 'Firma ante notario',
+    summary: 'El acto ante notario que transmite la propiedad y el registro que la hace oponible.',
+    body: `La compraventa se formaliza en escritura pública ante notario. Ese día se paga el saldo y el notario calcula y retiene los impuestos que correspondan (ISAI del comprador e ISR del vendedor, si aplica).
+
+Después el notario inscribe la escritura en el Registro Público de la Propiedad (RPP) del estado. Con esa inscripción tu propiedad vale frente a terceros. Al final recibís el testimonio: tu copia de la escritura inscrita.
+
+En México el notario es un profesional del derecho con nombramiento del estado; lo elige normalmente el comprador o el banco si hay crédito.`,
+    watchOut: [
+      'Pedí al notario una cotización por escrito de honorarios, impuestos y derechos antes de la firma.',
+      'Preguntá cuánto tarda la inscripción en el RPP y cuándo te entregan el testimonio.',
+    ],
+  },
+  {
+    id: 'mx-gravamen',
+    country: 'MX',
+    title: 'Certificado de libertad de gravamen',
+    terms: ['gravamen', 'libertad de gravamen', 'hipoteca', 'embargo', 'certificado'],
+    audience: 'BUY',
+    stage: 'Certificados y avalúo',
+    summary: 'El documento del RPP que dice si el inmueble tiene hipotecas o embargos.',
+    body: `Lo emite el Registro Público de la Propiedad y lo solicita el notario. Muestra si el inmueble tiene hipotecas, embargos u otras limitaciones inscritas.
+
+Si aparece una hipoteca (por ejemplo, el crédito con el que el vendedor lo compró), se puede cancelar con el mismo dinero de la venta, pero tiene que quedar resuelto en la firma.`,
+    watchOut: [
+      'No des más dinero que el apartado hasta ver este certificado.',
+      'Tiene vigencia limitada: el notario lo pide de nuevo cerca de la firma.',
+    ],
+  },
+  {
+    id: 'mx-avaluo',
+    country: 'MX',
+    title: 'Avalúo',
+    terms: ['avaluo', 'valuacion', 'perito', 'valuador', 'valor catastral'],
+    audience: 'BOTH',
+    stage: 'Certificados y avalúo',
+    summary: 'La valuación profesional que sirve de base para impuestos y para el crédito.',
+    body: `El avalúo lo hace un perito valuador autorizado. Se usa para calcular el ISAI y, si hay crédito bancario o INFONAVIT, el banco lo exige para saber cuánto presta.
+
+El ISAI suele calcularse sobre el valor más alto entre el precio de la operación, el avalúo y el valor catastral; la regla exacta depende del estado.`,
+    watchOut: [
+      'Si el avalúo sale por debajo del precio, el banco puede prestar menos de lo que esperabas.',
+    ],
+  },
+  {
+    id: 'mx-isai',
+    country: 'MX',
+    title: 'ISAI (Impuesto Sobre Adquisición de Inmuebles)',
+    terms: ['isai', 'impuesto', 'adquisicion', 'traslado de dominio', 'itd'],
+    audience: 'BUY',
+    stage: 'Firma ante notario',
+    summary: 'El impuesto local que paga quien compra; la tasa depende del estado o municipio.',
+    body: `Lo paga el comprador y lo cobra el estado o el municipio, según dónde esté el inmueble. En algunos lugares se llama Impuesto sobre Traslado de Dominio.
+
+La tasa y la base cambian por estado (algunas son progresivas según el valor). El notario lo calcula, lo cobra en la firma y lo entera a la tesorería. En VARA lo ves en Costos, con el nivel de confianza del dato de tu estado.`,
+    watchOut: [
+      'Hay reducciones para vivienda de interés social en varios estados: preguntale al notario si aplica.',
+    ],
+  },
+  {
+    id: 'mx-isr',
+    country: 'MX',
+    title: 'ISR del vendedor',
+    terms: ['isr', 'ganancia', 'exencion', 'casa habitacion', 'sat', 'impuesto vendedor'],
+    audience: 'SELL',
+    stage: 'Firma ante notario',
+    summary: 'El impuesto federal sobre la ganancia de la venta, que puede estar exento.',
+    body: `Quien vende paga ISR sobre la ganancia (precio de venta menos el costo actualizado y las deducciones permitidas). El notario lo calcula, lo retiene en la firma y lo entera al SAT.
+
+Si el inmueble es tu casa habitación, la venta puede estar exenta, con requisitos y un tope que fija la ley y que conviene revisar con el notario antes de pactar el precio.`,
+    watchOut: [
+      'Guardá la escritura con la que compraste y las facturas de mejoras: sirven para deducir.',
+      'La exención por casa habitación tiene condiciones: confirmala antes de firmar la promesa.',
+    ],
+  },
+  {
+    id: 'mx-identificacion',
+    country: 'MX',
+    title: 'Documentos personales: INE, RFC y CURP',
+    terms: ['ine', 'rfc', 'curp', 'identificacion', 'constancia de situacion fiscal', 'documentos'],
+    audience: 'BOTH',
+    stage: 'Documentación del comprador',
+    summary: 'Lo que pide el notario a cada parte para identificarla.',
+    body: `El notario pide identificación oficial vigente (INE o pasaporte), RFC con constancia de situación fiscal del SAT, CURP, comprobante de domicilio y acta de nacimiento o de matrimonio.
+
+Si estás casado por bienes mancomunados, normalmente firma también tu cónyuge.`,
+    watchOut: [
+      'Si sos extranjero, puede haber requisitos extra (por ejemplo, en zonas restringidas cerca de costas y fronteras).',
+    ],
+  },
+  {
+    id: 'mx-predial',
+    country: 'MX',
+    title: 'Predial, agua y mantenimiento al corriente',
+    terms: ['predial', 'agua', 'adeudo', 'mantenimiento', 'condominio', 'cuotas'],
+    audience: 'BOTH',
+    stage: 'Documentación del vendedor',
+    summary: 'Las deudas del inmueble que tienen que estar pagadas antes de firmar.',
+    body: `El vendedor entrega las boletas de predial y de agua al corriente, y en condominio una constancia de no adeudo de cuotas de mantenimiento firmada por la administración.
+
+El notario no firma si hay adeudos de predial o agua: se pagan antes o con el dinero de la venta.`,
+    watchOut: [
+      'En condominio, pedí también el reglamento: dice qué se puede y qué no se puede hacer.',
+    ],
+  },
+  {
+    id: 'mx-credito',
+    country: 'MX',
+    title: 'Crédito bancario e INFONAVIT',
+    terms: ['credito', 'hipotecario', 'infonavit', 'fovissste', 'cofinavit', 'banco', 'financiamiento'],
+    audience: 'BUY',
+    summary: 'Cómo cambia el proceso cuando comprás con crédito.',
+    body: `Con crédito, el banco o el instituto (INFONAVIT, FOVISSSTE) agrega sus pasos: aprobación, avalúo, revisión de la documentación del inmueble y firma ante un notario de su lista.
+
+Eso suma tiempo. Conviene tener la precalificación antes del apartado y que la promesa contemple un plazo realista para la firma.`,
+    watchOut: [
+      'Si el crédito no sale, que la promesa diga qué pasa con tu anticipo.',
+    ],
+  },
 ]
 
 /** Normaliza para comparar: minúsculas y sin tildes. */
@@ -278,11 +459,21 @@ function norm(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
-/** Busca entradas relevantes a una consulta. Coincidencia simple por términos. */
-export function findKnowledge(query: string, audience?: Audience, limit = 4): KnowledgeEntry[] {
+export function entryCountry(e: KnowledgeEntry): KnowledgeCountry {
+  return e.country ?? 'AR'
+}
+
+/** Las entradas de un país. */
+export function knowledgeFor(country: KnowledgeCountry): KnowledgeEntry[] {
+  return KNOWLEDGE.filter(e => entryCountry(e) === country)
+}
+
+/** Busca entradas relevantes a una consulta, solo del país de la operación. */
+export function findKnowledge(query: string, audience?: Audience, limit = 4, country: KnowledgeCountry = 'AR'): KnowledgeEntry[] {
   const q = norm(query)
 
   const scored = KNOWLEDGE.map(e => {
+    if (entryCountry(e) !== country) return { e, score: 0 }
     if (audience && e.audience !== 'BOTH' && e.audience !== audience) return { e, score: 0 }
     let score = 0
     for (const t of e.terms) if (q.includes(norm(t))) score += 2
@@ -303,6 +494,6 @@ export function getKnowledge(id: string): KnowledgeEntry | undefined {
   return KNOWLEDGE.find(e => e.id === id)
 }
 
-export function knowledgeForStage(stage: string): KnowledgeEntry[] {
-  return KNOWLEDGE.filter(e => e.stage === stage)
+export function knowledgeForStage(stage: string, country: KnowledgeCountry = 'AR'): KnowledgeEntry[] {
+  return KNOWLEDGE.filter(e => e.stage === stage && entryCountry(e) === country)
 }

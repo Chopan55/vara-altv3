@@ -58,6 +58,8 @@ export function toSummary(op: StoredOperation): UserOperationSummary {
     status: op.status,
     progress: op.progress,
     province: op.province,
+    // Sin el país, una operación de México se mostraba con textos y costos de Argentina.
+    country: op.country,
     city: op.city,
     propertyId: op.propertyId,
     createdAt: new Date(op.createdAt).toISOString(),

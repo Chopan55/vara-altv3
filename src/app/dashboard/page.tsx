@@ -10,7 +10,7 @@ import {
 } from '@/components/dashboard/DashboardParts'
 import { loadUserProperties, loadUserPropertyById, type UserProperty } from '@/lib/userProperties'
 import { buildFirstValue, pickDashboardProperty, shouldShowEmptyState, type OperationKind, type PlanStep } from '@/lib/dashboard/firstValue'
-import { fetchSellerTasks, fetchBuyerTasks, toggleOperationTask, setOperationTaskDueDate, SELLER_TASK_DEFS, BUYER_TASK_DEFS, type SellerTaskState } from '@/lib/supabase/sellerTasks'
+import { fetchSellerTasks, fetchBuyerTasks, toggleOperationTask, setOperationTaskDueDate, taskDefsFor, type SellerTaskState } from '@/lib/supabase/sellerTasks'
 import type { Transaction, UserOperationSummary } from '@/types'
 
 /**
@@ -39,12 +39,12 @@ function useDashboardProperty(op: UserOperationSummary, kind: OperationKind) {
 /** Plan de operación: SELL usa tareas de vendedor; BUY usa tareas de comprador. */
 const LOCAL_TASKS_KEY = (opId: string, type: 'SELL' | 'BUY') => `vara_${type.toLowerCase()}_tasks_${opId}`
 
-function defaultLocalTasks(type: 'SELL' | 'BUY'): SellerTaskState[] {
-  const defs = type === 'BUY' ? BUYER_TASK_DEFS : SELLER_TASK_DEFS
+function defaultLocalTasks(type: 'SELL' | 'BUY', country?: string): SellerTaskState[] {
+  const defs = taskDefsFor(type, country)
   return defs.map(d => ({ id: d.key, key: d.key, title: d.title, description: d.description, done: false }))
 }
 
-function useOperationPlan(operationId: string, type: 'SELL' | 'BUY') {
+function useOperationPlan(operationId: string, type: 'SELL' | 'BUY', country?: string) {
   const [tasks, setTasks] = useState<SellerTaskState[]>([])
   const [loaded, setLoaded] = useState(false)
   const [isLocal, setIsLocal] = useState(false)
@@ -52,7 +52,7 @@ function useOperationPlan(operationId: string, type: 'SELL' | 'BUY') {
   useEffect(() => {
     let alive = true
     const fetchFn = type === 'BUY' ? fetchBuyerTasks : fetchSellerTasks
-    fetchFn(operationId)
+    fetchFn(operationId, country)
       .then(result => {
         if (!alive) return
         if (result) {
@@ -61,9 +61,9 @@ function useOperationPlan(operationId: string, type: 'SELL' | 'BUY') {
           // No Supabase session — use localStorage with default task definitions
           try {
             const saved = localStorage.getItem(LOCAL_TASKS_KEY(operationId, type))
-            setTasks(saved ? JSON.parse(saved) as SellerTaskState[] : defaultLocalTasks(type))
+            setTasks(saved ? JSON.parse(saved) as SellerTaskState[] : defaultLocalTasks(type, country))
           } catch {
-            setTasks(defaultLocalTasks(type))
+            setTasks(defaultLocalTasks(type, country))
           }
           setIsLocal(true)
         }
@@ -71,7 +71,7 @@ function useOperationPlan(operationId: string, type: 'SELL' | 'BUY') {
       .catch(() => {})
       .finally(() => { if (alive) setLoaded(true) })
     return () => { alive = false }
-  }, [operationId, type])
+  }, [operationId, type, country])
 
   // Persist local tasks to localStorage when there's no Supabase session
   useEffect(() => {
@@ -108,7 +108,7 @@ function OperationView({ op, operations, onSelect, onDelete, getTransactionData 
 }) {
   const kind: OperationKind = op.type === 'SELL' ? 'SELL' : 'BUY'
   const { ready, property } = useDashboardProperty(op, kind)
-  const plan = useOperationPlan(op.id, kind)
+  const plan = useOperationPlan(op.id, kind, op.country)
 
   // Hasta saber qué propiedad corresponde no se decide nada: evita mostrar "cargá la propiedad" y corregirlo un segundo después.
   if (!ready || !plan.loaded) return <DashboardLoading />

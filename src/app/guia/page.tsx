@@ -3,17 +3,9 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Search, ChevronDown, ChevronUp, AlertTriangle, MessageSquare, BookOpen } from 'lucide-react'
 import { useOperations } from '@/hooks/useOperations'
-import { KNOWLEDGE, type KnowledgeEntry, type Audience } from '@/data/knowledge'
+import { knowledgeFor, STAGES_BY_COUNTRY, type KnowledgeEntry, type Audience } from '@/data/knowledge'
 
 /** Orden real del proceso. Las entradas sin etapa van al final, como conceptos generales. */
-const STAGE_ORDER = [
-  'Reserva',
-  'Documentación del vendedor',
-  'Documentación del comprador',
-  'Estudio de títulos y certificaciones',
-  'Boleto de compraventa',
-  'Escrituración',
-] as const
 
 function EntryCard({ entry, open, onToggle }: {
   entry: KnowledgeEntry
@@ -68,8 +60,10 @@ function EntryCard({ entry, open, onToggle }: {
 }
 
 export default function GuiaPage() {
-  const { journey } = useOperations()
+  const { journey, activeOperation } = useOperations()
   const audience: Audience = journey
+  // La guía es la del país de la operación activa: el proceso y las palabras cambian.
+  const country = activeOperation?.country === 'MX' ? 'MX' : 'AR'
 
   const [query, setQuery] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
@@ -77,16 +71,16 @@ export default function GuiaPage() {
 
   const entries = useMemo(() => {
     const q = query.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-    return KNOWLEDGE.filter(e => {
+    return knowledgeFor(country).filter(e => {
       if (!showAll && e.audience !== 'BOTH' && e.audience !== audience) return false
       if (!q) return true
       const hay = `${e.title} ${e.summary} ${e.terms.join(' ')}`
         .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
       return hay.includes(q)
     })
-  }, [query, audience, showAll])
+  }, [query, audience, showAll, country])
 
-  const byStage = STAGE_ORDER
+  const byStage = STAGES_BY_COUNTRY[country]
     .map(stage => ({ stage, items: entries.filter(e => e.stage === stage) }))
     .filter(g => g.items.length > 0)
   const general = entries.filter(e => !e.stage)
@@ -112,7 +106,7 @@ export default function GuiaPage() {
             type="search"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Buscá: seña, boleto, inhibición, expensas…"
+            placeholder={country === 'MX' ? 'Buscá: apartado, promesa, ISAI, avalúo…' : 'Buscá: seña, boleto, inhibición, expensas…'}
             aria-label="Buscar en la guía"
             className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-slate-100 focus:border-brand-400 outline-none text-sm text-slate-700 placeholder:text-slate-300 transition-colors"
           />
@@ -192,7 +186,7 @@ export default function GuiaPage() {
 
         <p className="text-[11px] text-slate-400 text-center leading-relaxed px-4">
           Esta guía explica el proceso general. Cada operación tiene particularidades:
-          confirmá tu caso con un escribano matriculado.
+          confirmá tu caso con {country === 'MX' ? 'un notario del estado' : 'un escribano matriculado'}.
         </p>
       </div>
     </div>

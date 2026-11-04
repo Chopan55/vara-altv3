@@ -1,9 +1,10 @@
 'use client'
 import { useCallback, useState } from 'react'
+import { participantRoleLabels } from '@/lib/participants/roles'
 import { useLoad } from '@/hooks/useLoad'
 import { Check, Copy, Loader2, Send, UserPlus, X } from 'lucide-react'
 import {
-  createInvite, inviteUrl, listInvites, revokeInvite, ROLE_LABELS, type SharingError,
+  createInvite, inviteUrl, listInvites, revokeInvite, type SharingError,
 } from '@/lib/supabase/sharing'
 import type { OperationMemberRow, ParticipantRoleDb } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
@@ -18,7 +19,8 @@ const ERRORS: Record<SharingError, string> = {
 }
 
 /** Invitaciones de solo lectura a una operación: email + rol → link para mandar por WhatsApp o mail. */
-export function InviteManager({ operationId }: { operationId: string }) {
+export function InviteManager({ operationId, country }: { operationId: string; country?: string }) {
+  const roleLabels = participantRoleLabels(country)
   const [invites, setInvites] = useState<OperationMemberRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<SharingError | null>(null)
@@ -82,7 +84,7 @@ export function InviteManager({ operationId }: { operationId: string }) {
           <label htmlFor="inv-role" className="sr-only">Rol</label>
           <select id="inv-role" value={role} onChange={e => setRole(e.target.value as ParticipantRoleDb)}
             className="rounded-xl border border-slate-200 bg-white px-2 py-2.5 text-sm">
-            {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+            {ROLES.map(r => <option key={r} value={r}>{roleLabels[r]}</option>)}
           </select>
         </div>
         <button type="submit" disabled={busy || !email.trim() || error === 'NOT_READY'}
@@ -104,7 +106,7 @@ export function InviteManager({ operationId }: { operationId: string }) {
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-slate-800">{inv.invited_email}</span>
                 <span className="block text-[11px] text-slate-500">
-                  {ROLE_LABELS[inv.role]} · {inv.accepted_at ? 'Aceptó' : 'Pendiente'}
+                  {roleLabels[inv.role]} · {inv.accepted_at ? 'Aceptó' : 'Pendiente'}
                 </span>
               </span>
               {!inv.accepted_at && (

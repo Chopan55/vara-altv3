@@ -25,7 +25,7 @@ interface OpTask {
   daysUntil: number
 }
 
-function useCrossOpTasks(operations: { id: string; title: string; type: 'SELL' | 'BUY' }[], loaded: boolean) {
+function useCrossOpTasks(operations: { id: string; title: string; type: 'SELL' | 'BUY'; country?: string }[], loaded: boolean) {
   // El resultado recuerda para qué lista se calculó: "cargado" se deriva, no se prende a mano.
   const [result, setResult] = useState<{ ops: typeof operations; tasks: OpTask[] } | null>(null)
 
@@ -34,7 +34,7 @@ function useCrossOpTasks(operations: { id: string; title: string; type: 'SELL' |
     let alive = true
     Promise.all(
       operations.map(op =>
-        fetchOperationTasks(op.id, op.type).then(tasks => ({ op, tasks: tasks ?? [] })),
+        fetchOperationTasks(op.id, op.type, op.country).then(tasks => ({ op, tasks: tasks ?? [] })),
       ),
     )
       .then(results => {
@@ -100,7 +100,7 @@ function daysLabel(d: number): string {
 export default function InteligenciaCruzadaPage() {
   const { operations: allOps, loaded } = useOperations()
   const operations = useMemo(
-    () => allOps.map(o => ({ id: o.id, title: o.title, type: o.type })),
+    () => allOps.map(o => ({ id: o.id, title: o.title, type: o.type, country: o.country })),
     [allOps],
   )
   const { allTasks, tasksLoaded } = useCrossOpTasks(operations, loaded)

@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ArrowLeft, FileText, Loader2, Lock, MapPin } from 'lucide-react'
-import { getSharedOperation, ROLE_LABELS, type SharingError } from '@/lib/supabase/sharing'
+import { getSharedOperation, type SharingError } from '@/lib/supabase/sharing'
+import { participantRoleLabel } from '@/lib/participants/roles'
+import { countryOfProvince } from '@/lib/regulations'
 import { DOCUMENT_CATEGORY_LABELS, DOCUMENT_STATUS_LABELS, type DocumentCategory, type DocumentStatus } from '@/lib/documents/model'
 import type { SharedOperationView } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
@@ -78,7 +80,7 @@ export default function SharedOperationPage() {
             {op.type === 'SELL_PROPERTY' ? 'Venta' : 'Compra'}
           </span>
           <span className="rounded-full border border-brand-100 bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
-            Participás como {ROLE_LABELS[view.role].toLowerCase()}
+            Participás como {participantRoleLabel(view.role, countryOfProvince(view.operation.province)).toLowerCase()}
           </span>
         </div>
         <h1 className="mt-1.5 text-2xl font-extrabold tracking-tight text-slate-900">{op.title || 'Operación'}</h1>
@@ -118,7 +120,7 @@ export default function SharedOperationPage() {
         )}
       </section>
 
-      <OperationTrustList operationId={op.id} />
+      <OperationTrustList operationId={op.id} country={countryOfProvince(op.province)} />
 
       <p className="flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-[11px] leading-relaxed text-slate-500">
         <Lock size={12} className="mt-0.5 flex-shrink-0" aria-hidden="true" />

@@ -83,7 +83,7 @@ function DocSummaryCard({ summary }: { summary: DocSummary }) {
       {open && tone === 'unreadable' && (
         <p className="p-4 bg-white text-xs text-slate-600 leading-relaxed">
           Puede ser un escaneo o una foto convertida a PDF. Que no veamos cargas no significa que no las tenga:
-          pedí una copia digital del documento o revisalo con tu escribano.
+          pedí una copia digital del documento o revisalo con tu escribano o notario.
         </p>
       )}
 
@@ -160,7 +160,7 @@ function DocSummaryCard({ summary }: { summary: DocSummary }) {
           {/* Disclaimer */}
           <p className="text-[10px] text-slate-400 pt-2 border-t border-slate-100 leading-relaxed">
             Análisis generado por IA a partir del texto del documento.
-            No reemplaza la revisión de un escribano o abogado.
+            No reemplaza la revisión de un escribano, notario o abogado.
           </p>
         </div>
       )}
@@ -189,6 +189,7 @@ export default function EscrituraPage() {
   const analyzeDebounce = useRef<Set<string>>(new Set())
 
   const opId = selectedOpId ?? activeOperationId ?? activeOps[0]?.id ?? null
+  const isMX = allOps.find(o => o.id === opId)?.country === 'MX'
   const docsLoading = isSupabaseConfigured && opId !== null && docsFor !== opId
 
   useEffect(() => {
@@ -376,8 +377,9 @@ export default function EscrituraPage() {
                 <FileText size={22} className="text-slate-300 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-slate-700 mb-1">Sin documentos cargados</p>
                 <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-                  Esta operación aún no tiene documentos. Cargá la escritura, el boleto o
-                  el informe de dominio desde el detalle de la operación.
+                  Esta operación aún no tiene documentos. Cargá la escritura,{' '}
+                  {isMX ? 'la promesa de compraventa o el certificado de libertad de gravamen' : 'el boleto o el informe de dominio'}{' '}
+                  desde el detalle de la operación.
                 </p>
                 {opId && (
                   <Link
@@ -491,9 +493,10 @@ export default function EscrituraPage() {
                 <div>
                   <p className="text-xs font-bold text-brand-700 mb-1">Qué analiza VARA</p>
                   <p className="text-xs text-brand-600 leading-relaxed">
-                    Para PDFs de escrituras, boletos e informes de dominio: extrae titulares,
-                    detecta hipotecas, embargos, inhibiciones, restricciones de dominio y genera
-                    alertas para revisar con tu escribano. El análisis es informativo — no reemplaza
+                    {isMX
+                      ? 'Para PDFs de escrituras, promesas de compraventa y certificados de libertad de gravamen: extrae titulares, detecta hipotecas, embargos y limitaciones de dominio y genera alertas para revisar con tu notario.'
+                      : 'Para PDFs de escrituras, boletos e informes de dominio: extrae titulares, detecta hipotecas, embargos, inhibiciones, restricciones de dominio y genera alertas para revisar con tu escribano.'}{' '}
+                    El análisis es informativo — no reemplaza
                     la revisión profesional.
                   </p>
                 </div>

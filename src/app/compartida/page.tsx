@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ChevronRight, Loader2, Users } from 'lucide-react'
-import { listSharedOperations, ROLE_LABELS } from '@/lib/supabase/sharing'
+import { listSharedOperations } from '@/lib/supabase/sharing'
+import { participantRoleLabel } from '@/lib/participants/roles'
 import type { SharedOperationSummary } from '@/lib/supabase/types'
 
 /** Operaciones de otras personas en las que participo por invitación. */
@@ -39,7 +40,7 @@ export default function SharedOperationsPage() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-bold text-slate-900">{o.title || 'Operación'}</span>
                   <span className="block text-xs text-slate-500">
-                    {o.type === 'SELL_PROPERTY' ? 'Venta' : 'Compra'} · {ROLE_LABELS[o.role]}
+                    {o.type === 'SELL_PROPERTY' ? 'Venta' : 'Compra'} · {participantRoleLabel(o.role)}
                   </span>
                 </span>
                 <ChevronRight size={15} className="text-slate-300" aria-hidden="true" />

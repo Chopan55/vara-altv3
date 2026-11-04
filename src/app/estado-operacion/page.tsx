@@ -8,6 +8,7 @@ import { useOperations } from '@/hooks/useOperations'
 import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { InviteManager } from '@/components/sharing/InviteManager'
 import { OperationTrustList } from '@/components/trust/OperationTrustList'
+import { participantRoleLabel } from '@/lib/participants/roles'
 import { cn } from '@/lib/utils'
 
 /**
@@ -25,16 +26,6 @@ interface ParticipantRow {
   phone?: string | null
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  NOTARY:      'Escribano/a',
-  BROKER:      'Martillero / Inmobiliaria',
-  ACCOUNTANT:  'Contador/a',
-  LAWYER:      'Abogado/a',
-  APPRAISER:   'Tasador/a',
-  COUNTERPARTY:'La otra parte',
-  BANK:        'Banco',
-  OTHER:       'Otro',
-}
 
 function useOperationParticipants(operationId: string | null) {
   // El resultado recuerda de qué operación es: "cargando" se deriva.
@@ -145,9 +136,9 @@ export default function EstadoOperacionPage() {
                   <p className="font-bold text-slate-900 text-sm leading-tight">{selected.title}</p>
                 </div>
 
-                <InviteManager operationId={selected.id} />
+                <InviteManager operationId={selected.id} country={selected.country} />
 
-                <OperationTrustList operationId={selected.id} />
+                <OperationTrustList operationId={selected.id} country={selected.country} />
 
                 {/* Participantes */}
                 <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card overflow-hidden">
@@ -190,7 +181,7 @@ export default function EstadoOperacionPage() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-slate-800 truncate">{p.name}</p>
                             <p className="text-[10px] text-slate-500">
-                              {ROLE_LABELS[p.role] ?? p.role}
+                              {participantRoleLabel(p.role, selected?.country)}
                               {p.email ? ` · ${p.email}` : ''}
                             </p>
                           </div>

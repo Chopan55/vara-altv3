@@ -6,14 +6,15 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     name: 'Ciudad de México',
     displayName: 'CDMX',
     dataConfidence: 'PARTIAL',
-    lastUpdated: '2026-09-26',
+    lastUpdated: '2026-11-04',
     entities: [
       { name: 'Secretaría de Administración y Finanzas de la CDMX', acronym: 'SAF', url: 'https://finanzas.cdmx.gob.mx', role: 'IMPOSITIVO' },
       { name: 'Registro Público de la Propiedad y de Comercio CDMX', acronym: 'RPPC', url: 'https://www.registropublico.cdmx.gob.mx', role: 'REGISTRO' },
       { name: 'Colegio de Notarios de la Ciudad de México', acronym: 'CNCM', url: 'https://www.colegiodenotariosdf.org.mx', role: 'COLEGIO_ESCRIBANOS' },
     ],
     stampTax: {
-      totalRate: 0.045,
+      totalRate: 0.04,
+      totalRateMax: 0.05,
       buyerShare: 1.0,
       sellerShare: 0.0,
       base: 'PRICE_OR_FISCAL',
@@ -22,7 +23,7 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
       ],
       confidence: 'PARTIAL',
       sourceUrl: 'https://finanzas.cdmx.gob.mx/codigo-fiscal',
-      notes: 'ISAI CDMX: tasa progresiva 2%-6% según valor, promedio ~4.5%. Solo paga el comprador. El notario centraliza todos los impuestos.',
+      notes: 'ISAI CDMX: tarifa progresiva por tramos (art. 113 del Código Fiscal de la CDMX, cuotas actualizadas para 2026). Para valores de 1.5 a 3 M MXN el efectivo ronda 4%-4.3% según cálculos de terceros; valores más altos pagan más. Solo paga el comprador. Confirmar con el notario.',
     },
     notaryFee: {
       minRate: 0.008, maxRate: 0.015, buyerShare: 0.7, sellerShare: 0.3, vatApplies: true,
@@ -37,9 +38,8 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     ],
     keyMunicipalities: [],
     particularities: [
-      'ISR por enajenación: vendedor persona física puede exentar si es casa habitación con 3+ años de residencia',
+      'ISR por enajenación: el vendedor persona física puede estar exento si es su casa habitación y cumple los requisitos de la Ley del ISR (entre ellos, no haber usado la exención en los 3 años anteriores y un tope de monto). Confirmar con el notario',
       'El notario es agente retenedor del ISR y del ISAI — centraliza todos los impuestos en la escritura',
-      'Escritura digital: CDMX tiene protocolo electrónico notarial desde 2023',
     ],
   },
 
@@ -48,7 +48,7 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     name: 'Jalisco',
     displayName: 'Jalisco',
     dataConfidence: 'ESTIMATED',
-    lastUpdated: '2026-09-26',
+    lastUpdated: '2026-11-04',
     entities: [
       { name: 'Secretaría de Planeación, Administración y Finanzas de Jalisco', acronym: 'SEPAF', url: 'https://sepaf.jalisco.gob.mx', role: 'IMPOSITIVO' },
       { name: 'Registro Público de la Propiedad de Jalisco', acronym: 'RPP Jalisco', url: 'https://registropublico.jalisco.gob.mx', role: 'REGISTRO' },
@@ -56,12 +56,13 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     ],
     stampTax: {
       totalRate: 0.02,
+      totalRateMax: 0.033,
       buyerShare: 1.0,
       sellerShare: 0.0,
       base: 'PRICE_OR_FISCAL',
       exemptions: [{ description: 'Primera vivienda para uso habitual', condition: 'Valor catastral ≤ umbral definido por municipio' }],
       confidence: 'ESTIMATED',
-      notes: 'ISAI Jalisco: ~2% sobre valor de escritura. Verificar en SEPAF.',
+      notes: 'ISABI Jalisco: lo fija cada municipio (Ley de Hacienda Municipal), entre ~2% y ~3.3% según fuentes secundarias que no coinciden; puede calcularse sobre el valor catastral. Confirmar con el notario.',
     },
     notaryFee: { minRate: 0.008, maxRate: 0.012, buyerShare: 0.65, sellerShare: 0.35, vatApplies: true },
     registryFee: { rate: 0.002, notes: 'Derechos de registro RPP Jalisco: aprox 0.2%' },
@@ -76,7 +77,6 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     ],
     particularities: [
       'Puerto Vallarta: zona restringida costera — extranjeros no pueden tener dominio directo, requieren fideicomiso bancario',
-      'Guadalajara ZMG: mayor volumen de transacciones del occidente; plazos registrales más cortos',
     ],
   },
 
@@ -85,16 +85,17 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     name: 'Nuevo León',
     displayName: 'Nuevo León',
     dataConfidence: 'ESTIMATED',
-    lastUpdated: '2026-09-26',
+    lastUpdated: '2026-11-04',
     entities: [
       { name: 'Secretaría de Finanzas y Tesorería General del Estado de NL', acronym: 'SFTGE', url: 'https://www.nl.gob.mx/finanzas', role: 'IMPOSITIVO' },
       { name: 'Registro Público de la Propiedad de Nuevo León', acronym: 'RPP NL', role: 'REGISTRO' },
       { name: 'Colegio de Notarios de Nuevo León', acronym: 'CNNL', role: 'COLEGIO_ESCRIBANOS' },
     ],
     stampTax: {
-      totalRate: 0.02, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
+      totalRate: 0.02,
+      totalRateMax: 0.03, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
       confidence: 'ESTIMATED',
-      notes: 'ISAI NL: estimado ~2%. Monterrey es el mayor mercado corporativo del norte.',
+      notes: 'ISAI Nuevo León: la mayoría de las fuentes secundarias indican 3% (Ley de Hacienda para los Municipios del Estado); puede haber tasa reducida para primera vivienda. Confirmar con el notario.',
     },
     notaryFee: { minRate: 0.008, maxRate: 0.013, buyerShare: 0.65, sellerShare: 0.35, vatApplies: true },
     registryFee: { rate: 0.002 },
@@ -107,8 +108,6 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
       { name: 'San Pedro Garza García', extraRequirements: ['Libre deuda municipal', 'Certificado de uso de suelo'], hasTransferTax: false },
     ],
     particularities: [
-      'San Pedro Garza García: el municipio con mayor valor promedio de transacción del país',
-      'Mercado industrial muy activo — alta demanda de inmuebles corporativos y manufactura',
     ],
   },
 
@@ -117,15 +116,16 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     name: 'Querétaro',
     displayName: 'Querétaro',
     dataConfidence: 'ESTIMATED',
-    lastUpdated: '2026-09-26',
+    lastUpdated: '2026-11-04',
     entities: [
       { name: 'Secretaría de Finanzas del Estado de Querétaro', acronym: 'SEFIN QRO', url: 'https://sefi.queretaro.gob.mx', role: 'IMPOSITIVO' },
       { name: 'Registro Público de la Propiedad de Querétaro', acronym: 'RPP Qro', role: 'REGISTRO' },
     ],
     stampTax: {
-      totalRate: 0.02, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
+      totalRate: 0.015,
+      totalRateMax: 0.03, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
       confidence: 'ESTIMATED',
-      notes: 'ISAI Querétaro: estimado ~2%. Mercado en expansión por nearshoring.',
+      notes: 'ISAI Querétaro: fuentes secundarias indican entre 2% y 3%, con posible tasa reducida para primera vivienda. Confirmar con el notario.',
     },
     notaryFee: { minRate: 0.008, maxRate: 0.012, buyerShare: 0.65, sellerShare: 0.35, vatApplies: true },
     registryFee: { rate: 0.002 },
@@ -138,7 +138,6 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
       { name: 'El Marqués', extraRequirements: ['Constancia de uso de suelo para industrial'], hasTransferTax: false },
     ],
     particularities: [
-      'Crecimiento acelerado por nearshoring — alta demanda industrial y residencial 2024-2026',
       'Zonas de reserva ecológica en sierra: verificar uso de suelo antes de comprar',
     ],
   },
@@ -148,15 +147,16 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     name: 'Yucatán',
     displayName: 'Yucatán',
     dataConfidence: 'ESTIMATED',
-    lastUpdated: '2026-09-26',
+    lastUpdated: '2026-11-04',
     entities: [
       { name: 'Secretaría de Administración y Finanzas de Yucatán', acronym: 'SAF Yucatán', url: 'https://saf.yucatan.gob.mx', role: 'IMPOSITIVO' },
       { name: 'Registro Público de la Propiedad de Yucatán', acronym: 'RPP Yucatán', role: 'REGISTRO' },
     ],
     stampTax: {
-      totalRate: 0.02, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
+      totalRate: 0.02,
+      totalRateMax: 0.035, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
       confidence: 'ESTIMATED',
-      notes: 'ISAI Yucatán: estimado ~2%. Mérida es el mercado de mayor crecimiento del sureste.',
+      notes: 'ISAI Yucatán: fuentes secundarias indican 2% o un esquema por tramos de 2.5% a 3.5%. Confirmar con el notario.',
     },
     notaryFee: { minRate: 0.008, maxRate: 0.012, buyerShare: 0.65, sellerShare: 0.35, vatApplies: true },
     registryFee: { rate: 0.002 },
@@ -168,8 +168,7 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
       { name: 'Mérida', extraRequirements: ['Libre deuda predial municipal'], hasTransferTax: false },
     ],
     particularities: [
-      'Alta demanda de compradores extranjeros — fideicomiso bancario en zona restringida costera',
-      'Mérida: ciudad más segura de México (rankings 2025) — motor de demanda residencial',
+      'Costa de Yucatán: zona restringida para extranjeros, que requieren fideicomiso bancario',
     ],
   },
 
@@ -178,14 +177,15 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     name: 'Baja California',
     displayName: 'Baja California',
     dataConfidence: 'ESTIMATED',
-    lastUpdated: '2026-09-26',
+    lastUpdated: '2026-11-04',
     entities: [
       { name: 'Secretaría de Hacienda del Estado de Baja California', acronym: 'SH BC', url: 'https://shbc.gob.mx', role: 'IMPOSITIVO' },
     ],
     stampTax: {
-      totalRate: 0.02, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
+      totalRate: 0.02,
+      totalRateMax: 0.03, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
       confidence: 'ESTIMATED',
-      notes: 'ISAI BC: estimado ~2%. Alta participación de compradores binacionales MX-US.',
+      notes: 'ISAI Baja California: lo fija cada municipio; sin fuente oficial revisada. Rango orientativo. Confirmar con el notario.',
     },
     notaryFee: { minRate: 0.008, maxRate: 0.012, buyerShare: 0.65, sellerShare: 0.35, vatApplies: true },
     registryFee: { rate: 0.002 },
@@ -198,7 +198,6 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     ],
     particularities: [
       'Todo BC es zona restringida en franja costera y fronteriza — extranjeros requieren fideicomiso bancario',
-      'Nearshoring Tijuana: alta demanda industrial, plazos registrales pueden extenderse',
     ],
   },
 
@@ -207,14 +206,15 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     name: 'Estado de México',
     displayName: 'Estado de México',
     dataConfidence: 'ESTIMATED',
-    lastUpdated: '2026-09-26',
+    lastUpdated: '2026-11-04',
     entities: [
       { name: 'Secretaría de Finanzas del Estado de México', acronym: 'SFEM', url: 'https://finanzas.edomex.gob.mx', role: 'IMPOSITIVO' },
     ],
     stampTax: {
-      totalRate: 0.025, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
+      totalRate: 0.011,
+      totalRateMax: 0.033, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
       confidence: 'ESTIMATED',
-      notes: 'ISAI EdoMex: estimado ~2.5%. Municipios conurbados a CDMX son los de mayor actividad.',
+      notes: 'Traslado de dominio Estado de México: una tabla que cita el Código Financiero del Estado de México da tramos de ~1.1% a ~3.3%; otras fuentes secundarias dan valores distintos. Confirmar con el notario.',
     },
     notaryFee: { minRate: 0.008, maxRate: 0.013, buyerShare: 0.65, sellerShare: 0.35, vatApplies: true },
     registryFee: { rate: 0.003 },
@@ -228,7 +228,6 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     ],
     particularities: [
       'Municipios conurbados a CDMX: aunque físicamente cerca de CDMX, el régimen fiscal es EdoMex',
-      'Alta concentración de uso mixto industrial-residencial en zona nororiente',
     ],
   },
 
@@ -237,14 +236,15 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     name: 'Puebla',
     displayName: 'Puebla',
     dataConfidence: 'ESTIMATED',
-    lastUpdated: '2026-09-26',
+    lastUpdated: '2026-11-04',
     entities: [
       { name: 'Secretaría de Finanzas y Administración de Puebla', acronym: 'SFA Puebla', url: 'https://finanzas.puebla.gob.mx', role: 'IMPOSITIVO' },
     ],
     stampTax: {
-      totalRate: 0.02, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
+      totalRate: 0.02,
+      totalRateMax: 0.03, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
       confidence: 'ESTIMATED',
-      notes: 'ISAI Puebla: estimado ~2%. Corredor Puebla-Tlaxcala en expansión industrial.',
+      notes: 'ISAI Puebla: lo fija cada municipio; sin fuente oficial revisada. Rango orientativo. Confirmar con el notario.',
     },
     notaryFee: { minRate: 0.008, maxRate: 0.012, buyerShare: 0.65, sellerShare: 0.35, vatApplies: true },
     registryFee: { rate: 0.002 },
@@ -264,14 +264,15 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     name: 'Guanajuato',
     displayName: 'Guanajuato',
     dataConfidence: 'ESTIMATED',
-    lastUpdated: '2026-09-26',
+    lastUpdated: '2026-11-04',
     entities: [
       { name: 'Secretaría de Finanzas, Inversión y Administración de Guanajuato', acronym: 'SFIA GTO', url: 'https://sfia.guanajuato.gob.mx', role: 'IMPOSITIVO' },
     ],
     stampTax: {
-      totalRate: 0.02, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
+      totalRate: 0.02,
+      totalRateMax: 0.03, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
       confidence: 'ESTIMATED',
-      notes: 'ISAI Guanajuato: estimado ~2%. León, San Miguel Allende y corredor Bajío los más activos.',
+      notes: 'ISAI Guanajuato: lo fija cada municipio; sin fuente oficial revisada. Rango orientativo. Confirmar con el notario.',
     },
     notaryFee: { minRate: 0.008, maxRate: 0.012, buyerShare: 0.65, sellerShare: 0.35, vatApplies: true },
     registryFee: { rate: 0.002 },
@@ -283,7 +284,6 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     ],
     particularities: [
       'San Miguel de Allende: alta demanda extranjera — verificar zona restringida si aplica',
-      'León: mayor mercado industrial de calzado y manufactura del Bajío',
     ],
   },
 
@@ -292,14 +292,15 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
     name: 'Chihuahua',
     displayName: 'Chihuahua',
     dataConfidence: 'ESTIMATED',
-    lastUpdated: '2026-09-26',
+    lastUpdated: '2026-11-04',
     entities: [
       { name: 'Secretaría de Hacienda del Estado de Chihuahua', acronym: 'SH Chihuahua', url: 'https://hacienda.chihuahua.gob.mx', role: 'IMPOSITIVO' },
     ],
     stampTax: {
-      totalRate: 0.02, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
+      totalRate: 0.02,
+      totalRateMax: 0.03, buyerShare: 1.0, sellerShare: 0.0, base: 'PRICE_OR_FISCAL', exemptions: [],
       confidence: 'ESTIMATED',
-      notes: 'ISAI Chihuahua: estimado ~2%. Ciudad Juárez, principal polo maquilador de México.',
+      notes: 'ISAI Chihuahua: lo fija cada municipio; sin fuente oficial revisada. Rango orientativo. Confirmar con el notario.',
     },
     notaryFee: { minRate: 0.008, maxRate: 0.012, buyerShare: 0.65, sellerShare: 0.35, vatApplies: true },
     registryFee: { rate: 0.002 },
@@ -310,7 +311,7 @@ export const MX_PROVINCES: ProvinceRegulation[] = [
       { name: 'Ciudad Juárez', extraRequirements: ['Libre deuda predial municipal'], hasTransferTax: false },
     ],
     particularities: [
-      'Ciudad Juárez: mercado industrial más grande de la frontera norte, plazos registrales 15-30 días',
+      'Ciudad Juárez y la franja fronteriza: zona restringida para extranjeros, que requieren fideicomiso bancario',
     ],
   },
 ]

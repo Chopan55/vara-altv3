@@ -1,6 +1,9 @@
 'use client'
 import Link from 'next/link'
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useBrowserValue } from '@/hooks/useHydrated'
+import { MX_PROVINCES } from '@/data/regulations/mx'
+import { participantRoleLabel, participantRoleLabels } from '@/lib/participants/roles'
 import { ArrowLeft, CheckCircle2, ExternalLink, Info, MessageSquare, Phone, Mail, Users, Plus, X, Loader2 } from 'lucide-react'
 import { useOperations } from '@/hooks/useOperations'
 import type { Transaction, CountryCode } from '@/types'
@@ -18,12 +21,6 @@ interface Participant {
   notes?: string
 }
 
-const ROLE_LABELS: Record<ParticipantRoleDb, string> = {
-  NOTARY: 'Escribano/a', BROKER: 'Martillero / Inmobiliaria',
-  ACCOUNTANT: 'Contador/a', LAWYER: 'Abogado/a',
-  APPRAISER: 'Tasador/a', COUNTERPARTY: 'La otra parte',
-  BANK: 'Banco', OTHER: 'Otro',
-}
 
 function useParticipants(operationId: string | null) {
   const [people, setPeople] = useState<Participant[]>([])
@@ -81,7 +78,7 @@ function useParticipants(operationId: string | null) {
 }
 
 const specialtyEmoji: Record<string, string> = {
-  ESCRIBANO: '📜', ABOGADO: '⚖️', AGRIMENSOR: '📐', TASADOR: '🏠', GESTOR: '📋',
+  ESCRIBANO: '📜', ABOGADO: '⚖️', AGRIMENSOR: '📐', TASADOR: '🏠', GESTOR: '📋', REGISTRO: '🏛️',
 }
 
 /**
@@ -106,8 +103,25 @@ function getOperationNeeds(txn: Transaction | null): string[] {
   return needs
 }
 
+type Registry = { specialty: string; org: string; url: string; note: string }
+
+/**
+ * México: los colegios de notarios y los registros públicos de cada estado,
+ * tomados de los datos regulatorios (las mismas fuentes que usa Costos).
+ */
+const MX_REGISTRIES: Registry[] = MX_PROVINCES.flatMap(p =>
+  p.entities
+    .filter(e => e.url && (e.role === 'COLEGIO_ESCRIBANOS' || e.role === 'REGISTRO'))
+    .map(e => ({
+      specialty: e.role === 'COLEGIO_ESCRIBANOS' ? 'ESCRIBANO' : 'REGISTRO',
+      org: e.name,
+      url: e.url as string,
+      note: e.role === 'COLEGIO_ESCRIBANOS' ? `Notarios de ${p.name}.` : `Registro Público de la Propiedad de ${p.name}.`,
+    })),
+)
+
 /** Registros públicos oficiales — fuentes reales, no un directorio inventado. */
-const OFFICIAL_REGISTRIES: { specialty: string; org: string; url: string; note: string }[] = [
+const OFFICIAL_REGISTRIES: Registry[] = [
   {
     specialty: 'ESCRIBANO',
     org: 'Colegio de Escribanos de la Provincia de Buenos Aires',
@@ -135,7 +149,7 @@ const OFFICIAL_REGISTRIES: { specialty: string; org: string; url: string; note: 
 ]
 
 export default function ProfesionalesPage() {
-  const { activeTransactionData, activeOperationId } = useOperations()
+  const { activeTransactionData, activeOperationId, activeOperation } = useOperations()
   const operationNeeds = getOperationNeeds(activeTransactionData)
   const { people: participants, addParticipant, removeParticipant } = useParticipants(activeOperationId)
 
@@ -152,10 +166,11 @@ export default function ProfesionalesPage() {
     if (ok) { setShowAdd(false); setForm({ name: '', role: 'NOTARY', phone: '', email: '', notes: '' }) }
   }
 
-  const country = useMemo<CountryCode>(() => {
-    try { return (localStorage.getItem('vara_country') as CountryCode) || 'AR' } catch { return 'AR' }
-  }, [])
+  // El país de la operación activa; sin operación, el que eligió en el onboarding.
+  const storedCountry = useBrowserValue<CountryCode>(() => (localStorage.getItem('vara_country') as CountryCode) || 'AR', 'AR')
+  const country: CountryCode = activeOperation?.country ?? storedCountry
   const j = useJurisdiction(country)
+  const registries = country === 'MX' ? MX_REGISTRIES : OFFICIAL_REGISTRIES
 
   const closingProfLabel = j.professionalLabels.CLOSING_PROFESSIONAL
   const legalLabel = j.professionalLabels.LEGAL_ADVISOR
@@ -226,7 +241,7 @@ export default function ProfesionalesPage() {
                     onChange={e => setForm(f => ({ ...f, role: e.target.value as ParticipantRoleDb }))}
                     className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
                   >
-                    {Object.entries(ROLE_LABELS).map(([k, v]) => (
+                    {Object.entries(participantRoleLabels(country)).map(([k, v]) => (
                       <option key={k} value={k}>{v}</option>
                     ))}
                   </select>
@@ -273,7 +288,7 @@ export default function ProfesionalesPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-800 leading-tight truncate">{p.name}</p>
-                      <p className="text-[11px] text-slate-400">{ROLE_LABELS[p.role]}</p>
+                      <p className="text-[11px] text-slate-400">{participantRoleLabel(p.role, country)}</p>
                     </div>
                     <div className="flex items-center gap-1.5">
                       {p.phone && (
@@ -337,10 +352,10 @@ export default function ProfesionalesPage() {
         <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-50">
             <h2 className="font-semibold text-slate-800 text-sm">Registros oficiales</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Colegios profesionales donde verificar matrícula</p>
+            <p className="text-xs text-slate-400 mt-0.5">{country === 'MX' ? 'Colegios de notarios y registros públicos de cada estado' : 'Colegios profesionales donde verificar matrícula'}</p>
           </div>
           <div className="divide-y divide-slate-50">
-            {OFFICIAL_REGISTRIES.map(r => (
+            {registries.map(r => (
               <a key={r.org} href={r.url} target="_blank" rel="noopener noreferrer"
                 className="flex items-start gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
                 <span className="text-base flex-shrink-0 mt-0.5">{specialtyEmoji[r.specialty] ?? '👤'}</span>

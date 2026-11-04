@@ -44,7 +44,7 @@ function alertTextClasses(severity: DocAlert['severity']) {
 }
 
 function useDocStatuses(
-  operations: { id: string; title: string; type: string }[],
+  operations: { id: string; title: string; type: string; country?: string }[],
   loaded: boolean,
 ) {
   // El resultado recuerda para qué lista de operaciones se calculó: así "cargando"
@@ -56,7 +56,7 @@ function useDocStatuses(
     let alive = true
     Promise.all(
       operations.map(op =>
-        Promise.all([fetchOperationTasks(op.id, op.type as 'SELL' | 'BUY'), fetchDocuments(op.id)])
+        Promise.all([fetchOperationTasks(op.id, op.type as 'SELL' | 'BUY', op.country), fetchDocuments(op.id)])
           .then(([tasks, docs]) => ({ op, tasks: tasks ?? [], docs })),
       ),
     )
@@ -79,7 +79,7 @@ function useDocStatuses(
 export default function AlertasPage() {
   const { operations: allOps, loaded } = useOperations()
   const activeOps = useMemo(
-    () => allOps.filter(o => o.status === 'ACTIVE').map(o => ({ id: o.id, title: o.title, type: o.type })),
+    () => allOps.filter(o => o.status === 'ACTIVE').map(o => ({ id: o.id, title: o.title, type: o.type, country: o.country })),
     [allOps],
   )
   const { statuses, loading } = useDocStatuses(activeOps, loaded)
