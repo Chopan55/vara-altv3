@@ -32,30 +32,25 @@ function useParticipants(operationId: string | null) {
   useEffect(() => {
     const supabase = tryCreateClient()
     if (!supabase) return
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    void (supabase as any).auth.getUser().then(({ data }: any) => {
-      setUserId(data?.user?.id ?? null)
-    })
+    let alive = true
+    void supabase.auth.getUser().then(({ data }) => { if (alive) setUserId(data.user?.id ?? null) })
+    return () => { alive = false }
   }, [])
 
   const reload = useCallback(() => {
     if (!operationId) return
     const supabase = tryCreateClient()
     if (!supabase) return
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    void (supabase as any)
+    void supabase
       .from('operation_participants')
       .select('id, name, role, email, phone, notes')
       .eq('operation_id', operationId)
       .order('created_at', { ascending: true })
-      .then(({ data }: { data: unknown[] | null }) => {
-        if (data) setPeople(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (data as any[]).map(r => ({
-            id: r.id as string, name: r.name as string, role: r.role as ParticipantRoleDb,
-            email: r.email ?? undefined, phone: r.phone ?? undefined, notes: r.notes ?? undefined,
-          }))
-        )
+      .then(({ data }) => {
+        if (data) setPeople(data.map(r => ({
+          id: r.id, name: r.name, role: r.role,
+          email: r.email ?? undefined, phone: r.phone ?? undefined, notes: r.notes ?? undefined,
+        })))
       })
   }, [operationId])
 
@@ -67,8 +62,7 @@ function useParticipants(operationId: string | null) {
     if (!operationId || !userId) return false
     const supabase = tryCreateClient()
     if (!supabase) return false
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from('operation_participants').insert({
+    const { error } = await supabase.from('operation_participants').insert({
       operation_id: operationId, user_id: userId,
       name, role, phone: phone || null, email: email || null, notes: notes || null,
     })
@@ -79,8 +73,7 @@ function useParticipants(operationId: string | null) {
   const removeParticipant = useCallback(async (id: string) => {
     const supabase = tryCreateClient()
     if (!supabase) return
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('operation_participants').delete().eq('id', id)
+    await supabase.from('operation_participants').delete().eq('id', id)
     setPeople(prev => prev.filter(p => p.id !== id))
   }, [])
 

@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { useBrowserState, useHydrated } from '@/hooks/useHydrated'
 import { loadKnownLocation } from '@/lib/knownLocation'
 import { ArrowLeft } from 'lucide-react'
 import { CRITERIA, EMPTY_PROFILE, IMPORTANCE, loadProfile, saveProfile, summarize, type BuyerProfile, type Importance } from '@/lib/buyerProfile'
@@ -9,18 +10,16 @@ const field = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2
 const digits = (v: string) => v.replace(/[^\d]/g, '')
 
 export default function MiBusquedaPage() {
-  const [p, setP] = useState<BuyerProfile>(EMPTY_PROFILE)
+  const hydrated = useHydrated()
+  const [p, setP] = useBrowserState<BuyerProfile>(loadProfile, EMPTY_PROFILE)
   const [saved, setSaved] = useState(false)
+  // Si todavía no dijo la zona, partimos de lo que ya contó (onboarding u operación) en vez de preguntarlo de nuevo.
   useEffect(() => {
-    const saved = loadProfile()
-    setP(saved)
-    // Si todavía no dijo la zona, partimos de lo que ya contó (onboarding u operación) en vez de preguntarlo de nuevo.
-    if (!saved.zone.trim()) {
-      let alive = true
-      void loadKnownLocation().then(k => { if (alive && k.label) setP(prev => (prev.zone.trim() ? prev : { ...prev, zone: k.label })) })
-      return () => { alive = false }
-    }
-  }, [])
+    if (!hydrated || loadProfile().zone.trim()) return
+    let alive = true
+    void loadKnownLocation().then(k => { if (alive && k.label) setP(prev => (prev.zone.trim() ? prev : { ...prev, zone: k.label })) })
+    return () => { alive = false }
+  }, [hydrated, setP])
 
   const set = <K extends keyof BuyerProfile>(k: K, v: BuyerProfile[K]) => { setP(prev => ({ ...prev, [k]: v })); setSaved(false) }
   const setImp = (id: string, v: Importance) => set('importance', { ...p.importance, [id]: p.importance[id] === v ? undefined : v })

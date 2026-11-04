@@ -47,15 +47,12 @@ function useDocStatuses(
   operations: { id: string; title: string; type: string }[],
   loaded: boolean,
 ) {
-  const [statuses, setStatuses] = useState<OpDocStatus[]>([])
-  const [loading, setLoading] = useState(false)
+  // El resultado recuerda para qué lista de operaciones se calculó: así "cargando"
+  // se deriva (lista nueva sin resultado) en vez de prenderse y apagarse a mano.
+  const [result, setResult] = useState<{ ops: typeof operations; statuses: OpDocStatus[] } | null>(null)
 
   useEffect(() => {
-    if (!loaded || operations.length === 0) {
-      if (loaded) setLoading(false)
-      return
-    }
-    setLoading(true)
+    if (!loaded || operations.length === 0) return
     let alive = true
     Promise.all(
       operations.map(op =>
@@ -68,13 +65,14 @@ function useDocStatuses(
         const built = results.map(({ op, tasks, docs }) =>
           buildOpDocStatus(op.id, op.title, op.type as 'BUY' | 'SELL', tasks, docs),
         )
-        setStatuses(built)
+        setResult({ ops: operations, statuses: built })
       })
-      .catch(() => {})
-      .finally(() => { if (alive) setLoading(false) })
+      .catch(() => { if (alive) setResult({ ops: operations, statuses: [] }) })
     return () => { alive = false }
   }, [operations, loaded])
 
+  const loading = loaded && operations.length > 0 && result?.ops !== operations
+  const statuses = operations.length > 0 ? (result?.statuses ?? []) : []
   return { statuses, loading }
 }
 

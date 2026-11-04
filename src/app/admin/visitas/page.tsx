@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { useLoad } from '@/hooks/useLoad'
 import Link from 'next/link'
 import {
   Loader2, Lock, ShieldAlert, Check, X, MapPin, Clock,
@@ -408,7 +409,7 @@ export default function AdminVisitasPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  useLoad(load)
 
   if (loading) {
     return (

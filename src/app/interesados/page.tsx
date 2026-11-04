@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useBrowserState } from '@/hooks/useHydrated'
 import { ArrowLeft, Trash2 } from 'lucide-react'
 import { useSellOperation } from '@/hooks/useSellOperation'
 import { LEAD_SOURCES, LEAD_STATUSES, addLead, leadCounts, loadLeads, removeLead, setLeadStatus, type Lead, type LeadStatus } from '@/lib/sellerLeads'
@@ -9,12 +10,12 @@ const field = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2
 
 export default function InteresadosPage() {
   const { op, loaded } = useSellOperation()
-  const [leads, setLeads] = useState<Lead[]>([])
+  // Los interesados viven en este navegador, por operación.
+  const [leads, setLeads] = useBrowserState<Lead[]>(() => (op ? loadLeads(op.id) : []), [], op?.id ?? null)
   const [name, setName] = useState('')
   const [source, setSource] = useState<string>(LEAD_SOURCES[0])
   const [note, setNote] = useState('')
 
-  useEffect(() => { if (op) setLeads(loadLeads(op.id)) }, [op?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const counts = leadCounts(leads)
 

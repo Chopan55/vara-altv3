@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useBrowserState } from '@/hooks/useHydrated'
 import Link from 'next/link'
 import {
   ArrowLeft, Phone, Mail, ExternalLink, MessageSquare, ChevronDown, ChevronUp,
@@ -7,7 +8,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  MOCK_OFERTAS, ASKING_PRICE_DEMO, METODO_PAGO_LABEL, ESTADO_CONFIG,
+  MOCK_OFERTAS, METODO_PAGO_LABEL, ESTADO_CONFIG,
 } from '@/data/mockOfertas'
 import type { OfertaConScore } from '@/data/mockOfertas'
 import { RealOffersPanel } from '@/components/offers/RealOffersPanel'
@@ -59,7 +60,9 @@ function VaraAnalysis({ oferta }: { oferta: OfertaConScore }) {
 }
 
 export default function OfertasPage() {
-  const [notes, setNotes] = useState<Record<string, string>>({})
+  const [notes, setNotes] = useBrowserState<Record<string, string>>(
+    () => JSON.parse(localStorage.getItem('vara_oferta_notes') ?? '{}') as Record<string, string>, {},
+  )
   const [editingNote, setEditingNote] = useState<string | null>(null)
   const [noteInput, setNoteInput] = useState('')
   // Arranca vacío: no mostramos compradores inventados como si fueran ofertas reales.
@@ -72,12 +75,6 @@ export default function OfertasPage() {
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [showCompare, setShowCompare] = useState(false)
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('vara_oferta_notes')
-      if (saved) setNotes(JSON.parse(saved))
-    } catch {}
-  }, [])
 
   function saveNote(id: string, text: string) {
     const next = { ...notes, [id]: text }

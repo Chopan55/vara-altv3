@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
+import { useHydrated } from '@/hooks/useHydrated'
 import { createPortal } from 'react-dom'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { TourStep } from '@/data/tours'
@@ -43,9 +44,8 @@ interface Props {
 export function TourOverlay({ step, stepIndex, totalSteps, tourName, onNext, onPrev, onClose }: Props) {
   const [pos, setPos] = useState<TooltipPos | null>(null)
   const [spotlight, setSpotlight] = useState<SpotlightRect | null>(null)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => { setMounted(true) }, [])
+  // El portal necesita document: solo después de hidratar.
+  const mounted = useHydrated()
 
   const updatePosition = useCallback(() => {
     const el = document.querySelector(step.selector)
@@ -62,10 +62,11 @@ export function TourOverlay({ step, stepIndex, totalSteps, tourName, onNext, onP
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [step])
 
+  // Se mide en el próximo frame, con el paso ya pintado.
   useEffect(() => {
-    updatePosition()
+    const frame = requestAnimationFrame(updatePosition)
     window.addEventListener('resize', updatePosition)
-    return () => window.removeEventListener('resize', updatePosition)
+    return () => { cancelAnimationFrame(frame); window.removeEventListener('resize', updatePosition) }
   }, [updatePosition])
 
   if (!mounted || !pos) return null

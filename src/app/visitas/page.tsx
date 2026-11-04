@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useBrowserState } from '@/hooks/useHydrated'
 import Link from 'next/link'
 import {
   ArrowLeft, CheckCircle2, Circle, ChevronDown, ChevronUp,
@@ -68,44 +69,52 @@ export default function VisitasPage() {
   const notesKey = `vara_visit_notes_${scopeId}`
   const updatedKey = `vara_visit_updated_${scopeId}`
 
-  const [items, setItems] = useState<ChecklistItem[]>(freshItems)
-  const [notes, setNotes] = useState<UserNotes>({})
+  // Al cambiar de operación: primero lo del navegador (instantáneo), después la cuenta si es más nueva.
+  const [items, setItems] = useBrowserState<ChecklistItem[]>(() => {
+    const saved = localStorage.getItem(checklistKey)
+    return saved ? (JSON.parse(saved) as ChecklistItem[]) : freshItems()
+  }, freshItems(), scopeId)
+  const [notes, setNotes] = useBrowserState<UserNotes>(() => {
+    const saved = localStorage.getItem(notesKey)
+    return saved ? (JSON.parse(saved) as UserNotes) : {}
+  }, {}, scopeId)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(SECTION_ORDER))
   const [editingNote, setEditingNote] = useState<string | null>(null)
   const [noteInput, setNoteInput] = useState('')
-  const [synced, setSynced] = useState(false)
+  // Sincronizado con la cuenta, para esta operación.
+  const [syncedFor, setSyncedFor] = useState<string | null>(null)
+  const synced = syncedFor === scopeId
   const touched = useRef(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Al cambiar de operación: primero lo del navegador (instantáneo), después la cuenta si es más nueva.
+  // La cuenta pisa a lo local solo si es más nueva y la persona todavía no tocó nada.
   useEffect(() => {
     let alive = true
     touched.current = false
-    let localItems = freshItems()
-    let localNotes: UserNotes = {}
-    let localUpdated: string | null = null
+    let local: ReturnType<typeof toSaved> | null = null
     try {
+      const updated = localStorage.getItem(updatedKey)
       const savedItems = localStorage.getItem(checklistKey)
-      if (savedItems) localItems = JSON.parse(savedItems) as ChecklistItem[]
       const savedNotes = localStorage.getItem(notesKey)
-      if (savedNotes) localNotes = JSON.parse(savedNotes) as UserNotes
-      localUpdated = localStorage.getItem(updatedKey)
-    } catch { /* storage bloqueado: arranca vacío */ }
-    setItems(localItems)
-    setNotes(localNotes)
-    setSynced(false)
+      if (updated) {
+        local = toSaved(
+          savedItems ? (JSON.parse(savedItems) as ChecklistItem[]) : freshItems(),
+          savedNotes ? (JSON.parse(savedNotes) as UserNotes) : {},
+          updated,
+        )
+      }
+    } catch { /* storage bloqueado: manda la cuenta */ }
 
     void fetchVisitChecklist(scopeId).then(remote => {
       if (!alive || !remote || touched.current) return
-      const local = localUpdated ? toSaved(localItems, localNotes, localUpdated) : null
       if (pickNewer(local, remote) === remote) {
         setItems(fromChecked(remote.checked))
         setNotes(remote.notes)
       }
-      setSynced(true)
+      setSyncedFor(scopeId)
     })
     return () => { alive = false }
-  }, [scopeId, checklistKey, notesKey, updatedKey])
+  }, [scopeId, checklistKey, notesKey, updatedKey, setItems, setNotes])
 
   /** Única vía de escritura: navegador al instante, cuenta con un pequeño retraso. */
   const commit = (nextItems: ChecklistItem[], nextNotes: UserNotes) => {
@@ -120,7 +129,7 @@ export default function VisitasPage() {
     } catch { /* sin storage: queda en memoria */ }
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      void saveVisitChecklist(scopeId, toSaved(nextItems, nextNotes, updatedAt)).then(ok => { if (ok) setSynced(true) })
+      void saveVisitChecklist(scopeId, toSaved(nextItems, nextNotes, updatedAt)).then(ok => { if (ok) setSyncedFor(scopeId) })
     }, 800)
   }
 
@@ -132,7 +141,8 @@ export default function VisitasPage() {
   const toggleSection = (s: string) =>
     setOpenSections(prev => {
       const next = new Set(prev)
-      next.has(s) ? next.delete(s) : next.add(s)
+      if (next.has(s)) next.delete(s)
+      else next.add(s)
       return next
     })
 

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useLoad } from '@/hooks/useLoad'
 import Link from 'next/link'
 import {
   ArrowLeft, ArrowRight, Check, Loader2, Plus, X, ShieldCheck,
@@ -802,7 +803,7 @@ export default function PartnerOnboardingPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  useLoad(load)
 
   if (loading) {
     return (

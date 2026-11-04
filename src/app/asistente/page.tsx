@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
+import { useBrowserState } from '@/hooks/useHydrated'
 import Link from 'next/link'
 import { ArrowLeft, Send, User, ChevronDown, ChevronUp, Sparkles, Handshake, Volume2, VolumeX, Square, Loader2, Mic } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -47,8 +48,18 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
 
   // El historial y la hora se leen después de montar: en el servidor no existen y,
   // si se calculan durante el render, el HTML no coincide y React falla (#418).
-  const [messages, setMessages] = useState<Message[]>([])
-  const [ready, setReady] = useState(false)
+  // Se lee recién con el estado de VARA cargado, para saludar por el nombre.
+  const [messages, setMessages] = useBrowserState<Message[]>(() => {
+    if (!vara.loaded) return []
+    let restored: Message[] = []
+    try {
+      const saved = sessionStorage.getItem('vara_chat_history')
+      // Se descartan errores técnicos que quedaron guardados como si fueran respuestas.
+      if (saved) restored = (JSON.parse(saved) as Message[]).filter(m => !isErrorMessage(m.content))
+    } catch { /* historial ilegible o storage bloqueado: se arranca de cero */ }
+    return restored.length > 0 ? restored : [{ role: 'assistant', content: welcomeMsg, time: nowTime() }]
+  }, [], vara.loaded)
+  const ready = vara.loaded && messages.length > 0
   const [chatError, setChatError] = useState<{ auth: boolean; text: string } | null>(null)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -75,18 +86,6 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
     setChatError(null)
     void live.start()
   }
-
-  useEffect(() => {
-    if (ready || !vara.loaded) return
-    let restored: Message[] = []
-    try {
-      const saved = sessionStorage.getItem('vara_chat_history')
-      // Se descartan errores técnicos que quedaron guardados como si fueran respuestas.
-      if (saved) restored = (JSON.parse(saved) as Message[]).filter(m => !isErrorMessage(m.content))
-    } catch {}
-    setMessages(restored.length > 0 ? restored : [{ role: 'assistant', content: welcomeMsg, time: nowTime() }])
-    setReady(true)
-  }, [vara.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!ready) return

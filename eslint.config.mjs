@@ -11,13 +11,21 @@ export default defineConfig([
   ...nextTs,
   {
     rules: {
-      // Reglas nuevas y estrictas de React 19. Marcan estilo y patrones a mejorar, no fallas:
-      // el código existente las incumple (≈33 casos). Quedan como avisos hasta refactorizarlo.
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/immutability': 'warn',
-      'react-hooks/purity': 'warn',
+      // Reglas estrictas de React 19: el código las cumple todas y la integración continua
+      // no acepta avisos (--max-warnings 0). Para leer el navegador sin romper la hidratación
+      // está useBrowserState/useHydrated; para cargas async al montar, useLoad.
+      'react-hooks/set-state-in-effect': 'error',
+      'react-hooks/immutability': 'error',
+      'react-hooks/purity': 'error',
+      'react-hooks/exhaustive-deps': 'error',
       // Comillas y apóstrofes dentro de textos JSX: React los dibuja bien.
       'react/no-unescaped-entities': 'off',
+      // Convención del repo: un nombre con _ adelante se descarta a propósito
+      // (p. ej. sacar lat/lng de un objeto antes de devolverlo).
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_', varsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_', ignoreRestSiblings: true,
+      }],
     },
   },
   globalIgnores([

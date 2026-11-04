@@ -1,9 +1,10 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useBrowserValue } from '@/hooks/useHydrated'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Handshake, History } from 'lucide-react'
-import { ArrowLeft, ArrowRight, CheckCircle2, Clock, AlertCircle, Lock, ChevronDown, ChevronUp, MapPin, FileText, User, DollarSign, Calendar, ShieldAlert, Zap, Shield, Sparkles } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Clock, AlertCircle, Lock, ChevronDown, ChevronUp, MapPin, FileText, User, DollarSign, Calendar, ShieldAlert, Zap, Sparkles } from 'lucide-react'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { Badge } from '@/components/ui/Badge'
 import { Progress } from '@/components/ui/Progress'
@@ -118,7 +119,7 @@ export default function OperacionPage() {
     ? (requested as Tab)
     : 'tareas'
   const operationId = typeof params.id === 'string' ? params.id : 'txn-001'
-  const { operation, notFound } = useOperation(operationId)
+  const { operation } = useOperation(operationId)
   const { relations, getTransactionData, getStoredOperation, operations, activeOperation, journey, loaded: opsLoaded } = useOperations()
   const crossRelations = relations.filter(r => r.fromOperationId === operationId || r.toOperationId === operationId)
   const isDemoOperation = ['txn-001', 'txn-002', 'txn-003'].includes(operationId)
@@ -127,8 +128,7 @@ export default function OperacionPage() {
   const userOp = !operation && !isDemoOperation ? getStoredOperation(operationId) : null
   const txn = operation ?? (userOp ? buildTransaction(userOp) : null) ?? (isDemoOperation ? mockTransaction : null)
   // El país guardado en el dispositivo se lee después de montar: leerlo en el render desfasa servidor y cliente (React #418).
-  const [storedCountry, setStoredCountry] = useState<CountryCode>('AR')
-  useEffect(() => { try { setStoredCountry((localStorage.getItem('vara_country') as CountryCode) || 'AR') } catch { /* sin acceso */ } }, [])
+  const storedCountry = useBrowserValue<CountryCode>(() => (localStorage.getItem('vara_country') as CountryCode) || 'AR', 'AR')
   const country: CountryCode = userOp?.country ?? storedCountry
 
   // Todos los hooks deben declararse antes de cualquier return condicional (Rules of Hooks).
@@ -137,12 +137,15 @@ export default function OperacionPage() {
   const tabsRef = useRef<HTMLDivElement>(null)
 
   // La pestaña sigue a la URL: un enlace del menú con ?tab=documentos cambia la pestaña aunque ya estés en la operación.
+  const requestedTab = (TAB_IDS as readonly string[]).includes(requested ?? '') ? (requested as Tab) : null
+  const [tabFromUrl, setTabFromUrl] = useState(requestedTab)
+  if (requestedTab !== tabFromUrl) {
+    setTabFromUrl(requestedTab)
+    if (requestedTab) setActiveTab(requestedTab)
+  }
   useEffect(() => {
-    if (requested && (TAB_IDS as readonly string[]).includes(requested)) {
-      setActiveTab(requested as Tab)
-      requestAnimationFrame(() => tabsRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }))
-    }
-  }, [requested]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (requestedTab) requestAnimationFrame(() => tabsRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }))
+  }, [requestedTab])
 
   const selectTab = (id: Tab) => {
     setActiveTab(id)
@@ -160,11 +163,9 @@ export default function OperacionPage() {
         setTaskTick(n => n + 1)
       }
     : undefined
-  const [openStage, setOpenStage] = useState<string>('')
-  useEffect(() => {
-    if (txn && !openStage) setOpenStage(txn.currentStageId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [txn?.currentStageId])
+  // Sin elección, queda abierta la etapa en curso; '' = todas cerradas.
+  const [chosenStage, setOpenStage] = useState<string | null>(null)
+  const openStage = chosenStage ?? txn?.currentStageId ?? ''
 
   if (!txn) {
     // Estado puente: nunca una pantalla vacía sin explicación.

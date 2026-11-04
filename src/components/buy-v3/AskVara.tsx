@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Eye, EyeOff, Loader2, Send, Volume2, VolumeX } from 'lucide-react'
+import { useBrowserState } from '@/hooks/useHydrated'
+import { Eye, EyeOff, Send, Volume2, VolumeX } from 'lucide-react'
 import { buildBrief } from '@/lib/analysis/brief'
 import type { PropertyAnalysis } from '@/lib/analysis/types'
 import { Section } from './Sections'
@@ -41,7 +42,7 @@ export function AskVara({ analysis, onAsk }: { analysis: PropertyAnalysis; onAsk
   const bottom = useRef<HTMLDivElement>(null)
   const brief = useMemo(() => buildBrief(analysis), [analysis])
   // Avatar: lo ve quien no lo apagó. Lo decide cada persona y se recuerda en este navegador.
-  const [showAvatar, setShowAvatar] = useState(true)
+  const [showAvatar, setShowAvatar] = useBrowserState(() => localStorage.getItem(AVATAR_KEY) !== 'off', true)
   // Cuántos caracteres de la última respuesta ya se mostraron (VARA "habla" mientras se completa).
   const [revealed, setRevealed] = useState<number | null>(null)
   // Voz: mientras suena el audio, la boca del avatar sigue su volumen (variable CSS --vara-level).
@@ -49,10 +50,6 @@ export function AskVara({ analysis, onAsk }: { analysis: PropertyAnalysis; onAsk
   const levelRef = useRef(0)
   const setLevel = useCallback((v: number) => { levelRef.current = v }, [])
   const voice = useVaraVoice(setLevel)
-
-  useEffect(() => {
-    try { if (localStorage.getItem(AVATAR_KEY) === 'off') setShowAvatar(false) } catch { /* sin storage */ }
-  }, [])
 
   const toggleVoice = () => {
     voice.toggle()

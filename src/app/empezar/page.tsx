@@ -1,5 +1,6 @@
 'use client'
 import { Suspense, useEffect, useRef, useState } from 'react'
+import { useBrowserState, useBrowserValue, useHydrated } from '@/hooks/useHydrated'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { isEnabled } from '@/lib/flags'
 import { VaraLogo } from '@/components/ui/VaraLogo'
@@ -46,21 +47,23 @@ function Conversation() {
   const router = useRouter()
   const params = useSearchParams()
   const bottom = useRef<HTMLDivElement>(null)
-  const [answers, setAnswers] = useState<Answers>({})
-  const [bubbles, setBubbles] = useState<Bubble[]>([{ from: 'vara', text: GREETING }])
+  // Lo ya respondido vive en este navegador: se retoma al hidratar.
+  const [answers, setAnswers] = useBrowserState<Answers>(load, {})
+  const [bubbles, setBubbles] = useBrowserState<Bubble[]>(() => replay(load()), [{ from: 'vara', text: GREETING }])
   const [city, setCity] = useState('')
-  const [ready, setReady] = useState(false)
   const [busy, setBusy] = useState(false)
 
   // Quien ya tiene operaciones va directo a lo suyo; se puede forzar con ?nuevo=1.
+  // Hasta hidratar no se sabe (vale true): no se muestra nada ni se redirige.
+  const hydrated = useHydrated()
+  const forceNew = params.get('nuevo') === '1'
+  const redirect = useBrowserValue(
+    () => !isEnabled('conversationalEntry') || (!forceNew && hasRealOperations()), true, forceNew,
+  )
+  const ready = hydrated && !redirect
   useEffect(() => {
-    if (!isEnabled('conversationalEntry')) { router.replace('/dashboard'); return }
-    if (params.get('nuevo') !== '1' && hasRealOperations()) { router.replace('/dashboard'); return }
-    const a = load()
-    setAnswers(a)
-    setBubbles(replay(a))
-    setReady(true)
-  }, [router, params])
+    if (hydrated && redirect) router.replace('/dashboard')
+  }, [hydrated, redirect, router])
 
   useEffect(() => { bottom.current?.scrollIntoView({ block: 'end' }) }, [bubbles])
 

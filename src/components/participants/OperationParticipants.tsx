@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Users, Plus, Trash2, Mail, Phone, Loader2, AlertCircle } from 'lucide-react'
-import { tryCreateClient } from '@/lib/supabase/client'
+import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import type { OperationParticipantRow, ParticipantRoleDb } from '@/lib/supabase/types'
 import type { CountryCode } from '@/types'
 
@@ -122,8 +122,11 @@ function AddForm({ onAdd, busy, roleLabels }: { onAdd: (v: FormValues) => void; 
 export function OperationParticipants({ operationId, country }: { operationId: string; country?: CountryCode }) {
   const roleLabels = getRoleLabels(country)
   const [people, setPeople] = useState<Participant[]>([])
-  const [session, setSession] = useState<boolean | null>(null)
-  const [loaded, setLoaded] = useState(false)
+  // Sin base configurada: sin sesión y nada que esperar.
+  const [sessionState, setSession] = useState<boolean | null>(null)
+  const [done, setLoaded] = useState(false)
+  const session = isSupabaseConfigured ? sessionState : false
+  const loaded = !isSupabaseConfigured || done
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -139,9 +142,9 @@ export function OperationParticipants({ operationId, country }: { operationId: s
   }, [operationId])
 
   useEffect(() => {
-    let alive = true
     const supabase = tryCreateClient()
-    if (!supabase) { setSession(false); setLoaded(true); return }
+    if (!supabase) return
+    let alive = true
 
     supabase.auth.getUser().then(async ({ data }) => {
       if (!alive) return

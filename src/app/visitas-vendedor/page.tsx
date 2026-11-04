@@ -3,12 +3,11 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, Calendar, Clock, User, CheckCircle2, XCircle,
-  Phone, MessageSquare, MapPin, ChevronDown, ChevronUp, Plus,
+  Phone, MapPin, ChevronDown, ChevronUp, Plus,
   Sparkles, Loader2, Copy, ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { tryCreateClient } from '@/lib/supabase/client'
-import type { VisitStatusDb } from '@/lib/supabase/types'
+import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
 
 type SolicitudEstado = 'PENDIENTE' | 'CONFIRMADA' | 'RECHAZADA' | 'REALIZADA'
 
@@ -21,7 +20,8 @@ interface SolicitudVisita {
   mensaje?: string
   estado: SolicitudEstado
   agente?: string
-  isMockData: true
+  /** true solo en el ejemplo que se carga a pedido; nunca en datos reales. */
+  isMockData: boolean
 }
 
 const MOCK_SOLICITUDES: SolicitudVisita[] = [
@@ -93,47 +93,46 @@ export default function VisitasVendedorPage() {
   const [solicitudes, setSolicitudes] = useState<SolicitudVisita[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
   const [tab, setTab] = useState<'proximas' | 'historial'>('proximas')
-  const [loaded, setLoaded] = useState(false)
+  // Sin base configurada no hay nada que esperar.
+  const [done, setDone] = useState(false)
+  const loaded = !isSupabaseConfigured || done
   const [analyzing, setAnalyzing] = useState<Record<string, boolean>>({})
   const [analysis, setAnalysis] = useState<Record<string, string>>({})
   const [pinCopied, setPinCopied] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    let alive = true
     const supabase = tryCreateClient()
-    if (!supabase) { setLoaded(true); return }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(supabase as any).auth.getUser().then(({ data }: any) => {
-      const userId: string | null = data?.user?.id ?? null
-      if (!userId) { setLoaded(true); return }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(supabase as any)
-        .from('visit_requests')
-        .select('id, buyer_name, buyer_phone, visit_date, visit_time, message, status, agent')
-        .eq('user_id', userId)
-        .order('visit_date', { ascending: false })
-        .then(({ data: rows }: { data: unknown[] | null }) => {
-          if (!alive) return
-          if (rows) {
-            setSolicitudes(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (rows as any[]).map(r => ({
-                id: r.id as string,
-                compradorNombre: r.buyer_name as string,
-                compradorTelefono: (r.buyer_phone ?? '') as string,
-                fecha: r.visit_date as string,
-                hora: (r.visit_time ?? '') as string,
-                mensaje: r.message as string | undefined,
-                estado: r.status as SolicitudEstado,
-                agente: r.agent as string | undefined,
-                isMockData: false as unknown as true,
-              }))
-            )
-          }
-          setLoaded(true)
-        })
-        .catch(() => setLoaded(true))
-    })
+    if (!supabase) return
+    let alive = true
+    void (async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser()
+        const userId = auth.user?.id
+        if (!userId) return
+        const { data: rows } = await supabase
+          .from('visit_requests')
+          .select('id, buyer_name, buyer_phone, visit_date, visit_time, message, status, agent')
+          .eq('user_id', userId)
+          .order('visit_date', { ascending: false })
+        if (alive && rows) {
+          setSolicitudes(rows.map(r => ({
+            id: r.id,
+            compradorNombre: r.buyer_name,
+            compradorTelefono: r.buyer_phone ?? '',
+            fecha: r.visit_date,
+            hora: r.visit_time ?? '',
+            mensaje: r.message ?? undefined,
+            estado: r.status,
+            agente: r.agent ?? undefined,
+            isMockData: false,
+          })))
+        }
+      } catch {
+        // sin conexión: queda la lista vacía con su explicación
+      } finally {
+        if (alive) setDone(true)
+      }
+    })()
     return () => { alive = false }
   }, [])
 
@@ -177,8 +176,7 @@ export default function VisitasVendedorPage() {
     setSolicitudes(prev => prev.map(s => s.id === id ? { ...s, estado } : s))
     const supabase = tryCreateClient()
     if (supabase) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      void (supabase as any).from('visit_requests').update({ status: estado as VisitStatusDb }).eq('id', id)
+      void supabase.from('visit_requests').update({ status: estado }).eq('id', id)
     }
   }
 

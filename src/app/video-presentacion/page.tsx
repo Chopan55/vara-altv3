@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useBrowserState, useBrowserValue } from '@/hooks/useHydrated'
 import { ArrowLeft, Clapperboard, Download } from 'lucide-react'
 import { loadSellerPhotos, type SellerPhoto } from '@/lib/sellerPhotos'
 import { MAX_PHOTOS } from '@/lib/video/timeline'
@@ -10,17 +11,25 @@ import { MUSIC_RIGHTS_NOTE, MUSIC_STYLES, audioFileProblem, buildEvents, decodeA
 
 const DRAFT_KEY = 'vara_publish_draft'
 
+function readDraft(): { title?: string; neighborhood?: string; city?: string } {
+  return JSON.parse(localStorage.getItem(DRAFT_KEY) ?? '{}') as { title?: string; neighborhood?: string; city?: string }
+}
+
 export default function VideoPresentacionPage() {
   const [photos, setPhotos] = useState<SellerPhoto[]>([])
   const [loaded, setLoaded] = useState(false)
   const [asTour, setAsTour] = useState(true)
   const [secs, setSecs] = useState(3)
-  const [title, setTitle] = useState('')
-  const [subtitle, setSubtitle] = useState('')
+  // Título y ubicación arrancan del borrador de la publicación, si existe.
+  const [title, setTitle] = useBrowserState(() => readDraft().title ?? '', '')
+  const [subtitle, setSubtitle] = useBrowserState(() => {
+    const d = readDraft()
+    return [d.neighborhood, d.city].filter(Boolean).join(', ')
+  }, '')
   const [progress, setProgress] = useState<number | null>(null)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [supported, setSupported] = useState(true)
+  const supported = useBrowserValue(canRecordVideo, true)
   const [music, setMusic] = useState<'none' | MusicStyleId | 'file'>('none')
   const [fileAudio, setFileAudio] = useState<{ name: string; buffer: AudioBuffer } | null>(null)
   const [volume, setVolume] = useState(50)
@@ -62,12 +71,6 @@ export default function VideoPresentacionPage() {
   }
 
   useEffect(() => {
-    setSupported(canRecordVideo())
-    try {
-      const d = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? '{}') as { title?: string; neighborhood?: string; city?: string }
-      setTitle(d.title ?? '')
-      setSubtitle([d.neighborhood, d.city].filter(Boolean).join(', '))
-    } catch {}
     loadSellerPhotos({ onlyPublishable: true }).then(setPhotos).catch(() => {}).finally(() => setLoaded(true))
   }, [])
 

@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useBrowserState } from '@/hooks/useHydrated'
 import { ArrowLeft } from 'lucide-react'
 import { useSellOperation } from '@/hooks/useSellOperation'
 import { planPricing, readListing } from '@/lib/sellPricing'
@@ -15,12 +15,10 @@ const EMPTY: Saved = { surface: '', desired: '', days: '', inquiries: '', visits
 
 export default function PrecioVentaPage() {
   const { op, loaded } = useSellOperation()
-  const [f, setF] = useState<Saved>(EMPTY)
-
-  useEffect(() => {
-    if (!op) return
-    try { setF({ ...EMPTY, ...(JSON.parse(localStorage.getItem(KEY + op.id) ?? '{}') as Partial<Saved>) }) } catch {}
-  }, [op?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const [f, setF] = useBrowserState<Saved>(
+    () => (op ? { ...EMPTY, ...(JSON.parse(localStorage.getItem(KEY + op.id) ?? '{}') as Partial<Saved>) } : EMPTY),
+    EMPTY, op?.id ?? null,
+  )
 
   const set = (k: keyof Saved, v: string) => {
     const next = { ...f, [k]: digits(v) }

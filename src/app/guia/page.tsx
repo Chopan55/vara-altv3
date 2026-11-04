@@ -2,7 +2,6 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Search, ChevronDown, ChevronUp, AlertTriangle, MessageSquare, BookOpen } from 'lucide-react'
-import { useVaraState } from '@/hooks/useVaraState'
 import { useOperations } from '@/hooks/useOperations'
 import { KNOWLEDGE, type KnowledgeEntry, type Audience } from '@/data/knowledge'
 
@@ -69,7 +68,6 @@ function EntryCard({ entry, open, onToggle }: {
 }
 
 export default function GuiaPage() {
-  const vara = useVaraState()
   const { journey } = useOperations()
   const audience: Audience = journey
 

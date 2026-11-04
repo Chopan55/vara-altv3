@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useCallback } from 'react'
+import { useBrowserState } from '@/hooks/useHydrated'
 
 export interface VaraState {
   userName: string
@@ -60,10 +61,9 @@ function announce() {
 }
 
 export function useVaraState(): VaraState & VaraStateActions {
-  const [state, setState] = useState<VaraState>(DEFAULTS)
+  const [state, setState] = useBrowserState<VaraState>(readFromStorage, DEFAULTS)
 
   useEffect(() => {
-    setState(readFromStorage())
     const sync = () => setState(s => {
       const fresh = readFromStorage()
       // El nombre puede venir de la cuenta y no del navegador: no se pisa.
@@ -83,13 +83,13 @@ export function useVaraState(): VaraState & VaraStateActions {
       })
       .catch(() => {})
     return () => { alive = false; window.removeEventListener(CHANGE_EVENT, sync) }
-  }, [])
+  }, [setState])
 
   const setPropertyUrl = useCallback((url: string) => {
     try { localStorage.setItem('vara_property_url', url) } catch {}
     setState(s => ({ ...s, propertyUrl: url }))
     announce()
-  }, [])
+  }, [setState])
 
   const dismissGuidance = useCallback((id: string) => {
     setState(s => {
@@ -98,24 +98,24 @@ export function useVaraState(): VaraState & VaraStateActions {
       try { localStorage.setItem('vara_dismissed_guidance', JSON.stringify(next)) } catch {}
       return { ...s, dismissedGuidanceIds: next }
     })
-  }, [])
+  }, [setState])
 
   const resetGuidance = useCallback(() => {
     try { localStorage.removeItem('vara_dismissed_guidance') } catch {}
     setState(s => ({ ...s, dismissedGuidanceIds: [] }))
-  }, [])
+  }, [setState])
 
   const setOperationId = useCallback((id: string) => {
     try { localStorage.setItem('vara_operation_id', id) } catch {}
     setState(s => ({ ...s, operationId: id }))
     announce()
-  }, [])
+  }, [setState])
 
   const setJourneyType = useCallback((type: string) => {
     try { localStorage.setItem('vara_journey_type', type) } catch {}
     setState(s => ({ ...s, journeyType: type }))
     announce()
-  }, [])
+  }, [setState])
 
   return { ...state, setPropertyUrl, dismissGuidance, resetGuidance, setOperationId, setJourneyType }
 }

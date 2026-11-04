@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useBrowserState, useHydrated } from '@/hooks/useHydrated'
+import { useLoad } from '@/hooks/useLoad'
 import { tryCreateClient } from '@/lib/supabase/client'
 import type { NegotiationContext, NegotiationMode, NegotiationResponse } from '@/app/api/negotiation/route'
 
@@ -66,55 +68,45 @@ function ctxToRow(ctx: NegotiationContext) {
 }
 
 export function useNegotiationStore() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = tryCreateClient() as any
+  // Un solo cliente por montaje: recrearlo en cada render invalidaba todos los callbacks.
+  const supabase = useMemo(() => tryCreateClient(), [])
+  const hydrated = useHydrated()
 
   const [userId, setUserId]           = useState<string | null>(null)
   const [negotiations, setNegotiations] = useState<Negotiation[]>([])
   const [activeId, setActiveId]       = useState<string | null>(null)
-  const [ctx, setCtxState]            = useState<NegotiationContext>({})
-  const [nextAction, setNextActionState] = useState('')
+  // Sin sesión, el contexto vive en este navegador. Con sesión, lo pisa la negociación activa.
+  const [ctx, setCtxState] = useBrowserState<NegotiationContext>(
+    () => JSON.parse(localStorage.getItem(LS_KEY) ?? '{}') as NegotiationContext, {},
+  )
+  const [nextAction, setNextActionState] = useBrowserState(() => localStorage.getItem(LS_NEXT) ?? '', '')
   const [messages, setMessages]       = useState<NegotiationMessage[]>([])
-  const [loading, setLoading]         = useState(true)
+  const [remoteLoading, setRemoteLoading] = useState(false)
+  const loading = !hydrated || remoteLoading
 
   useEffect(() => {
-    if (!supabase) {
-      // No Supabase configured — fall through to localStorage branch in the next effect
-      setUserId(null)
-      return
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabase.auth.getUser().then(({ data }: any) => {
-      setUserId(data.user?.id ?? null)
+    if (!supabase) return
+    let alive = true
+    supabase.auth.getUser().then(({ data }) => {
+      if (alive) setUserId(data.user?.id ?? null)
     })
-  }, [])
-
-  useEffect(() => {
-    if (userId) {
-      loadNegotiations()
-    } else {
-      try {
-        setCtxState(JSON.parse(localStorage.getItem(LS_KEY) ?? '{}'))
-        setNextActionState(localStorage.getItem(LS_NEXT) ?? '')
-      } catch {}
-      setLoading(false)
-    }
-  }, [userId])
+    return () => { alive = false }
+  }, [supabase])
 
   const loadMessages = useCallback(async (negId: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
+    if (!supabase) return
+    const { data } = await supabase
       .from('negotiation_messages')
       .select('*')
       .eq('negotiation_id', negId)
       .order('created_at', { ascending: false })
       .limit(20)
     if (data) setMessages(data as NegotiationMessage[])
-  }, [])
+  }, [supabase])
 
   const loadNegotiations = useCallback(async () => {
-    if (!userId) return
-    setLoading(true)
+    if (!supabase || !userId) return
+    setRemoteLoading(true)
     const { data } = await supabase
       .from('negotiations')
       .select('*')
@@ -124,7 +116,8 @@ export function useNegotiationStore() {
 
     if (data) {
       setNegotiations(data as Negotiation[])
-      const lastId = localStorage.getItem(LS_NEG_ID)
+      let lastId: string | null = null
+      try { lastId = localStorage.getItem(LS_NEG_ID) } catch { /* sin storage */ }
       const found = (data as Negotiation[]).find(n => n.id === lastId)
         ?? (data as Negotiation[]).find(n => n.status === 'active')
       if (found) {
@@ -134,8 +127,11 @@ export function useNegotiationStore() {
         await loadMessages(found.id)
       }
     }
-    setLoading(false)
-  }, [userId, loadMessages])
+    setRemoteLoading(false)
+  }, [supabase, userId, loadMessages, setCtxState, setNextActionState])
+
+  // Corre al montar y de nuevo cuando aparece la sesión (cambia userId).
+  useLoad(loadNegotiations)
 
   const selectNegotiation = useCallback(async (neg: Negotiation) => {
     setActiveId(neg.id)
@@ -143,10 +139,10 @@ export function useNegotiationStore() {
     setNextActionState(neg.next_action ?? '')
     try { localStorage.setItem(LS_NEG_ID, neg.id) } catch {}
     await loadMessages(neg.id)
-  }, [loadMessages])
+  }, [loadMessages, setCtxState, setNextActionState])
 
   const createNegotiation = useCallback(async (title: string, initialCtx?: NegotiationContext): Promise<string | null> => {
-    if (!userId) return null
+    if (!supabase || !userId) return null
     const { data } = await supabase
       .from('negotiations')
       .insert({ user_id: userId, title, ...(initialCtx ? ctxToRow(initialCtx) : {}) })
@@ -161,27 +157,27 @@ export function useNegotiationStore() {
     setMessages([])
     try { localStorage.setItem(LS_NEG_ID, neg.id) } catch {}
     return neg.id
-  }, [userId])
+  }, [supabase, userId, setCtxState, setNextActionState])
 
   const saveContext = useCallback(async (newCtx: NegotiationContext) => {
     setCtxState(newCtx)
-    if (userId && activeId) {
+    if (supabase && userId && activeId) {
       await supabase.from('negotiations').update(ctxToRow(newCtx)).eq('id', activeId).eq('user_id', userId)
       setNegotiations(prev => prev.map(n => n.id === activeId ? { ...n, ...ctxToRow(newCtx) } : n))
     } else {
       try { localStorage.setItem(LS_KEY, JSON.stringify(newCtx)) } catch {}
     }
-  }, [userId, activeId])
+  }, [supabase, userId, activeId, setCtxState])
 
   const saveNextAction = useCallback(async (action: string) => {
     setNextActionState(action)
-    if (userId && activeId) {
+    if (supabase && userId && activeId) {
       await supabase.from('negotiations').update({ next_action: action }).eq('id', activeId).eq('user_id', userId)
       setNegotiations(prev => prev.map(n => n.id === activeId ? { ...n, next_action: action } : n))
     } else {
       try { localStorage.setItem(LS_NEXT, action) } catch {}
     }
-  }, [userId, activeId])
+  }, [supabase, userId, activeId, setNextActionState])
 
   const saveMessage = useCallback(async (
     mode: NegotiationMode,
@@ -189,20 +185,20 @@ export function useNegotiationStore() {
     inputMessage: string | undefined,
     result: NegotiationResponse,
   ) => {
-    if (!userId || !activeId) return
+    if (!supabase || !userId || !activeId) return
     const { data } = await supabase
       .from('negotiation_messages')
       .insert({ negotiation_id: activeId, user_id: userId, mode, channel: channel ?? null, input_message: inputMessage ?? null, result })
       .select()
       .single()
     if (data) setMessages(prev => [data as NegotiationMessage, ...prev])
-  }, [userId, activeId])
+  }, [supabase, userId, activeId])
 
   const updateTitle = useCallback(async (title: string) => {
-    if (!userId || !activeId) return
+    if (!supabase || !userId || !activeId) return
     await supabase.from('negotiations').update({ title }).eq('id', activeId).eq('user_id', userId)
     setNegotiations(prev => prev.map(n => n.id === activeId ? { ...n, title } : n))
-  }, [userId, activeId])
+  }, [supabase, userId, activeId])
 
   return {
     userId, loading, negotiations, activeId, ctx, nextAction, messages,

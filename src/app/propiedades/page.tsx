@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { useLoad } from '@/hooks/useLoad'
 import Link from 'next/link'
 import {
   ArrowLeft, MapPin, Bed, Bath, Square, Plus, Search, ArrowRight,
@@ -431,7 +432,7 @@ function ComparisonTable({ candidates }: { candidates: PropertyCandidate[] }) {
           <thead>
             <tr className="border-b border-slate-100">
               <th className="text-left text-[10px] font-bold text-slate-400 uppercase tracking-wide px-5 py-2.5 w-36">Dato</th>
-              {candidates.map((c, ci) => {
+              {candidates.map(c => {
                 const rank = ranked.findIndex(s => s.candidateId === c.id)
                 return (
                   <th key={c.id} className="text-left px-4 py-2.5 min-w-[140px]">
@@ -542,9 +543,8 @@ export default function PropiedadesPage() {
     setCandidates(sortCandidates(await loadCandidates()))
   }, [])
 
-  useEffect(() => {
-    refresh().then(() => setLoaded(true), () => setLoaded(true))
-  }, [refresh])
+  const firstLoad = useCallback(() => refresh().then(() => setLoaded(true), () => setLoaded(true)), [refresh])
+  useLoad(firstLoad)
 
   const visible = useMemo(() => candidates.filter(c =>
     filter === 'ACTIVE'

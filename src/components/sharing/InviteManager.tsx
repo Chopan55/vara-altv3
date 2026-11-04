@@ -1,5 +1,6 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useLoad } from '@/hooks/useLoad'
 import { Check, Copy, Loader2, Send, UserPlus, X } from 'lucide-react'
 import {
   createInvite, inviteUrl, listInvites, revokeInvite, ROLE_LABELS, type SharingError,
@@ -33,7 +34,7 @@ export function InviteManager({ operationId }: { operationId: string }) {
     setLoading(false)
   }, [operationId])
 
-  useEffect(() => { void load() }, [load])
+  useLoad(load)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()

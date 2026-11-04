@@ -7,7 +7,7 @@
  *
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import {
   AlertCircle, ExternalLink, Plus, X, TrendingUp, TrendingDown, Minus,
   ChevronDown, Search,
@@ -101,29 +101,29 @@ function PasteListing({ onAdd, busy }: { onAdd: (url: string) => void; busy: boo
 }
 
 export function MarketComparison({ initialCandidates }: { initialCandidates?: PropertyCandidate[] }) {
-  const [candidates, setCandidates] = useState<PropertyCandidate[]>(initialCandidates ?? [])
-  const [selected, setSelected] = useState<PropertyCandidate | null>(null)
+  // Con candidatos de afuera se usan esos; si no, los guardados (se cargan al montar).
+  const [stored, setStored] = useState<PropertyCandidate[]>([])
+  const candidates = useMemo(
+    () => (initialCandidates ?? stored).filter(c => c.status !== 'DISCARDED' && c.price > 0),
+    [initialCandidates, stored],
+  )
+  // Sin elección, la primera.
+  const [chosen, setSelected] = useState<PropertyCandidate | null>(null)
+  const selected = chosen ?? candidates[0] ?? null
   const [comparables, setComparables] = useState<Comparable[]>([])
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
 
+  const external = initialCandidates !== undefined
   useEffect(() => {
-    if (initialCandidates) {
-      const active = initialCandidates.filter(c => c.status !== 'DISCARDED' && c.price > 0)
-      setCandidates(active)
-      if (!selected && active.length > 0) setSelected(active[0])
-      return
-    }
+    if (external) return
+    let alive = true
     import('@/lib/candidates/store')
       .then(m => m.loadCandidates())
-      .then(list => {
-        const active = list.filter(c => c.status !== 'DISCARDED' && c.price > 0)
-        setCandidates(active)
-        if (active.length > 0) setSelected(active[0])
-      })
+      .then(list => { if (alive) setStored(list) })
       .catch(() => {})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    return () => { alive = false }
+  }, [external])
 
   const addListing = useCallback(async (url: string) => {
     if (!url) return

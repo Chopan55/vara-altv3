@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useLoad } from '@/hooks/useLoad'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -217,7 +218,7 @@ export default function VisitModePage() {
     else setPhase('done')
   }, [code])
 
-  useEffect(() => { void reload() }, [reload])
+  useLoad(reload)
 
   // Cronómetro desde el check-in real, no desde que se abrió la pantalla.
   useEffect(() => {

@@ -1,5 +1,6 @@
 'use client'
-import { useState, useMemo, useCallback, useEffect, useRef, Suspense } from 'react'
+import { useState, useMemo, useCallback, useEffect, Suspense } from 'react'
+import { useBrowserState, useHydrated } from '@/hooks/useHydrated'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowRight, Home, TrendingUp, CheckCircle, AlertCircle, Info, Link2, User,
@@ -136,44 +137,24 @@ function ScrapeStatusBadge({ status, portal, missing, errorMessage, data, photoC
   )
 }
 
+const INTENT_TYPE: Record<string, string> = { BUY: 'BUY_PROPERTY', SELL: 'SELL_PROPERTY', FOUND: 'BUY_PROPERTY' }
+
 function OnboardingInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [step, setStep] = useState(1)
+  // Desde el hero de la home llega ?intent=BUY|SELL|FOUND: se saltea el paso del nombre.
+  const intentParam = searchParams.get('intent')
+  const intentType = intentParam ? (INTENT_TYPE[intentParam] ?? '') : ''
+  const hydrated = useHydrated()
+  const [step, setStep] = useState(intentType ? 3 : 1)
   const [name, setName] = useState('')
-  const [type, setType] = useState('')
+  const [type, setType] = useState(intentType)
   const [country, setCountry] = useState<CountryCode>('AR')
   const [province, setProvince] = useState('')
-  const [propertyUrl, setPropertyUrl] = useState('')
-
-  // Pre-fill from hero interactive (home page)
-  useEffect(() => {
-    const intentParam = searchParams.get('intent') // BUY | SELL | FOUND
-    if (!intentParam) return
-
-    const typeMap: Record<string, string> = {
-      BUY: 'BUY_PROPERTY',
-      SELL: 'SELL_PROPERTY',
-      FOUND: 'BUY_PROPERTY',
-    }
-    const resolvedType = typeMap[intentParam] ?? ''
-    if (resolvedType) {
-      setType(resolvedType)
-      // Jump past name step — go straight to location
-      setStep(3)
-    }
-
-    try {
-      const heroUrl = localStorage.getItem('vara_hero_url')
-      if (heroUrl) {
-        setPropertyUrl(heroUrl)
-        localStorage.removeItem('vara_hero_url')
-        // Auto-scrape in background while user selects location
-        if (intentParam !== 'SELL') autoScrapeRef.current = true
-      }
-    } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // El link que pegó en el hero queda en este navegador hasta usarlo acá.
+  const [propertyUrl, setPropertyUrl] = useBrowserState(
+    () => (intentParam ? localStorage.getItem('vara_hero_url') ?? '' : ''), '',
+  )
 
   const [scrapeStatus, setScrapeStatus] = useState<ScrapeStatus>('idle')
   const [scrapeData, setScrapeData] = useState<ScrapeResult['data']>({})
@@ -183,7 +164,6 @@ function OnboardingInner() {
   const [scrapePhotos, setScrapePhotos] = useState<string[]>([])
   const [pasteText, setPasteText] = useState('')
   const [showDetails, setShowDetails] = useState(false)
-  const autoScrapeRef = useRef(false)
 
   /*
    * generateChecklist() exige un precio, pero en el onboarding la persona
@@ -216,7 +196,7 @@ function OnboardingInner() {
     setScrapeError(undefined)
     setScrapePhotos([])
     setShowDetails(false)
-  }, [])
+  }, [setPropertyUrl])
 
   const handleScrape = useCallback(async (pastedText?: string) => {
     if (!propertyUrl.trim()) return
@@ -264,13 +244,24 @@ function OnboardingInner() {
     }
   }, [propertyUrl])
 
-  // Trigger background scrape once propertyUrl state is set from hero
+  // El link del hero se usa una sola vez: se borra y, si es una compra, se lee en segundo plano
+  // mientras la persona elige la ubicación.
   useEffect(() => {
-    if (autoScrapeRef.current && propertyUrl.trim()) {
-      autoScrapeRef.current = false
-      handleScrape()
-    }
-  }, [propertyUrl, handleScrape])
+    if (!hydrated || !intentParam) return
+    // Corre fuera del cuerpo del efecto (handleScrape cambia el estado de la pantalla)
+    // y solo si el efecto sigue vigente: en modo estricto el primero se descarta.
+    let alive = true
+    queueMicrotask(() => {
+      if (!alive) return
+      let heroUrl: string | null = null
+      try {
+        heroUrl = localStorage.getItem('vara_hero_url')
+        if (heroUrl) localStorage.removeItem('vara_hero_url')
+      } catch { /* sin storage */ }
+      if (heroUrl && intentParam !== 'SELL') void handleScrape()
+    })
+    return () => { alive = false }
+  }, [hydrated, intentParam, handleScrape])
 
   async function handleStart() {
     saveToStorage({ name, type, province, propertyUrl })

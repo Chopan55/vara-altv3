@@ -1,5 +1,6 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useBrowserState } from '@/hooks/useHydrated'
 import { Link2, Plus, X, Loader2, TrendingUp } from 'lucide-react'
 import type { Property } from '@/types'
 import type { ScrapeResult } from '@/app/api/scrape-property/route'
@@ -35,14 +36,14 @@ function verdictText(v: Verdict, gap: number): string {
 const num = (n: number, cur: 'USD' | 'ARS') => formatPrice(n, cur)
 
 export function ValuationCard({ property }: { property: Property }) {
-  const [comps, setComps] = useState<ValuationComp[]>([])
+  // Los comparables viven en este navegador, por propiedad.
+  const [comps, setComps] = useBrowserState<ValuationComp[]>(() => loadComps(property.id), [], property.id)
   const [mode, setMode] = useState<'link' | 'manual' | null>(null)
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [m, setM] = useState<Record<string, string>>({})
 
-  useEffect(() => { setComps(loadComps(property.id)) }, [property.id])
 
   const subject = useMemo(() => subjectFromProperty(property), [property])
   const result = useMemo(() => estimateValue(subject, comps), [subject, comps])

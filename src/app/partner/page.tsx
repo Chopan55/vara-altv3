@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
+import { useLoad } from '@/hooks/useLoad'
 import Link from 'next/link'
 import {
   MapPin, Clock, Loader2, Check, X, ArrowRight, ShieldCheck,
@@ -256,7 +257,7 @@ export default function PartnerPortalPage() {
     }
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  useLoad(load)
 
   async function accept(b: VisitBooking) {
     if (!partner) return

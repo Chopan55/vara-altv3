@@ -1,5 +1,6 @@
 'use client'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
+import { useBrowserState } from '@/hooks/useHydrated'
 import { TOURS, type Tour } from '@/data/tours'
 
 const LS_KEY = 'vara_tour_completed'
@@ -26,11 +27,7 @@ interface TourState {
 
 export function useTour() {
   const [state, setState] = useState<TourState>({ activeTour: null, stepIndex: 0, isActive: false })
-  const [completed, setCompleted] = useState<Set<string>>(new Set())
-
-  useEffect(() => {
-    setCompleted(loadCompleted())
-  }, [])
+  const [completed, setCompleted] = useBrowserState<Set<string>>(loadCompleted, new Set())
 
   const startTour = useCallback((tourId: string) => {
     const tour = TOURS[tourId]
@@ -52,7 +49,7 @@ export function useTour() {
       }
       return { ...prev, stepIndex: nextStep }
     })
-  }, [])
+  }, [setCompleted])
 
   const prev = useCallback(() => {
     setState(p => p.stepIndex > 0 ? { ...p, stepIndex: p.stepIndex - 1 } : p)
@@ -68,7 +65,7 @@ export function useTour() {
     const empty = new Set<string>()
     setCompleted(empty)
     saveCompleted(empty)
-  }, [])
+  }, [setCompleted])
 
   return { ...state, startTour, next, prev, close, isCompleted, resetAll }
 }

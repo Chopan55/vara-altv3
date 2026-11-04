@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { useBrowserValue } from '@/hooks/useHydrated'
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import { decodeShared, type SharedAnalysis } from '@/lib/analysis/share'
@@ -14,11 +15,13 @@ import { CONFIDENCE_TEXT, POSITION_TEXT, money, moneyK } from '@/components/buy-
  * acá todo se muestra como texto.
  */
 export default function CompartidoPage() {
-  const [data, setData] = useState<SharedAnalysis | null | undefined>(undefined)
+  // undefined = todavía no se leyó el fragmento (solo existe en el navegador).
+  const data = useBrowserValue<SharedAnalysis | null | undefined>(() => {
+    const m = window.location.hash.match(/[#&]d=([A-Za-z0-9_-]+)/)
+    return m ? decodeShared(m[1]) : null
+  }, undefined)
 
   useEffect(() => {
-    const m = window.location.hash.match(/[#&]d=([A-Za-z0-9_-]+)/)
-    setData(m ? decodeShared(m[1]) : null)
     const meta = document.createElement('meta')
     meta.name = 'robots'
     meta.content = 'noindex'
