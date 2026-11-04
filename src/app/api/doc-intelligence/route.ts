@@ -4,6 +4,10 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { isEnabled } from '@/lib/flags'
 import { log } from '@/lib/observability/logger'
+import { requireAiAccess } from '@/lib/api/aiAccess'
+import { isPdfPath, sanitizeDocSummary, type DocSummary } from '@/lib/documents/summary'
+
+export type { DocSummary }
 
 /**
  * POST /api/doc-intelligence
@@ -21,29 +25,19 @@ import { log } from '@/lib/observability/logger'
  * Respuestas:
  *   200 { summary: DocSummary }
  *   400 { error: 'missing_document_id' | 'not_a_pdf' }
- *   401 { error: 'unauthenticated' }
- *   403 { error: 'disabled' | 'forbidden' }
+ *   401 / 403 / 429 — mismo control de IA que el resto (cuenta habilitada y tope diario)
+ *   403 { error: 'disabled' }
  *   404 { error: 'not_found' }
  *   503 { error: 'ai_unavailable' }    — OpenAI no configurado o sin crédito
  */
-
-export interface DocSummary {
-  /** Nombres que aparecen como titulares o partes. */
-  holders: string[]
-  /** Hipotecas, embargos, inhibiciones detectados. Vacío si ninguno. */
-  encumbrances: string[]
-  /** Restricciones al dominio (usufructo, servidumbre, etc.). Vacío si ninguna. */
-  restrictions: string[]
-  /** Alertas que VARA recomienda revisar con un profesional. */
-  alerts: string[]
-  /** Texto del que se extrajo el resumen (primeras 500 chars del documento). */
-  excerpt: string
-}
 
 export async function POST(req: Request) {
   if (!isEnabled('docIntelligence')) {
     return NextResponse.json({ error: 'disabled' }, { status: 403 })
   }
+
+  const access = await requireAiAccess('text')
+  if (access.error) return access.error
 
   const body = await req.json().catch(() => ({})) as { documentId?: string }
   if (!body.documentId) {
@@ -68,7 +62,8 @@ export async function POST(req: Request) {
 
   if (!doc) return NextResponse.json({ error: 'not_found' }, { status: 404 })
   if (!doc.storage_path) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-  if (!doc.storage_path.endsWith('.pdf') && doc.category !== 'ESCRITURA') {
+  // Solo PDF: una foto mandada como PDF falla en OpenAI y se leía como "IA no disponible".
+  if (!isPdfPath(doc.storage_path)) {
     return NextResponse.json({ error: 'not_a_pdf' }, { status: 400 })
   }
 
@@ -87,6 +82,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'ai_unavailable' }, { status: 503 })
   }
 
+  let fileId: string | null = null
   try {
     const formData = new FormData()
     formData.append('file', new Blob([await fileData.arrayBuffer()], { type: 'application/pdf' }), 'doc.pdf')
@@ -98,7 +94,7 @@ export async function POST(req: Request) {
       body: formData,
     })
     if (!uploadRes.ok) throw new Error(`file upload: ${uploadRes.status}`)
-    const { id: fileId } = await uploadRes.json() as { id: string }
+    fileId = ((await uploadRes.json()) as { id: string }).id
 
     const chatRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -124,8 +120,9 @@ Nunca inventés información que no está en el documento.`,
 3. restrictions: usufructo, servidumbre, restricciones de dominio (array de strings)
 4. alerts: qué debería revisar un profesional (array de strings)
 5. excerpt: primeras 200 palabras del documento
+6. readable: false si no pudiste leer texto del documento (por ejemplo, una imagen escaneada sin texto)
 
-Respondé SOLO con JSON válido: {"holders":[],"encumbrances":[],"restrictions":[],"alerts":[],"excerpt":""}`,
+Respondé SOLO con JSON válido: {"holders":[],"encumbrances":[],"restrictions":[],"alerts":[],"excerpt":"","readable":true}`,
               },
               { type: 'file', file: { file_id: fileId } },
             ],
@@ -139,13 +136,8 @@ Respondé SOLO con JSON válido: {"holders":[],"encumbrances":[],"restrictions":
 
     if (!chatRes.ok) throw new Error(`chat: ${chatRes.status}`)
     const chatData = await chatRes.json() as { choices: Array<{ message: { content: string } }> }
-    const summary: DocSummary = JSON.parse(chatData.choices[0].message.content)
-
-    // Limpieza del archivo subido (best effort, no bloquea la respuesta)
-    fetch(`https://api.openai.com/v1/files/${fileId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${apiKey}` },
-    }).catch(() => {})
+    const summary = sanitizeDocSummary(JSON.parse(chatData.choices[0].message.content))
+    if (!summary) throw new Error('summary: respuesta inválida')
 
     // Persistir el análisis en Supabase para no repetir el análisis (best effort)
     void supabase.from('document_ai_summaries').upsert(
@@ -158,5 +150,13 @@ Respondé SOLO con JSON válido: {"holders":[],"encumbrances":[],"restrictions":
   } catch (err) {
     log.error('doc.intelligence.failed', err)
     return NextResponse.json({ error: 'ai_unavailable' }, { status: 503 })
+  } finally {
+    // La escritura tiene DNI y domicilios: se borra de OpenAI siempre, también si el análisis falló.
+    if (fileId) {
+      fetch(`https://api.openai.com/v1/files/${fileId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${apiKey}` },
+      }).catch(() => {})
+    }
   }
 }
