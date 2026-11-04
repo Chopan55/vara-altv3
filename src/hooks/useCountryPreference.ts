@@ -1,6 +1,7 @@
 'use client'
 import { useState, useCallback, useEffect } from 'react'
 import type { CountryCode } from '@/types'
+import { hasJurisdiction } from '@/lib/jurisdiction'
 
 const LS_KEY = 'vara_country_pref'
 
@@ -12,13 +13,18 @@ export const SUPPORTED_COUNTRIES: {
 }[] = [
   { code: 'AR', name: 'Argentina', flag: '🇦🇷', currency: 'USD / ARS' },
   { code: 'MX', name: 'México', flag: '🇲🇽', currency: 'MXN / USD' },
+  { code: 'CL', name: 'Chile', flag: '🇨🇱', currency: 'CLP / USD' },
+  { code: 'CO', name: 'Colombia', flag: '🇨🇴', currency: 'COP / USD' },
 ]
+
+export function parseCountryPref(v: string | null): CountryCode {
+  return v && hasJurisdiction(v) ? v : 'AR'
+}
 
 function readPref(): CountryCode {
   if (typeof localStorage === 'undefined') return 'AR'
   try {
-    const v = localStorage.getItem(LS_KEY)
-    return v === 'AR' || v === 'MX' ? v : 'AR'
+    return parseCountryPref(localStorage.getItem(LS_KEY))
   } catch {
     return 'AR'
   }

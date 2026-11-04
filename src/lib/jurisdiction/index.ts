@@ -2,12 +2,16 @@ import type { CountryCode } from '@/types'
 import type { JurisdictionPack } from './types'
 import { AR_PACK } from './ar'
 import { MX_PACK } from './mx'
+import { CL_PACK } from './cl'
+import { CO_PACK } from './co'
 
 export type { JurisdictionPack } from './types'
 
 const PACKS: Record<string, JurisdictionPack> = {
   AR: AR_PACK,
   MX: MX_PACK,
+  CL: CL_PACK,
+  CO: CO_PACK,
 }
 
 /**
@@ -20,4 +24,13 @@ export function getJurisdiction(country?: CountryCode | null): JurisdictionPack 
   return AR_PACK
 }
 
-export { AR_PACK, MX_PACK }
+/** Países con pack cargado, en el orden en que se muestran. */
+export function listJurisdictions(): JurisdictionPack[] {
+  return Object.values(PACKS)
+}
+
+export function hasJurisdiction(code: string): code is CountryCode {
+  return code in PACKS
+}
+
+export { AR_PACK, MX_PACK, CL_PACK, CO_PACK }

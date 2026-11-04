@@ -2,6 +2,8 @@ import type { JurisdictionPack } from './types'
 
 export const AR_PACK: JurisdictionPack = {
   countryCode: 'AR',
+  readiness: 'active',
+  hasCostEngine: true,
   countryName: 'Argentina',
   locale: 'es-AR',
   timezone: 'America/Argentina/Buenos_Aires',

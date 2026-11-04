@@ -10,6 +10,21 @@ import type { CountryCode, Currency, ProfessionalRole } from '@/types'
 export interface JurisdictionPack {
   countryCode: CountryCode
 
+  // ── Estado del pack ────────────────────────────────────────────────────────
+  /**
+   * 'active': validado para operar.
+   * 'validation': terminología cargada, pendiente de validar con un
+   * profesional local. La UI lo muestra como "En validación".
+   */
+  readiness: 'active' | 'validation'
+  /**
+   * true si el motor regulatorio (generateChecklist) tiene datos de costos
+   * para este país. Si es false, VARA no muestra números para ese país.
+   */
+  hasCostEngine: boolean
+  /** Qué falta validar, en una línea, para mostrar al usuario. */
+  readinessNote?: string
+
   // ── Identidad ──────────────────────────────────────────────────────────────
   countryName: string
   locale: string        // BCP 47, ej. 'es-AR', 'es-MX'
