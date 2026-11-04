@@ -51,11 +51,19 @@ export default function ConfiguracionPage() {
                     <div className="flex items-center gap-3">
                       <span className="text-2xl leading-none">{c.flag}</span>
                       <div>
-                        <p className="font-semibold text-slate-900 text-sm">{c.name}</p>
+                        <p className="flex items-center gap-2 font-semibold text-slate-900 text-sm">
+                          {c.name}
+                          {j.readiness === 'validation' && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">En validación</span>
+                          )}
+                        </p>
                         <p className="text-xs text-slate-500 mt-0.5">
                           Moneda: {c.currency} · Cierre: {j.closingStageLabel} · Profesional:{' '}
                           {j.professionalLabels.CLOSING_PROFESSIONAL}
                         </p>
+                        {j.readinessNote && (
+                          <p className="text-[11px] text-amber-700 mt-1">{j.readinessNote}</p>
+                        )}
                       </div>
                     </div>
                     {isSelected && (
@@ -93,6 +101,13 @@ export default function ConfiguracionPage() {
                     </div>
                   ))}
                 </div>
+                {!j.hasCostEngine && (
+                  <p className="mt-3 text-[11px] leading-relaxed text-amber-800">
+                    Para {j.countryName} VARA todavía no calcula costos ni impuestos: no mostramos
+                    números hasta validarlos con un profesional local. Las operaciones nuevas se
+                    siguen creando con Argentina o México.
+                  </p>
+                )}
               </div>
             )
           })()}
@@ -101,9 +116,8 @@ export default function ConfiguracionPage() {
         <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">
           <p className="text-xs font-semibold text-slate-600 mb-1">Próximos mercados</p>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Chile, Colombia, Perú, Uruguay, Brasil. Cada Jurisdiction Pack incluye la
-            terminología, los impuestos, el workflow legal y las plantillas de documentos
-            del mercado.
+            Perú, Uruguay y Brasil. Un país pasa de &quot;En validación&quot; a activo cuando
+            un profesional local valida sus costos, impuestos y documentos.
           </p>
         </div>
       </div>

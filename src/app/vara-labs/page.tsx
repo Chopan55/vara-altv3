@@ -99,8 +99,8 @@ const FEATURES: LabFeature[] = [
   {
     id: 'lf-010',
     nombre: 'LATAM Ready — Multi-país',
-    descripcion: 'Argentina y México hoy. Chile, Colombia y más países, en camino.',
-    detalle: 'Elegís tu país y VARA usa su terminología, moneda y reglas. Hoy hay paquetes para Argentina y México. Los demás países se suman de a uno, a medida que validamos sus reglas con profesionales locales.',
+    descripcion: 'Argentina operativa. México con costos parciales. Chile y Colombia en validación.',
+    detalle: 'Elegís tu país y VARA usa su terminología, moneda y reglas. Argentina está completa; México calcula costos con confianza parcial. Chile y Colombia ya tienen su terminología, pero VARA no muestra costos para esos países hasta validarlos con profesionales locales.',
     estado: 'BETA',
     href: '/configuracion',
     icon: Globe,

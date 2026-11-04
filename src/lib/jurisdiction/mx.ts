@@ -2,6 +2,9 @@ import type { JurisdictionPack } from './types'
 
 export const MX_PACK: JurisdictionPack = {
   countryCode: 'MX',
+  readiness: 'validation',
+  hasCostEngine: true,
+  readinessNote: 'Costos con confianza parcial: validar con un notario de México.',
   countryName: 'México',
   locale: 'es-MX',
   timezone: 'America/Mexico_City',
