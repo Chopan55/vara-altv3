@@ -4,7 +4,13 @@ import { useBrowserState } from '@/hooks/useHydrated'
 import type { CountryCode } from '@/types'
 import { hasJurisdiction } from '@/lib/jurisdiction'
 
-const LS_KEY = 'vara_country_pref'
+/**
+ * País por defecto de la persona: el de su última operación creada o el que
+ * eligió en Configuración. Misma clave que escribe el onboarding, así las dos
+ * pantallas no se contradicen. Cada operación guarda su propio país aparte.
+ */
+const LS_KEY = 'vara_country'
+const LEGACY_KEY = 'vara_country_pref'
 
 export const SUPPORTED_COUNTRIES: {
   code: CountryCode
@@ -25,7 +31,7 @@ export function parseCountryPref(v: string | null): CountryCode {
 function readPref(): CountryCode {
   if (typeof localStorage === 'undefined') return 'AR'
   try {
-    return parseCountryPref(localStorage.getItem(LS_KEY))
+    return parseCountryPref(localStorage.getItem(LS_KEY) ?? localStorage.getItem(LEGACY_KEY))
   } catch {
     return 'AR'
   }
@@ -43,3 +49,6 @@ export function useCountryPreference() {
 
   return { country, setCountry }
 }
+
+/** Países en los que hoy se puede crear una operación (tienen motor de costos). */
+export const OPERABLE_COUNTRIES: CountryCode[] = ['AR', 'MX']
