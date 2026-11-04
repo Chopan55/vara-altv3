@@ -2,6 +2,7 @@ import { tryCreateClient } from './client'
 import { log } from '@/lib/observability/logger'
 import { isUuid } from '@/lib/operationIds'
 import type { OperationRow } from './types'
+import { countryOfProvince } from '@/lib/regulations'
 import type { StoredOperation } from '@/lib/userOperations'
 
 /** Operaciones contra Supabase. Solo se usa cuando hay sesión. */
@@ -30,7 +31,9 @@ export function rowToStored(r: OperationRow): StoredOperation {
     province: r.province,
     provinceCode: r.province_code,
     city: r.city ?? '',
-    country: (r as Record<string, unknown>).country as StoredOperation['country'] ?? undefined,
+    // Si la base no tiene (o no llenó) la columna country, el país sale de la jurisdicción:
+    // CDMX es México y CABA es Argentina. Sin esto, una operación de México volvía como Argentina.
+    country: ((r as Record<string, unknown>).country as StoredOperation['country'] | null) ?? countryOfProvince(r.province_code || r.province),
     propertyId: r.property_id ?? undefined,
     progress: 0,
     createdAt: new Date(r.created_at).getTime(),

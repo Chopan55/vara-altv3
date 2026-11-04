@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useVaraState } from '@/hooks/useVaraState'
 import { useOperations } from '@/hooks/useOperations'
+import { journeyToStored } from '@/lib/journey'
 import { SaveOperationBanner } from '@/components/account/SaveOperationBanner'
 import { NextStepAgent } from '@/components/operation/NextStepAgent'
 import {
@@ -114,12 +115,12 @@ function OperationView({ op, operations, onSelect, onDelete, getTransactionData 
   if (!ready || !plan.loaded) return <DashboardLoading />
 
   const fv = buildFirstValue({ kind, operationId: op.id, transaction: getTransactionData(op.id), property, steps: plan.steps })
-  const refs = operations.map(o => ({ id: o.id, title: o.title, type: o.type, progress: o.progress }))
+  const refs = operations.map(o => ({ id: o.id, title: o.title, type: o.type, progress: o.progress, country: o.country }))
   const place = [op.city, op.province].filter(Boolean).join(', ')
 
   return (
     <>
-      <OperationHeader fv={fv} title={op.title} place={place} operations={refs} activeId={op.id} onSelect={onSelect} />
+      <OperationHeader fv={fv} title={op.title} place={place} country={op.country} operations={refs} activeId={op.id} onSelect={onSelect} />
 
       {/* La única acción principal. */}
       <NextStepAgent key={`${op.id}-${fv.primary.id}`} action={fv.primary} operationId={op.id} kind={kind} province={op.province} />
@@ -157,6 +158,13 @@ function DashboardContent() {
   // El estado vacío depende solo de que no haya operaciones: con cuenta o sin cuenta, en este dispositivo o en otro.
   if (shouldShowEmptyState({ loaded, operationCount: operations.length })) return <EmptyDashboard />
   const op = activeOperation ?? operations[0]
+  // Elegir una operación también fija su recorrido: si no, tocar una venta estando en
+  // modo compra (o al revés) no hacía nada, porque la activa siempre es del recorrido actual.
+  const selectOperation = (id: string) => {
+    const target = operations.find(o => o.id === id)
+    if (target) vara.setJourneyType(journeyToStored(target.type))
+    vara.setOperationId(id)
+  }
   if (!op) return <DashboardLoading />
 
   return (
@@ -165,7 +173,7 @@ function DashboardContent() {
         key={op.id}
         op={op}
         operations={operations}
-        onSelect={vara.setOperationId}
+        onSelect={selectOperation}
         onDelete={deleteOperation}
         getTransactionData={getTransactionData}
       />

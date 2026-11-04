@@ -27,13 +27,18 @@ export interface OperationRef {
   title: string
   type: 'BUY' | 'SELL'
   progress: number
+  country?: string
 }
 
+const FLAG: Record<string, string> = { AR: '🇦🇷', MX: '🇲🇽' }
+const COUNTRY_NAME: Record<string, string> = { AR: 'Argentina', MX: 'México' }
+
 /** Qué operación, en qué estado y por qué: lo primero que se lee. */
-export function OperationHeader({ fv, title, place, operations, activeId, onSelect }: {
+export function OperationHeader({ fv, title, place, country, operations, activeId, onSelect }: {
   fv: FirstValue
   title: string
   place: string
+  country?: string
   operations: OperationRef[]
   activeId: string
   onSelect: (id: string) => void
@@ -54,7 +59,7 @@ export function OperationHeader({ fv, title, place, operations, activeId, onSele
                 o.id === activeId ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
               )}
             >
-              {o.type === 'BUY' ? 'Compra' : 'Venta'} · {o.title}
+              {o.country && FLAG[o.country] ? `${FLAG[o.country]} ` : ''}{o.type === 'BUY' ? 'Compra' : 'Venta'} · {o.title}
             </button>
           ))}
         </nav>
@@ -68,11 +73,11 @@ export function OperationHeader({ fv, title, place, operations, activeId, onSele
         </span>
       </div>
       <h1 className="mt-1.5 text-2xl font-extrabold leading-tight tracking-tight text-slate-900">{title}</h1>
-      {place && (
-        <p className="mt-0.5 flex items-center gap-1 text-sm text-slate-500">
-          <MapPin size={12} aria-hidden="true" /> {place}
-        </p>
-      )}
+      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+        {place && <span className="flex items-center gap-1"><MapPin size={12} aria-hidden="true" /> {place}</span>}
+        <span>{FLAG[country ?? 'AR']} {COUNTRY_NAME[country ?? 'AR']}</span>
+        <Link href="/configuracion" className="text-xs font-semibold text-brand-600 hover:underline">Cambiar de país</Link>
+      </p>
       <p className="mt-2 text-sm text-slate-600" data-testid="health-reason">{fv.healthReason}</p>
 
       <div className="mt-3">
