@@ -1,23 +1,19 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
-  ArrowLeft, Users, Share2, Check, Loader2, ChevronRight,
-  FileText, ClipboardCheck, AlertCircle, Eye,
+  ArrowLeft, Users, Loader2, ChevronRight, ClipboardCheck, AlertCircle,
 } from 'lucide-react'
 import { useOperations } from '@/hooks/useOperations'
 import { tryCreateClient } from '@/lib/supabase/client'
+import { InviteManager } from '@/components/sharing/InviteManager'
 import { cn } from '@/lib/utils'
 
 /**
  * Shared Transaction State — estado compartido de la operación.
  *
- * Muestra el panel unificado de una operación: participantes, estado de
- * documentos/tareas por rol, y un link compartible para que todas las
- * partes vean lo que les corresponde.
- *
- * MVP: genera un link tipo /operacion/[id] que el usuario puede compartir
- * manualmente con su equipo.
+ * El dueño invita por email (src/lib/supabase/sharing.ts). El invitado ve una
+ * vista de solo lectura en /compartida/[id], sin archivos ni notas.
  */
 
 interface ParticipantRow {
@@ -37,17 +33,6 @@ const ROLE_LABELS: Record<string, string> = {
   COUNTERPARTY:'La otra parte',
   BANK:        'Banco',
   OTHER:       'Otro',
-}
-
-const ROLE_PERMISSIONS: Record<string, string[]> = {
-  NOTARY:       ['Documentos legales', 'Estado de tareas', 'Timeline de cierre'],
-  BROKER:       ['Datos de la operación', 'Comunicación entre partes', 'Estado general'],
-  ACCOUNTANT:   ['Documentos impositivos', 'Estructura de pago'],
-  LAWYER:       ['Documentos legales', 'Historial de negociación'],
-  APPRAISER:    ['Datos de la propiedad', 'Informe de tasación'],
-  COUNTERPARTY: ['Estado general', 'Documentos compartidos'],
-  BANK:         ['Documentos financieros', 'Verificaciones de identidad'],
-  OTHER:        ['Estado general'],
 }
 
 function useOperationParticipants(operationId: string | null) {
@@ -75,7 +60,6 @@ function useOperationParticipants(operationId: string | null) {
 export default function EstadoOperacionPage() {
   const { operations, loaded } = useOperations()
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
 
   const selected = operations.find(o => o.id === selectedId) ?? null
 
@@ -88,20 +72,6 @@ export default function EstadoOperacionPage() {
     }
   }, [loaded, operations, selectedId])
 
-  const shareUrl = typeof window !== 'undefined' && selectedId
-    ? `${window.location.origin}/operacion/${selectedId}`
-    : null
-
-  const handleShare = useCallback(async () => {
-    if (!shareUrl) return
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2500)
-    } catch {
-      /* clipboard not available */
-    }
-  }, [shareUrl])
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -115,7 +85,7 @@ export default function EstadoOperacionPage() {
               Estado compartido
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">
-              Todas las partes, una sola operación
+              Invitá a la contraparte y a los profesionales a seguir la operación
             </p>
           </div>
         </div>
@@ -169,40 +139,15 @@ export default function EstadoOperacionPage() {
 
             {selected && (
               <>
-                {/* Cabecera de operación + botón compartir */}
+                {/* Cabecera de operación */}
                 <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
-                        {selected.type === 'BUY' ? 'Compra' : 'Venta'}
-                      </p>
-                      <p className="font-bold text-slate-900 text-sm leading-tight">{selected.title}</p>
-                    </div>
-                    <button
-                      onClick={handleShare}
-                      className={cn(
-                        'flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition-all flex-shrink-0',
-                        copied
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-brand-50 text-brand-700 hover:bg-brand-100',
-                      )}
-                    >
-                      {copied ? (
-                        <><Check size={12} /> Copiado</>
-                      ) : (
-                        <><Share2 size={12} /> Copiar link</>
-                      )}
-                    </button>
-                  </div>
-                  {shareUrl && (
-                    <>
-                      <p className="text-[10px] text-slate-400 mt-2 font-mono truncate">{shareUrl}</p>
-                      <p className="text-[11px] text-amber-700 mt-1.5">
-                        Por ahora el link abre la operación solo con tu cuenta. El acceso de la contraparte y los profesionales está en desarrollo.
-                      </p>
-                    </>
-                  )}
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
+                    {selected.type === 'BUY' ? 'Compra' : 'Venta'}
+                  </p>
+                  <p className="font-bold text-slate-900 text-sm leading-tight">{selected.title}</p>
                 </div>
+
+                <InviteManager operationId={selected.id} />
 
                 {/* Participantes */}
                 <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card overflow-hidden">
@@ -248,18 +193,6 @@ export default function EstadoOperacionPage() {
                               {ROLE_LABELS[p.role] ?? p.role}
                               {p.email ? ` · ${p.email}` : ''}
                             </p>
-                            {ROLE_PERMISSIONS[p.role] && (
-                              <div className="flex flex-wrap gap-1 mt-1.5">
-                                {ROLE_PERMISSIONS[p.role].map(perm => (
-                                  <span
-                                    key={perm}
-                                    className="inline-flex items-center gap-0.5 text-[9px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full"
-                                  >
-                                    <Eye size={8} /> {perm}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
                           </div>
                         </div>
                       ))}
@@ -267,24 +200,20 @@ export default function EstadoOperacionPage() {
                   )}
                 </div>
 
-                {/* Qué puede ver cada rol */}
+                {/* Qué ve cada uno, hoy */}
                 <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">
                   <div className="flex items-start gap-2 mb-2">
                     <AlertCircle size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-slate-600">Visibilidad por rol · en desarrollo</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Así va a funcionar. Hoy la operación la ves solo vos.</p>
-                    </div>
+                    <p className="text-xs font-semibold text-slate-600">Qué ve cada uno</p>
                   </div>
                   <div className="space-y-2">
                     {[
-                      { rol: 'Vos (propietario/a)', items: ['Todo: tareas, documentos, negociación, riesgos, mensajes'], color: 'text-brand-600' },
-                      { rol: 'Contraparte', items: ['Estado general, documentos compartidos, mensajes'], color: 'text-slate-600' },
-                      { rol: 'Profesionales', items: ['Documentos de su área, tareas asignadas, timeline'], color: 'text-slate-600' },
+                      { rol: 'Vos', items: 'Todo: tareas, documentos, archivos, negociación, riesgos y notas', color: 'text-brand-600' },
+                      { rol: 'Invitados', items: 'Estado de la operación y checklist de documentos (sin archivos ni notas). Solo lectura.', color: 'text-slate-600' },
                     ].map(row => (
                       <div key={row.rol} className="flex items-start gap-2">
-                        <span className={cn('text-[10px] font-bold min-w-[110px]', row.color)}>{row.rol}</span>
-                        <span className="text-[10px] text-slate-500 leading-relaxed">{row.items.join(', ')}</span>
+                        <span className={cn('text-[10px] font-bold min-w-[70px]', row.color)}>{row.rol}</span>
+                        <span className="text-[10px] text-slate-500 leading-relaxed">{row.items}</span>
                       </div>
                     ))}
                   </div>
