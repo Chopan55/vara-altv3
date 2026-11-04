@@ -191,6 +191,21 @@ export type IdentityVerificationRow = {
   updated_at: string
 }
 
+export type ApiOperation = {
+  id: string; title: string; type: string; status: string; province_code: string; created_at: string; updated_at: string
+}
+
+/** Clave de API: se guarda el SHA-256, nunca la clave. */
+export type ApiKeyRow = {
+  id: string; user_id: string; name: string; prefix: string; key_hash: string
+  created_at: string; last_used_at: string | null; revoked_at: string | null
+}
+
+export type WebhookEndpointRow = {
+  id: string; user_id: string; url: string; secret: string; events: string[]
+  created_at: string; revoked_at: string | null
+}
+
 /** Señales de confianza de un participante: solo booleanos y conteos. */
 export type OperationTrustEntry = {
   userId: string; isOwner: boolean; role: string; name: string | null
@@ -365,6 +380,9 @@ export type Database = {
       get_shared_operation: { Args: { p_operation_id: string }; Returns: SharedOperationView | null }
       list_shared_operations: { Args: Record<string, never>; Returns: SharedOperationSummary[] }
       get_operation_trust: { Args: { p_operation_id: string }; Returns: OperationTrustEntry[] | null }
+      /** API pública con clave: null si la clave no existe o está revocada. */
+      api_list_operations: { Args: { p_key_hash: string }; Returns: ApiOperation[] | null }
+      api_get_operation: { Args: { p_key_hash: string; p_operation_id: string }; Returns: ApiOperation | { error: 'unauthenticated' } | null }
     }
     Enums: Record<never, never>
     CompositeTypes: Record<never, never>
@@ -380,6 +398,8 @@ export type Database = {
       operation_participants: Tbl<OperationParticipantRow, 'user_id' | 'operation_id' | 'name'>
       operation_members: Tbl<OperationMemberRow, 'operation_id' | 'owner_id' | 'invited_email'>
       identity_verifications: Tbl<IdentityVerificationRow, 'user_id' | 'document_path' | 'selfie_path'>
+      api_keys: Tbl<ApiKeyRow, 'user_id' | 'name' | 'prefix' | 'key_hash'>
+      webhook_endpoints: Tbl<WebhookEndpointRow, 'user_id' | 'url' | 'secret'>
       operation_risks: Tbl<OperationRiskRow, 'user_id' | 'operation_id' | 'severity' | 'category' | 'label'>
       operation_relations: Tbl<OperationRelationRow, 'user_id' | 'from_operation_id' | 'to_operation_id' | 'type'>
       visit_requests: Tbl<VisitRequestRow, 'user_id' | 'buyer_name' | 'visit_date'>

@@ -7,6 +7,7 @@ import {
   Copy, CheckCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { DeveloperPanel } from '@/components/developer/DeveloperPanel'
 
 interface Plan {
   id: string
@@ -49,7 +50,7 @@ const PLANS: Plan[] = [
       'API v1 de lectura (preview)',
       'Múltiples usuarios con roles (próximamente)',
       'Automatizaciones (Event Engine)',
-      'Webhook para tu CRM (próximamente)',
+      'Webhooks firmados para tu CRM',
       'Soporte prioritario',
     ],
     cta: 'Solicitar acceso',
@@ -77,16 +78,17 @@ const PLANS: Plan[] = [
 
 /** HOY = existe en el código. ROADMAP = planificado, no disponible. No se mezclan. */
 const API_FEATURES: { icon: React.ElementType; title: string; desc: string; status: 'HOY' | 'ROADMAP' }[] = [
-  { icon: Code2, title: 'API v1 de lectura', desc: 'Consultá tus operaciones y su estado desde tu sistema. JSON, con el token de tu sesión.', status: 'HOY' },
-  { icon: Zap, title: 'Webhooks', desc: 'Eventos hacia tu sistema: tarea completada, documento subido, oferta recibida.', status: 'ROADMAP' },
-  { icon: Key, title: 'API keys y escritura', desc: 'Claves por integración y endpoints para crear y actualizar operaciones.', status: 'ROADMAP' },
+  { icon: Code2, title: 'API v1 de lectura', desc: 'Consultá tus operaciones y su estado desde tu sistema. JSON.', status: 'HOY' },
+  { icon: Key, title: 'Claves de API', desc: 'Una clave por integración, revocable cuando quieras. Se guarda solo su hash.', status: 'HOY' },
+  { icon: Zap, title: 'Webhooks', desc: 'Documento subido, oferta, cambios de estado: llegan a tu sistema firmados con HMAC.', status: 'HOY' },
+  { icon: Code2, title: 'API de escritura', desc: 'Crear y actualizar operaciones desde tu sistema.', status: 'ROADMAP' },
   { icon: Globe, title: 'White label', desc: 'Tu marca y tu dominio, con VARA por debajo.', status: 'ROADMAP' },
   { icon: Layers, title: 'Multi-workspace', desc: 'Varias inmobiliarias o sucursales en un panel, con permisos por rol.', status: 'ROADMAP' },
   { icon: Shield, title: 'Seguridad enterprise', desc: 'SSO, auditoría de acciones y data residency.', status: 'ROADMAP' },
 ]
 
 const SAMPLE_ENDPOINT = `GET /api/v1/operations
-Authorization: Bearer <token de sesión>
+Authorization: Bearer vara_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 // Respuesta
 {
@@ -213,8 +215,8 @@ export default function VaraProPage() {
             VARA en tu plataforma
           </h2>
           <p className="text-sm text-slate-300 leading-relaxed max-w-sm mx-auto">
-            Hoy: una API de lectura en preview para consultar tus operaciones. Lo que sigue
-            (webhooks, white label, panel enterprise) lo construimos con las primeras inmobiliarias.
+            Hoy: API de lectura con claves propias y webhooks firmados hacia tu sistema. Lo que sigue
+            (escritura, white label, panel enterprise) lo construimos con las primeras inmobiliarias.
           </p>
         </div>
 
@@ -254,6 +256,16 @@ export default function VaraProPage() {
           </div>
         </div>
 
+        {/* Panel de desarrollador: claves y webhooks reales del usuario */}
+        <div className="mb-8">
+          <h2 className="text-sm font-bold text-slate-800 mb-1">Tus claves y webhooks</h2>
+          <p className="text-xs text-slate-500 mb-3">
+            La API está en preview: si al llamarla recibís <code>disabled</code>, pedinos que la habilitemos.
+            Los webhooks necesitan la extensión pg_net activa en la base.
+          </p>
+          <DeveloperPanel />
+        </div>
+
         {/* Planes */}
         <div className="mb-8">
           <h2 className="text-sm font-bold text-slate-800 mb-4">Planes</h2>
@@ -269,11 +281,11 @@ export default function VaraProPage() {
           {[
             {
               q: '¿La API v1 ya está disponible?',
-              a: 'En preview y solo de lectura: podés consultar tus operaciones y su estado. Pedí acceso anticipado y te la habilitamos.',
+              a: 'En preview y de lectura: con una clave de API consultás tus operaciones y su estado. Pedí acceso anticipado y te la habilitamos.',
             },
             {
               q: '¿Puedo integrar VARA con mi CRM?',
-              a: 'Hoy podés leer tus operaciones desde tu CRM con la API v1. Los webhooks y los endpoints de escritura están en el roadmap: si los necesitás, contanos tu caso y lo priorizamos.',
+              a: 'Sí. Leés tus operaciones con la API v1 y recibís eventos (documentos, ofertas, cambios de estado) por webhook, firmados para que tu sistema verifique que vienen de VARA. La escritura desde tu sistema está en el roadmap.',
             },
             {
               q: '¿Qué significa white label?',

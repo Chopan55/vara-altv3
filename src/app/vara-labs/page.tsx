@@ -160,8 +160,8 @@ const FEATURES: LabFeature[] = [
   {
     id: 'lf-016',
     nombre: 'B2B / VARA Pro',
-    descripcion: 'API de lectura en preview. White label e integraciones, en roadmap.',
-    detalle: 'Hoy: una API v1 de lectura en preview para consultar operaciones desde otro sistema. En roadmap: webhooks, white label y panel para equipos con roles.',
+    descripcion: 'API de lectura con claves propias y webhooks firmados. White label, en roadmap.',
+    detalle: 'Creás claves de API para consultar tus operaciones desde otro sistema, y webhooks que reciben eventos (documentos, ofertas, cambios de estado) firmados con HMAC. En roadmap: escritura desde la API, white label y panel para equipos.',
     estado: 'BETA',
     href: '/vara-pro',
     icon: Building2,

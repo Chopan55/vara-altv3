@@ -12,6 +12,7 @@
  */
 
 import { PGlite } from '@electric-sql/pglite'
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect } from 'vitest'
@@ -46,7 +47,7 @@ alter default privileges in schema public grant execute on functions to anon, au
 `
 
 export async function createDb(extra: string[] = []): Promise<Db> {
-  const db = new PGlite()
+  const db = new PGlite({ extensions: { pgcrypto } })
   await db.exec(SUPABASE_STUB)
   for (const file of [...MIGRATIONS, ...extra]) {
     const sql = readFileSync(join(process.cwd(), 'supabase', 'migrations', file), 'utf8')
