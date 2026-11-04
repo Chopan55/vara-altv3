@@ -445,6 +445,9 @@ export default function AdminVisitasPage() {
         <p className="text-sm text-slate-500 mt-1">
           Panel interno de VARA Visit. Lo que se decide acá afecta a personas reales.
         </p>
+        <Link href="/admin/identidad" className="mt-2 inline-block text-xs font-semibold text-brand-700 underline">
+          Revisar identidades del Trust Passport →
+        </Link>
 
         <nav className="flex flex-wrap gap-1 border-b border-slate-200 mt-5" aria-label="Secciones">
           {TABS.map(t => {
