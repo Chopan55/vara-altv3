@@ -8,6 +8,7 @@ import { useVaraState } from '@/hooks/useVaraState'
 import { getJurisdiction } from '@/lib/jurisdiction'
 import { journeyToStored } from '@/lib/journey'
 import { cn } from '@/lib/utils'
+import { EmailAlertsCard } from '@/components/settings/EmailAlertsCard'
 
 export default function ConfiguracionPage() {
   const { country, setCountry } = useCountryPreference()
@@ -33,7 +34,7 @@ export default function ConfiguracionPage() {
           </Link>
           <div>
             <h1 className="text-lg font-bold text-[var(--foreground)] leading-tight">Configuración</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Tu mercado y preferencias</p>
+            <p className="text-xs text-slate-400 mt-0.5">Tu mercado, tus operaciones y tus alertas</p>
           </div>
         </div>
 
@@ -169,6 +170,8 @@ export default function ConfiguracionPage() {
             </p>
           )}
         </div>
+
+        <EmailAlertsCard />
 
         <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">
           <p className="text-xs font-semibold text-slate-600 mb-1">Próximos mercados</p>

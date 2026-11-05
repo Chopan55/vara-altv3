@@ -382,6 +382,17 @@ export type NegotiationMessageRow = {
   created_at: string
 }
 
+/** Resumen diario por email (opt-in). El usuario solo escribe `email_digest`. */
+export type AlertPreferencesRow = {
+  user_id: string
+  email_digest: boolean
+  unsubscribe_token: string
+  last_sent_at: string | null
+  last_digest_key: string | null
+  created_at: string
+  updated_at: string
+}
+
 type Tbl<R, Req extends keyof R> = {
   Row: R
   Insert: Insert<R, Req>
@@ -397,6 +408,8 @@ export type Database = {
     /** Funciones RPC declaradas en las migraciones. Sin esto, `.rpc()` infiere `never`. */
     Functions: {
       next_visit_code_seq: { Args: Record<string, never>; Returns: number }
+      /** Baja del resumen por email con el token del link, sin sesión. */
+      alerts_unsubscribe: { Args: { p_token: string }; Returns: boolean }
       /** Solo el cliente dueño de la visita. El PIN ya no se puede leer con un select. */
       get_booking_pin: { Args: { p_booking_id: string }; Returns: string | null }
       /** Solo el partner asignado. El contador de intentos vive en la base. */
@@ -434,6 +447,7 @@ export type Database = {
       identity_verifications: Tbl<IdentityVerificationRow, 'user_id' | 'document_path' | 'selfie_path'>
       api_keys: Tbl<ApiKeyRow, 'user_id' | 'name' | 'prefix' | 'key_hash'>
       webhook_endpoints: Tbl<WebhookEndpointRow, 'user_id' | 'url' | 'secret'>
+      alert_preferences: Tbl<AlertPreferencesRow, 'user_id'>
       operation_risks: Tbl<OperationRiskRow, 'user_id' | 'operation_id' | 'severity' | 'category' | 'label'>
       operation_relations: Tbl<OperationRelationRow, 'user_id' | 'from_operation_id' | 'to_operation_id' | 'type'>
       visit_requests: Tbl<VisitRequestRow, 'user_id' | 'buyer_name' | 'visit_date'>
