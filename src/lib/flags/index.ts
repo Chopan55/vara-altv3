@@ -3,7 +3,7 @@
  *
  * Un flag apagado por defecto se enciende agregando su nombre a la variable de
  * entorno NEXT_PUBLIC_FLAGS (separado por comas). Ejemplo en .env.local:
- *   NEXT_PUBLIC_FLAGS=docIntelligence,sharedTransaction
+ *   NEXT_PUBLIC_FLAGS=docIntelligence,publicApi
  *
  * Las flags están resueltas en tiempo de módulo (build + runtime) — no cambian
  * en una misma sesión sin recargar. Para desarrollo se pueden encender sin
@@ -13,14 +13,8 @@
 const ALL_FLAGS = {
   /** P2: IA lee escrituras PDF y extrae titularidad, cargas, restricciones. */
   docIntelligence: false,
-  /** P2: comprador y vendedor ven y actualizan la misma operación en simultáneo. */
-  sharedTransaction: false,
-  /** P2: alertas push cuando cambia el estado de un documento u oferta. */
-  pushAlerts: false,
   /** P3: API pública v1 expuesta a integraciones externas. */
   publicApi: false,
-  /** P3: UI y dominio personalizables para corredores o escribanías. */
-  whiteLabel: false,
   /**
    * VARA Buy WOW V3: pegás un aviso y el análisis comparable aparece en /analizar.
    * Preview: `?v3=1` en la URL o NEXT_PUBLIC_FLAGS=buyWowV3. El flujo actual no cambia.

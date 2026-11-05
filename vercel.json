@@ -3,6 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "crons": [
-    { "path": "/api/v3/market/sweep/cron", "schedule": "0 9 * * *" }
+    { "path": "/api/v3/market/sweep/cron", "schedule": "0 9 * * *" },
+    { "path": "/api/alerts/digest/cron", "schedule": "0 13 * * *" }
   ]
 }

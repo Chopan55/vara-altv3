@@ -111,6 +111,9 @@ export default function AlertasPage() {
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">Documentos pendientes y vencimientos</p>
           </div>
+          <Link href="/configuracion" className="flex-shrink-0 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-brand-200 hover:text-brand-700">
+            Recibir por email
+          </Link>
         </div>
 
         {isLoading && (

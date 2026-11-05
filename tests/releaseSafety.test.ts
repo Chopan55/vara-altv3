@@ -42,7 +42,7 @@ describe('ruta canónica del análisis: /analizar', () => {
 })
 
 describe('secretos: solo en el servidor', () => {
-  const SECRETS = ['OPENAI_API_KEY', 'BRIGHTDATA_API_KEY', 'SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'GEMINI_API_KEY', 'CRON_SECRET', 'MARKET_SWEEP_SECRET', 'AI_ALLOWED_EMAILS']
+  const SECRETS = ['OPENAI_API_KEY', 'BRIGHTDATA_API_KEY', 'SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'GEMINI_API_KEY', 'CRON_SECRET', 'MARKET_SWEEP_SECRET', 'AI_ALLOWED_EMAILS', 'RESEND_API_KEY']
 
   it('ningún archivo de navegador ("use client") lee variables privadas', () => {
     const offenders: string[] = []

@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-import { timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import {
   BrightDataError, decideCronAction, downloadSweep, listSweeps, startSweep, sweepProgress,
@@ -10,6 +9,7 @@ import {
 import { getMarketStore } from '@/lib/analysis/market'
 import { listingsFromZonaprop } from '@/lib/analysis/market/zonaprop'
 import { log } from '@/lib/observability/logger'
+import { cronAuthorized } from '@/lib/cron/auth'
 
 /**
  * Barrido semanal automático (Vercel Cron, una vez por día).
@@ -22,17 +22,9 @@ import { log } from '@/lib/observability/logger'
 const ZONES = ['https://www.zonaprop.com.ar/casas-venta-pilar-q-barrio-cerrado.html']
 const LIMIT_PER_ZONE = 100
 
-function authorized(req: Request): boolean {
-  const secret = process.env.CRON_SECRET
-  if (!secret || secret.length < 16) return false
-  const a = Buffer.from(`Bearer ${secret}`)
-  const b = Buffer.from(req.headers.get('authorization') ?? '')
-  return a.length === b.length && timingSafeEqual(a, b)
-}
-
 export async function GET(req: Request) {
   if (process.env.MARKET_CRON_ENABLED !== '1') return NextResponse.json({ status: 'disabled' })
-  if (!authorized(req)) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
+  if (!cronAuthorized(req)) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
 
   const apiKey = process.env.BRIGHTDATA_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'Falta configurar Bright Data.' }, { status: 503 })
