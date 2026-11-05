@@ -3,14 +3,14 @@ import { ArrowRight, Check } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { PLANS } from '@/lib/pricing/plans'
 
-export const metadata = { title: 'VARA — Planes', description: 'Pagá por lo que necesitás.' }
+export const metadata = { title: 'Planes', description: 'Pagá por lo que necesitás.' }
 
 export default function PlanesPage() {
   return (
     <main className="min-h-screen bg-white text-slate-900">
       <header className="border-b border-slate-200/80">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5">
-          <Link href="/" aria-label="Volver al inicio"><VaraLogo size={26} /></Link>
+          <VaraLogo size={26} />
           <Link href="/onboarding" className="text-sm font-bold text-brand-600 hover:underline">Empezar gratis</Link>
         </div>
       </header>

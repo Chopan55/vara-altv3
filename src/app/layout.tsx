@@ -3,7 +3,7 @@ import './globals.css'
 import { AppShell } from '@/components/layout/AppShell'
 
 export const metadata: Metadata = {
-  title: 'VARA — Comprá y vendé a tu manera',
+  title: { default: 'VARA — Comprá y vendé a tu manera', template: '%s · VARA' },
   description: 'Más libertad para decidir. Más control para avanzar. Menos costos innecesarios. VARA empieza donde terminan los portales.',
 }
 

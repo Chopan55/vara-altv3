@@ -83,7 +83,7 @@ export function OperationHeader({ fv, title, place, country, operations, activeI
       <div className="mt-3">
         <div className="mb-1.5 flex items-center justify-between text-xs">
           <span className="font-medium text-slate-500">
-            {fv.stage ? `Etapa ${fv.stage.index} de ${fv.stage.total} · ${fv.stage.label}` : 'Sin etapa'}
+            {fv.stage ? `${fv.stage.unit} ${fv.stage.index} de ${fv.stage.total} · ${fv.stage.label}` : 'Sin etapa'}
           </span>
           <span className="font-bold tabular-nums text-slate-700">{fv.progress}%</span>
         </div>
@@ -237,12 +237,15 @@ export function CostsCard({ costs }: { costs: BuyerCosts }) {
 
 export function DocsRow({ operationId }: { operationId: string }) {
   const [pending, setPending] = useState<number | null>(null)
+  const [total, setTotal] = useState<number | null>(null)
 
   useEffect(() => {
     let alive = true
     fetchDocuments(operationId).then(docs => {
-      if (alive) setPending(docs.filter(d => d.status === 'PENDING').length)
-    }).catch(() => { if (alive) setPending(0) })
+      if (!alive) return
+      setTotal(docs.length)
+      setPending(docs.filter(d => d.status === 'PENDING').length)
+    }).catch(() => { if (alive) { setTotal(null); setPending(0) } })
     return () => { alive = false }
   }, [operationId])
 
@@ -257,6 +260,8 @@ export function DocsRow({ operationId }: { operationId: string }) {
           ? <span className="text-slate-400">Cargando documentos…</span>
           : pending > 0
           ? <><strong className="font-bold text-slate-900">{pending}</strong> {pending === 1 ? 'documento pendiente' : 'documentos pendientes'}</>
+          : total === 0
+          ? 'Todavía no cargaste documentos'
           : 'Sin documentos pendientes'}
       </span>
       <span className="text-xs font-semibold text-brand-600">Ver →</span>

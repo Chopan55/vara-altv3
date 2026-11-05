@@ -72,7 +72,9 @@ function RuleCard({
             </div>
             <button
               onClick={() => setOpen(o => !o)}
-              className="flex-shrink-0 mt-0.5 text-slate-400 hover:text-slate-600 transition-colors"
+              className="-m-2 flex-shrink-0 p-2 text-slate-400 hover:text-slate-600 transition-colors"
+              aria-expanded={open}
+              aria-label={open ? 'Ocultar detalle' : 'Ver detalle'}
             >
               <ChevronDown size={14} className={cn('transition-transform', open && 'rotate-180')} />
             </button>
@@ -206,7 +208,7 @@ export default function WorkflowsPage() {
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <Link href="/dashboard" className="text-slate-400 hover:text-slate-700 transition-colors">
+          <Link href="/dashboard" aria-label="Volver" className="-m-2 p-2 text-slate-400 hover:text-slate-700 transition-colors">
             <ArrowLeft size={18} />
           </Link>
           <div className="flex-1 min-w-0">
