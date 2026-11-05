@@ -165,7 +165,7 @@ export default function CadenaNegociacionPage() {
     <div className="min-h-screen bg-[var(--background)]">
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="flex items-center gap-3 mb-6">
-          <Link href="/negociacion" className="text-slate-400 hover:text-slate-700 transition-colors">
+          <Link href="/negociacion" aria-label="Volver" className="-m-2 p-2 text-slate-400 hover:text-slate-700 transition-colors">
             <ArrowLeft size={18} />
           </Link>
           <div>
@@ -239,6 +239,7 @@ export default function CadenaNegociacionPage() {
                     Quién
                   </label>
                   <select
+                    aria-label="Quién"
                     value={r.quien}
                     onChange={e => updateRound(r.id, { quien: e.target.value as OfferRound['quien'] })}
                     className="w-full text-sm text-slate-800 bg-slate-50 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-brand-200"
@@ -267,6 +268,7 @@ export default function CadenaNegociacionPage() {
                     Fecha (opcional)
                   </label>
                   <input
+                    aria-label="Fecha (opcional)"
                     type="date"
                     value={r.fecha}
                     onChange={e => updateRound(r.id, { fecha: e.target.value })}

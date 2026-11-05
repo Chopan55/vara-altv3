@@ -212,6 +212,8 @@ describe('venta', () => {
     expect(v.primary.evidence).toEqual(['Paso 2 de 4 de tu venta', '1 de 4 pasos hechos'])
     expect(v.upNext.map(a => a.title)).toEqual(['Sacar fotos', 'Publicar'])
     expect(v.progress).toBe(25)
+    // Un solo contador: el encabezado usa los mismos pasos que la acción principal.
+    expect(v.stage).toEqual({ label: 'Definir el precio', index: 2, total: 4, unit: 'Paso' })
     expect(v.health).toBe('ON_TRACK')
     expect(v.uncertainties.map(u => u.id)).not.toContain('no_property')
   })

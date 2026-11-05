@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { ArrowRight, ShieldAlert, Calculator, Scale, Compass, Handshake } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 
-export const metadata = { title: 'VARA — Demo', description: 'Una operación de ejemplo, con datos ficticios.' }
+export const metadata = { title: 'Demo', description: 'Una operación de ejemplo, con datos ficticios.' }
 
 /** Todo lo que se ve acá es ficticio y fijo: no lee ni escribe datos de nadie. */
 const candidates = [
@@ -28,7 +28,7 @@ export default function DemoPage() {
     <main className="min-h-screen bg-white text-slate-900">
       <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5">
-          <Link href="/" aria-label="Volver al inicio"><VaraLogo size={26} /></Link>
+          <VaraLogo size={26} />
           <Link href="/onboarding" className="flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-brand-500">
             Empezar con mi propiedad <ArrowRight size={13} />
           </Link>

@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { WEBHOOK_EVENTS } from '@/lib/supabase/developerEvents'
 
 export const metadata: Metadata = {
-  title: 'API de VARA — Documentación',
+  title: 'Documentación de la API',
   description: 'Cómo leer tus operaciones desde tu sistema y recibir eventos firmados.',
 }
 

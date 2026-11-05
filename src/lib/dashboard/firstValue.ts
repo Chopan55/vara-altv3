@@ -70,7 +70,8 @@ export interface FirstValueInput {
 export interface FirstValue {
   kind: OperationKind
   kindLabel: 'Compra' | 'Venta'
-  stage: { label: string; index: number; total: number } | null
+  /** Venta: paso del plan del vendedor. Compra: etapa de la transacción. */
+  stage: { label: string; index: number; total: number; unit: 'Paso' | 'Etapa' } | null
   progress: number
   health: OperationHealth
   healthLabel: string
@@ -214,7 +215,7 @@ function stageOf(txn: Transaction | null): FirstValue['stage'] {
   if (!txn || txn.stages.length === 0) return null
   const idx = txn.stages.findIndex(s => s.id === txn.currentStageId)
   const i = idx >= 0 ? idx : 0
-  return { label: txn.stages[i].label, index: i + 1, total: txn.stages.length }
+  return { label: txn.stages[i].label, index: i + 1, total: txn.stages.length, unit: 'Etapa' }
 }
 
 function sellAction(step: PlanStep, index: number, total: number, done: number, operationId: string): NextAction {
@@ -298,8 +299,14 @@ export function buildFirstValue(input: FirstValueInput): FirstValue {
       .filter(({ s, i }) => !s.done && i !== nextIdx)
       .slice(0, 2)
       .map(({ s, i }) => sellAction(s, i, total, done, operationId))
+    // La venta se sigue por los pasos del plan: mostrar además las etapas de la
+    // transacción ("Etapa 1 de 6 · Reserva") daba dos contadores distintos para lo mismo.
+    const stepIdx = nextIdx >= 0 ? nextIdx : total - 1
+    const stage: FirstValue['stage'] = total > 0
+      ? { label: steps[stepIdx].title, index: stepIdx + 1, total, unit: 'Paso' }
+      : stageOf(txn)
     return {
-      kind, kindLabel, stage: stageOf(txn), progress: total > 0 ? Math.round((done / total) * 100) : 0,
+      kind, kindLabel, stage, progress: total > 0 ? Math.round((done / total) * 100) : 0,
       ...healthOf({ blockedCount, highRisks, done, total }),
       primary, upNext, attention, pendingDocs, stepsDone: done, stepsTotal: total, costs,
       uncertainties: uncertaintiesFor({ kind, property, costs, hasPlan: total > 0 }),

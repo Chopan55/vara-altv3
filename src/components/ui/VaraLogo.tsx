@@ -11,7 +11,7 @@ export function VaraLogo({ size = 32, showText = true, className = '' }: VaraLog
   const w = size * 1.1
 
   return (
-    <Link href="/" className={`flex items-center gap-2 ${className}`}>
+    <Link href="/" aria-label="VARA, ir al inicio" className={`flex items-center gap-2 ${className}`}>
       {/* VARA mark: stylized V with upward arrow */}
       <svg width={w} height={h} viewBox="0 0 52 48" fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* Left arm — wave curve going into V bottom */}

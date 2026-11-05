@@ -29,7 +29,7 @@ export default function ConfiguracionPage() {
     <div className="min-h-screen bg-[var(--background)]">
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="flex items-center gap-3 mb-6">
-          <Link href="/dashboard" className="text-slate-400 hover:text-slate-700 transition-colors">
+          <Link href="/dashboard" aria-label="Volver" className="-m-2 p-2 text-slate-400 hover:text-slate-700 transition-colors">
             <ArrowLeft size={18} />
           </Link>
           <div>

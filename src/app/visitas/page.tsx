@@ -289,7 +289,7 @@ export default function VisitasPage() {
                     {sectionItems.map(item => (
                       <div key={item.id}>
                         <div className="flex items-start gap-3 px-4 py-3.5">
-                          <button onClick={() => toggle(item.id)} className="flex-shrink-0 mt-0.5">
+                          <button onClick={() => toggle(item.id)} className="flex-shrink-0 mt-0.5" role="checkbox" aria-checked={item.checked} aria-label={item.label}>
                             {item.checked
                               ? <CheckCircle2 size={18} className="text-emerald-500" />
                               : <Circle size={18} className="text-slate-300" />}

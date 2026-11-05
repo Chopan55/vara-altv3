@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { ArrowRight, FlaskConical } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 
-export const metadata = { title: 'VARA Labs', description: 'Herramientas experimentales de VARA.' }
+export const metadata = { title: 'Labs', description: 'Herramientas experimentales de VARA.' }
 
 const experiments = [
   { title: 'Visual Intelligence', desc: 'Subí una foto y visualizá cómo podría quedar con otra pintura o ambientación. Es una imagen generada, no el estado real.' },
@@ -15,7 +15,7 @@ export default function LabsPage() {
     <main className="min-h-screen bg-white text-slate-900">
       <header className="border-b border-slate-200/80">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-5">
-          <Link href="/" aria-label="Volver al inicio"><VaraLogo size={26} /></Link>
+          <VaraLogo size={26} />
           <Link href="/login" className="text-sm font-semibold text-slate-600 hover:text-slate-900">Entrar</Link>
         </div>
       </header>
