@@ -15,11 +15,7 @@ const ALL_FLAGS = {
   docIntelligence: false,
   /** P3: API pública v1 expuesta a integraciones externas. */
   publicApi: false,
-  /**
-   * VARA Buy WOW V3: pegás un aviso y el análisis comparable aparece en /analizar.
-   * Preview: `?v3=1` en la URL o NEXT_PUBLIC_FLAGS=buyWowV3. El flujo actual no cambia.
-   */
-  buyWowV3: false,
+
   /**
    * Después del login, quien no tiene operaciones pasa por /empezar. APAGADA por defecto hasta
    * verificar el flujo con sesión real; se enciende con NEXT_PUBLIC_FLAGS=conversationalEntry.
@@ -31,6 +27,11 @@ const ALL_FLAGS = {
   groupedMenu: true,
   /** Herramientas nuevas de venta y compra (precio, ficha, video, interesados, mi búsqueda). */
   journeyTools: true,
+  /**
+   * Pegás el link de un aviso y /analizar te dice cuánto sale de verdad, cómo está el precio y qué
+   * preguntar. Es la puerta de entrada de la home. Rollback: NEXT_PUBLIC_FLAGS_OFF=buyWowV3.
+   */
+  buyWowV3: true,
 } as const
 
 export type FlagName = keyof typeof ALL_FLAGS

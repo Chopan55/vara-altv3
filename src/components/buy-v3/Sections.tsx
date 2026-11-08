@@ -99,9 +99,9 @@ export function RisksSection({ risks }: { risks: PriorityRisk[] }) {
 
 // ───────────────────────── Lo que falta → acción ─────────────────────────
 
-const FIELD_INPUT: Record<string, {
-  kind: 'number' | 'condition'; unit?: string; build: (v: string) => UserOverrides | null
-}> = {
+type FieldInput = { kind: 'number' | 'condition'; unit?: string; build: (v: string) => UserOverrides | null }
+
+const FIELD_INPUT: Record<string, FieldInput> = {
   coveredArea: { kind: 'number', unit: 'm²', build: v => num(v, n => ({ coveredArea: n })) },
   landArea: { kind: 'number', unit: 'm²', build: v => num(v, n => ({ landArea: n })) },
   ageYears: { kind: 'number', unit: 'años', build: v => num(v, n => ({ ageYears: n }), true) },
@@ -121,8 +121,19 @@ function num(v: string, make: (n: number) => UserOverrides, allowZero = false): 
   return make(n)
 }
 
-function ConfirmField({ field, onConfirm }: { field: string; onConfirm: (p: UserOverrides) => void }) {
-  const spec = FIELD_INPUT[field]
+/** En México el precio y la cuota de mantenimiento se confirman en pesos mexicanos. */
+function fieldInput(field: string, country: string): FieldInput | undefined {
+  if (country === 'MX') {
+    if (field === 'expenses') return { kind: 'number', unit: 'MXN / mes', build: v => num(v, n => ({ expenses: n })) }
+    if (field === 'price') return { kind: 'number', unit: 'MXN', build: v => num(v, n => ({ price: n, currency: 'MXN' })) }
+  }
+  return FIELD_INPUT[field]
+}
+
+function ConfirmField({ field, label, country, onConfirm }: {
+  field: string; label: string; country: string; onConfirm: (p: UserOverrides) => void
+}) {
+  const spec = fieldInput(field, country)
   const [value, setValue] = useState('')
   if (!spec) return null
   const submit = () => {
@@ -139,7 +150,7 @@ function ConfirmField({ field, onConfirm }: { field: string; onConfirm: (p: User
         </select>
       ) : (
         <input value={value} onChange={e => setValue(e.target.value)} inputMode="decimal"
-          className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" aria-label={field} />
+          className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" aria-label={label} />
       )}
       {spec.unit && <span className="text-xs text-slate-500">{spec.unit}</span>}
       <button type="button" onClick={submit} disabled={!value}
@@ -158,6 +169,7 @@ export function MissingSection({
   onAction: (kind: 'copy' | 'whatsapp') => void
 }) {
   const { items, draftMessage } = analysis.missingInformation
+  const country = analysis.subjectProperty.country
   const [open, setOpen] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   if (items.length === 0) return null
@@ -175,14 +187,14 @@ export function MissingSection({
                 <p className="font-medium text-slate-900">{i.label}</p>
                 <p className="text-sm text-slate-500">{i.why}</p>
               </div>
-              {FIELD_INPUT[i.field] && (
+              {fieldInput(i.field, country) && (
                 <button type="button" onClick={() => setOpen(open === i.field ? null : i.field)}
                   className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                   Lo sé
                 </button>
               )}
             </div>
-            {open === i.field && <ConfirmField field={i.field} onConfirm={p => { setOpen(null); onConfirm(p) }} />}
+            {open === i.field && <ConfirmField field={i.field} label={i.label} country={country} onConfirm={p => { setOpen(null); onConfirm(p) }} />}
           </li>
         ))}
       </ul>
@@ -224,7 +236,7 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
   if (c.lines.length === 0 && c.notIncluded.length === 0) return null
 
   return (
-    <Section title="¿Cuánta plata podrías necesitar?" hint="Precio más costos de la operación. Los costos son un rango estimado.">
+    <Section id="costos" title="¿Cuánta plata podrías necesitar?" hint="Precio más costos de la operación. Los costos son un rango estimado.">
       {c.totalRange ? (
         <p className="text-2xl font-semibold text-slate-900">
           {money(c.totalRange.min, c.totalRange.currency)} – {money(c.totalRange.max, c.totalRange.currency).replace(`${c.totalRange.currency} `, '')}

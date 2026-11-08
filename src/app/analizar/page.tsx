@@ -1,29 +1,41 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useBrowserValue } from '@/hooks/useHydrated'
 import { isBuyWowV3Enabled } from '@/lib/analysis/access'
 import { useBuyAnalysis } from '@/components/buy-v3/useBuyAnalysis'
 import { BlockedPaste, EntryForm, ProgressPanel } from '@/components/buy-v3/Entry'
+import { isMexicanUrl } from '@/lib/analysis/country'
 import { ResultView } from '@/components/buy-v3/ResultView'
 
 /**
  * VARA Buy WOW V3 — pegás una propiedad y entendés qué hacer.
  *
- * Detrás del flag `buyWowV3` (o `?v3=1`). `?test=1` es el modo de prueba con
+ * Encendido por defecto (flag `buyWowV3`; se apaga con NEXT_PUBLIC_FLAGS_OFF). `?test=1` es el modo de prueba con
  * usuarios: pantalla limpia, sin menú, con la consigna y sin ninguna
  * explicación de la interfaz. Si hay que explicarla, la UX falló.
  */
+const Spinner = () => <div className="mx-auto mt-20 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-500" />
+
+// useSearchParams necesita un límite de Suspense para el prerender.
 export default function AnalizarPage() {
-  // La URL solo existe en el navegador: se lee al hidratar (en el servidor, null = cargando).
-  const fromUrl = useBrowserValue(() => {
-    const q = window.location.search
-    const params = new URLSearchParams(q)
-    return { enabled: isBuyWowV3Enabled(q), testMode: params.get('test') === '1', initialUrl: params.get('url') ?? '' }
-  }, null)
-  const enabled = fromUrl?.enabled ?? null
-  const testMode = fromUrl?.testMode ?? false
-  const initialUrl = fromUrl?.initialUrl ?? ''
+  return (
+    <Suspense fallback={<main className="mx-auto w-full max-w-2xl px-4 py-6"><Spinner /></main>}>
+      <Analizar />
+    </Suspense>
+  )
+}
+
+function Analizar() {
+  // Los parámetros salen de la ruta (no de window.location): al llegar desde la home con
+  // navegación del cliente, window.location todavía tiene la dirección anterior durante el render.
+  const params = useSearchParams()
+  const search = params.toString()
+  const testMode = params.get('test') === '1'
+  const initialUrl = params.get('url') ?? ''
+  // El acceso de prueba (?v3=1) se recuerda en el navegador: se lee recién al hidratar (null = cargando).
+  const enabled = useBrowserValue<boolean | null>(() => isBuyWowV3Enabled(search ? `?${search}` : ''), null, search)
   const a = useBuyAnalysis()
   const { submit } = a
   const autoRan = useRef(false)
@@ -41,7 +53,7 @@ export default function AnalizarPage() {
 
   let body: React.ReactNode
   if (enabled === null) {
-    body = <div className="mt-20 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-500" />
+    body = <Spinner />
   } else if (!enabled) {
     body = (
       <div className="pt-16">
@@ -54,7 +66,14 @@ export default function AnalizarPage() {
   } else if (state.phase === 'reading' || state.phase === 'analyzing') {
     body = <ProgressPanel state={state} />
   } else if (state.phase === 'blocked') {
-    body = <BlockedPaste message={state.message} onSubmit={text => a.submit(state.url, text)} />
+    body = (
+      <BlockedPaste
+        message={state.message}
+        mx={isMexicanUrl(state.url)}
+        onSubmit={text => a.submit(state.url, text)}
+        onManual={m => a.submitManual(state.url, m)}
+      />
+    )
   } else {
     body = (
       <>

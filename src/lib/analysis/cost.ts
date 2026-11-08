@@ -7,11 +7,11 @@
  * `CostProvider`: el núcleo no conoce impuestos de ningún país.
  */
 
-import type { TransactionCost } from './types'
+import type { ListingCurrency, TransactionCost } from './types'
 
 export interface CostInput {
   price?: number
-  currency?: 'USD' | 'ARS'
+  currency?: ListingCurrency
   /** Código de provincia/estado del pack regulatorio, si se conoce. */
   provinceCode?: string
 }

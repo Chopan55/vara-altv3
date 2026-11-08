@@ -81,7 +81,7 @@ export function VARAAssistant({ context, suggestions }: VARAAssistantProps) {
         onClick={() => setOpen(o => !o)}
         aria-label="Abrir asistente VARA"
         className={cn(
-          'fixed bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-lg transition-all text-sm font-semibold',
+          'fixed bottom-20 lg:bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-lg transition-all text-sm font-semibold',
           open
             ? 'bg-slate-800 text-white'
             : 'bg-brand-600 hover:bg-brand-700 text-white'
@@ -93,7 +93,7 @@ export function VARAAssistant({ context, suggestions }: VARAAssistantProps) {
 
       {/* Panel */}
       {open && (
-        <div className="fixed bottom-20 right-5 z-50 w-[min(380px,calc(100vw-2.5rem))] h-[min(520px,calc(100dvh-7rem))] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
+        <div className="fixed bottom-36 lg:bottom-20 right-5 z-50 w-[min(380px,calc(100vw-2.5rem))] h-[min(520px,calc(100dvh-11rem))] lg:h-[min(520px,calc(100dvh-7rem))] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100 bg-slate-50 flex-shrink-0">
             <div className="w-8 h-8 rounded-xl bg-brand-100 flex items-center justify-center">

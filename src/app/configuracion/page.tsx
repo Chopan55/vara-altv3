@@ -57,7 +57,8 @@ export default function ConfiguracionPage() {
           )}
 
           <div className="grid gap-3">
-            {SUPPORTED_COUNTRIES.map(c => {
+            {/* Solo los países donde ya se puede operar; el resto figura abajo, en "Próximos mercados". */}
+            {SUPPORTED_COUNTRIES.filter(c => OPERABLE_COUNTRIES.includes(c.code)).map(c => {
               const j = getJurisdiction(c.code)
               const isSelected = country === c.code
               return (
@@ -176,8 +177,8 @@ export default function ConfiguracionPage() {
         <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">
           <p className="text-xs font-semibold text-slate-600 mb-1">Próximos mercados</p>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Perú, Uruguay y Brasil. Un país pasa de &quot;En validación&quot; a activo cuando
-            un profesional local valida sus costos, impuestos y documentos.
+            Chile, Colombia, Perú, Uruguay y Brasil. Un país se suma cuando un profesional local
+            valida sus costos, impuestos y documentos.
           </p>
         </div>
       </div>

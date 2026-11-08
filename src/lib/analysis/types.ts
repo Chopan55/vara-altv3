@@ -40,6 +40,9 @@ export interface Field<T> {
   confidence?: number
 }
 
+/** Monedas de los avisos que VARA analiza (Argentina y México). */
+export type ListingCurrency = 'USD' | 'ARS' | 'MXN'
+
 export type PropertyKind = 'house' | 'apartment' | 'ph' | 'lot' | 'other'
 export type PropertyCondition = 'new' | 'excellent' | 'good' | 'to_refresh' | 'to_renovate'
 export type CommunityType = 'gated' | 'building' | 'development'
@@ -71,7 +74,7 @@ export interface ListingFacts {
 
   kind?: PropertyKind
   price?: number
-  currency?: 'USD' | 'ARS'
+  currency?: ListingCurrency
   priceProvenance: PriceProvenance
 
   bedrooms?: number
@@ -180,7 +183,7 @@ export interface PriceBand {
   low: number
   high: number
   median: number
-  currency: 'USD' | 'ARS'
+  currency: ListingCurrency
   basis: PriceProvenance
   method: string
   sampleSize: number
@@ -189,7 +192,7 @@ export interface PriceBand {
 export type PricePosition = 'BELOW' | 'WITHIN' | 'ABOVE' | 'UNKNOWN'
 
 export interface PricePositioning {
-  subjectAskingPrice: { amount: number; currency: 'USD' | 'ARS' } | null
+  subjectAskingPrice: { amount: number; currency: ListingCurrency } | null
   comparableListingRange: PriceBand | null
   position: PricePosition
   /** Diferencia % del precio pedido contra la mediana ponderada. null si no hay base. */
@@ -218,7 +221,7 @@ export interface PreferenceRule {
 
 export interface UserPreferences {
   rules: PreferenceRule[]
-  budgetCurrency?: 'USD' | 'ARS'
+  budgetCurrency?: ListingCurrency
 }
 
 export type FitStatus = 'MATCH' | 'MISMATCH' | 'UNKNOWN'
@@ -273,15 +276,17 @@ export interface CostLine {
   kind: CostKind
   min: number | null
   max: number | null
-  currency: 'USD' | 'ARS'
+  currency: ListingCurrency
   basis: string
 }
 
 export interface TransactionCost {
   jurisdiction: string
+  /** Provincia o estado con cuyas reglas se calculó, si se conocía (sin él se usa el de por defecto). */
+  region?: string
   lines: CostLine[]
   /** Rango de plata total necesaria (precio + costos incluidos). null si falta el precio. */
-  totalRange: { min: number; max: number; currency: 'USD' | 'ARS' } | null
+  totalRange: { min: number; max: number; currency: ListingCurrency } | null
   notIncluded: string[]
   assumptions: string[]
 }

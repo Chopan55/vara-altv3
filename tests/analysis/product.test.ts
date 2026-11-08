@@ -105,7 +105,8 @@ describe('proveedores reales', () => {
   })
 
   it('sin moneda declarada no hay precio comparable', () => {
-    const l = listingFromCandidate(cand({ currency: 'MXN' }), NOW)!
+    // MXN ya se analiza (México); una moneda de un país sin reglas no se usa para comparar.
+    const l = listingFromCandidate(cand({ currency: 'CLP' }), NOW)!
     expect(l.price).toBeUndefined()
     expect(l.priceProvenance).toBe('UNKNOWN')
   })

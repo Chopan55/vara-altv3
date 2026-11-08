@@ -382,6 +382,20 @@ export type NegotiationMessageRow = {
   created_at: string
 }
 
+/** Totales de `funnel_summary` (producción, últimos N días). */
+export type FunnelSummary = {
+  days: number
+  visitors: number
+  analyzed: number
+  operations: number
+  invited: number
+  shares: number
+  shared_views: number
+  from_share: number
+  cohort_7d: number
+  returned_7d: number
+}
+
 /** Resumen diario por email (opt-in). El usuario solo escribe `email_digest`. */
 export type AlertPreferencesRow = {
   user_id: string
@@ -410,6 +424,13 @@ export type Database = {
       next_visit_code_seq: { Args: Record<string, never>; Returns: number }
       /** Baja del resumen por email con el token del link, sin sesión. */
       alerts_unsubscribe: { Args: { p_token: string }; Returns: boolean }
+      /** Embudo de producto: registra un paso con un id anónimo de navegador. */
+      track_event: {
+        Args: { p_anon: string; p_name: string; p_env?: string; p_path?: string | null; p_props?: Record<string, string | number | boolean | null> }
+        Returns: undefined
+      }
+      /** Totales del embudo en producción. Solo ADMIN. */
+      funnel_summary: { Args: { p_days?: number }; Returns: FunnelSummary }
       /** Solo el cliente dueño de la visita. El PIN ya no se puede leer con un select. */
       get_booking_pin: { Args: { p_booking_id: string }; Returns: string | null }
       /** Solo el partner asignado. El contador de intentos vive en la base. */

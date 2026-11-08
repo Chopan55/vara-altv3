@@ -26,7 +26,7 @@ export function listingFromCandidate(c: PropertyCandidate, now: Date = new Date(
   if (c.isMock) return null
   const text = [c.title, c.description, ...(c.features ?? [])].filter(Boolean).join(' . ')
   const amenities = detectAmenities(text)
-  const currency = c.currency === 'USD' || c.currency === 'ARS' ? c.currency : undefined
+  const currency = c.currency === 'USD' || c.currency === 'ARS' || c.currency === 'MXN' ? c.currency : undefined
   const hasPrice = c.price > 0 && !!currency
 
   return {
@@ -109,7 +109,7 @@ export function userPropertyFromScrape(scrape: ScrapeResult): UserProperty {
     type,
     operationType: 'sale',
     price: n(d.price),
-    currency: d.currency === 'ARS' ? 'ARS' : 'USD',
+    currency: d.currency === 'ARS' ? 'ARS' : d.currency === 'MXN' ? 'MXN' : 'USD',
     title: d.title?.trim() || 'Propiedad analizada',
     address: d.address ?? '',
     neighborhood: d.neighborhood ?? '',

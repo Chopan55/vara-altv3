@@ -105,6 +105,13 @@ describe('home pública: el único acceso de clientes es Entrar → /login', () 
     expect(link?.href).toBe('#como-funciona')
   })
 
+  it('el gancho de la portada es pegar el link del aviso (análisis gratis, sin cuenta)', () => {
+    const html = renderToStaticMarkup(createElement(LandingPage))
+    expect(html).toContain('id="hero-url"')
+    expect(html).toContain('Ver cuánto sale')
+    expect(read('src/components/home/HeroAnalyze.tsx')).toMatch(/router\.push\(`\/analizar\?url=/)
+  })
+
   it('la ruta /onboarding sigue existiendo: solo dejó de ser un acceso de la portada', () => {
     expect(existsSync(new URL('../src/app/onboarding/page.tsx', import.meta.url))).toBe(true)
   })

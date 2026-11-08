@@ -6,6 +6,7 @@ import { ButtonLink } from '@/components/ui/Button'
 import { ProductFrame } from '@/components/ui/ProductFrame'
 import { ContactForm } from '@/components/home/ContactForm'
 import { FaqAssistant } from '@/components/home/FaqAssistant'
+import { HeroAnalyze } from '@/components/home/HeroAnalyze'
 import {
   ParadigmSection, BenefitsSection, AnalyzeSection, CompareSection, OperationSection,
   NegotiateSection, VisitSection, JourneySection, AiSection, ProductsSection, TrustSection,
@@ -38,17 +39,15 @@ export default function LandingPage() {
       {/* 1 · Hero: la promesa y el producto real. */}
       <Section space="md" width="wide" className="pt-6 md:pt-10">
         <div className="mx-auto max-w-3xl text-center">
-          <Eyebrow>Argentina · México · LATAM</Eyebrow>
-          <h1 className="font-display mt-6 text-5xl font-extrabold leading-[1.04] text-brand-900 text-balance md:text-7xl">
-            Comprá y vendé <span className="text-brand-gradient">a tu manera.</span>
+          <Eyebrow>Argentina · México</Eyebrow>
+          <h1 className="font-display mt-6 text-4xl font-extrabold leading-[1.06] text-brand-900 text-balance md:text-6xl">
+            ¿Cuánto te sale <span className="text-brand-gradient">de verdad</span> esa propiedad?
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft md:text-xl">
-            Más libertad para decidir. Más control para avanzar. Menos costos innecesarios.
+            Pegá el link del aviso. En segundos ves el costo total con gastos, cómo está el precio frente a
+            avisos parecidos y qué preguntarle al vendedor antes de dar plata.
           </p>
-          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <ButtonLink href="/login" size="lg">Entrar</ButtonLink>
-            <ButtonLink href="#como-funciona" variant="secondary" size="lg">Ver cómo funciona</ButtonLink>
-          </div>
+          <HeroAnalyze />
         </div>
         <div className="mx-auto mt-14 max-w-6xl md:mt-20">
           <ProductFrame

@@ -121,7 +121,9 @@ export async function retrieveComparables(
     }))
 
     // La propiedad analizada puede estar publicada en otro portal: no es su propio comparable.
-    const candidates = [...pool.values()].filter(l => pairSignal(subject, l) !== 'CERTAIN')
+    // Y nunca se compara con avisos de otro país: otras reglas, otra moneda, otro mercado.
+    const candidates = [...pool.values()].filter(l =>
+      pairSignal(subject, l) !== 'CERTAIN' && (l.country || 'AR') === (subject.country || 'AR'))
     candidatesFound = candidates.length
 
     const dedup = dedupeListings(candidates)

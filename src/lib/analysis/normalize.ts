@@ -12,9 +12,10 @@
 import type { ScrapeResult } from '@/app/api/scrape-property/route'
 import type { Comparable } from '@/lib/comparables/model'
 import type {
-  ExtractionMethod, ExtractionQuality, Field, FieldStatus, ListingFacts,
+  ExtractionMethod, ExtractionQuality, Field, FieldStatus, ListingCurrency, ListingFacts,
   PropertyCondition, PropertyKind, Provenance, SubjectProperty,
 } from './types'
+import { listingCountry } from './country'
 
 /** Minúsculas, sin tildes ni signos: para comparar nombres de lugares. */
 export function norm(s: string): string {
@@ -155,13 +156,15 @@ export function subjectFromScrape(scrape: ScrapeResult, now: Date = new Date()):
   const hasPool = amenities.includes('pileta')
 
   const price = typeof d.price === 'number' && d.price > 0 ? d.price : undefined
-  const currency = d.currency === 'ARS' ? 'ARS' : d.currency === 'USD' ? 'USD' : undefined
+  const currency: ListingCurrency | undefined =
+    d.currency === 'ARS' || d.currency === 'USD' || d.currency === 'MXN' ? d.currency : undefined
 
   return {
     id: scrape.url,
     url: scrape.url,
     source: scrape.portal ?? 'aviso',
-    country: 'AR',
+    // Un aviso de México nunca se analiza con reglas de Argentina.
+    country: listingCountry(scrape.url, d.currency),
     priceProvenance: price ? 'ASKING_PRICE' : 'UNKNOWN',
     photos: scrape.photos,
     fields: {
@@ -248,7 +251,7 @@ export function listingFromComparable(c: Comparable, now: Date = new Date()): Li
 
 export interface UserOverrides {
   price?: number
-  currency?: 'USD' | 'ARS'
+  currency?: ListingCurrency
   bedrooms?: number
   bathrooms?: number
   coveredArea?: number
