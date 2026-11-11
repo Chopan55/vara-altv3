@@ -14,13 +14,13 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { norm } from '../normalize'
-import type { ListingFacts } from '../types'
+import type { ListingCurrency, ListingFacts } from '../types'
 
 export interface StoredListing {
   facts: ListingFacts
   firstSeenAt: string
   lastSeenAt: string
-  priceHistory: { at: string; price: number; currency: 'USD' | 'ARS' }[]
+  priceHistory: { at: string; price: number; currency: ListingCurrency }[]
 }
 
 export interface ZoneQuery {

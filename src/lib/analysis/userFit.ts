@@ -13,7 +13,7 @@
  */
 
 import type {
-  CriterionKey, FitItem, FitStatus, Importance, ListingFacts, PreferenceRule,
+  CriterionKey, FitItem, FitStatus, Importance, ListingCurrency, ListingFacts, PreferenceRule,
   UserFit, UserPreferences,
 } from './types'
 import { norm } from './normalize'
@@ -48,7 +48,7 @@ function amenity(l: ListingFacts, name: string, label: string): Eval {
   return unknown(`${label} sin confirmar`)
 }
 
-function evaluate(l: ListingFacts, rule: PreferenceRule, currency?: 'USD' | 'ARS'): Eval {
+function evaluate(l: ListingFacts, rule: PreferenceRule, currency?: ListingCurrency): Eval {
   switch (rule.key) {
     case 'budget': {
       const max = num(rule.target)

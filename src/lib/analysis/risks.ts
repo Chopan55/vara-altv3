@@ -79,10 +79,12 @@ export function deriveRisks(input: RiskInput): PriorityRisk[] {
     risks.push({
       id: 'expenses-unknown',
       title: 'El costo mensual real no está claro',
-      reason: 'El aviso no informa las expensas y la propiedad está en una comunidad o edificio.',
-      evidence: ['Expensas sin confirmar'],
+      reason: facts.country === 'MX'
+        ? 'El aviso no informa la cuota de mantenimiento y la propiedad está en un condominio o edificio.'
+        : 'El aviso no informa las expensas y la propiedad está en una comunidad o edificio.',
+      evidence: [facts.country === 'MX' ? 'Cuota de mantenimiento sin confirmar' : 'Expensas sin confirmar'],
       impact: 'MEDIUM',
-      nextAction: 'Pedí el monto actual de expensas.',
+      nextAction: facts.country === 'MX' ? 'Pedí el monto actual de la cuota de mantenimiento.' : 'Pedí el monto actual de expensas.',
     })
   }
 

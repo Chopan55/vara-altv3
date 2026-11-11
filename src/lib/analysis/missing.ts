@@ -48,15 +48,24 @@ function joinEs(parts: string[]): string {
   return `${parts.slice(0, -1).join(', ')} y ${parts[parts.length - 1]}`
 }
 
+/** En México las expensas son la "cuota de mantenimiento" del condominio. */
+function localize(s: Spec, country: string): Spec {
+  if (country === 'MX' && s.field === 'expenses') {
+    return { ...s, label: 'Cuota de mantenimiento', ask: 'la cuota de mantenimiento actual' }
+  }
+  return s
+}
+
 export function findMissing(facts: ListingFacts, subject?: SubjectProperty): MissingInformation {
-  const items: MissingItem[] = SPECS
+  const specs = SPECS.map(s => localize(s, facts.country))
+  const items: MissingItem[] = specs
     .filter(s => (s.appliesTo ? s.appliesTo(facts) : true) && !s.present(facts))
     .map(s => ({ field: s.field, label: s.label, impact: s.impact, why: s.why }))
     .sort((a, b) => IMPACT_ORDER[a.impact] - IMPACT_ORDER[b.impact])
 
   // El precio no se le pregunta a la inmobiliaria: ya debería figurar en el aviso.
   const askable = items.filter(i => i.field !== 'price').slice(0, 4)
-  const asks = askable.map(i => SPECS.find(s => s.field === i.field)!.ask)
+  const asks = askable.map(i => specs.find(s => s.field === i.field)!.ask)
   const what = subject?.fields.title?.value ?? facts.title
 
   return {

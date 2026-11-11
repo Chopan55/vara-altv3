@@ -23,6 +23,14 @@ describe('guardas de uso', () => {
     expect(src).not.toMatch(/USD\/ARS|fmtARS/)
   })
 
+  it('el menú principal tiene cinco destinos fijos (los mismos de la barra del celular) y Labs no está ahí', () => {
+    const src = readFileSync(path.join(process.cwd(), 'src/components/layout/AppShell.tsx'), 'utf8')
+    const block = src.slice(src.indexOf('function getPrimaryNav'), src.indexOf('function getBuyTools'))
+    expect([...block.matchAll(/label: '([^']+)'/g)].map(m => m[1])).toEqual(['Inicio', 'Mi operación', 'Dinero', 'Documentos', 'Ayuda'])
+    expect(block).not.toContain('vara-labs')
+    expect(src).toMatch(/function MobileTabBar[\s\S]*getPrimaryNav\(operationId\)/)
+  })
+
   it('los botones de volver que son solo un ícono tienen nombre', () => {
     const bad = files.filter(f => /<Link href="[^"]+" className="[^"]*text-slate-400 hover:text-slate-700[^"]*">\s*<ArrowLeft/.test(readFileSync(f, 'utf8')))
     expect(bad).toEqual([])

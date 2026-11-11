@@ -12,6 +12,7 @@ import { useCallback, useRef, useState } from 'react'
 import type { ScrapeResult } from '@/app/api/scrape-property/route'
 import { analyzeProperty } from '@/lib/analysis/run'
 import { track, type EventName } from '@/lib/analysis/events'
+import { trackFunnel } from '@/lib/funnel/track'
 import { listingFromScrape, type UserOverrides } from '@/lib/analysis/normalize'
 import {
   addUserComparable, candidatesProvider, readUserComparables, removeUserComparable,
@@ -23,6 +24,7 @@ import { buildSharedAnalysis, encodeShared } from '@/lib/analysis/share'
 import type {
   ComparableEvidence, ExtractionQuality, PropertyAnalysis, SubjectProperty,
 } from '@/lib/analysis/types'
+import type { ManualListing } from './Entry'
 import { resolveProvinceCode } from '@/lib/regulations'
 
 export type Phase = 'idle' | 'reading' | 'blocked' | 'analyzing' | 'done' | 'error'
@@ -107,6 +109,11 @@ export function useBuyAnalysis() {
               evidence: e.analysis.comparableEvidence, refreshing: false,
             }))
             if (!refresh) {
+              trackFunnel('analyze_done', {
+                country: e.analysis.subjectProperty.country,
+                confidence: e.analysis.pricePositioning.confidence,
+                has_total: e.analysis.estimatedTransactionCost.totalRange !== null,
+              })
               ev('analysis_completed', {
                 ms: Date.now() - t0,
                 confidence: e.analysis.pricePositioning.confidence,
@@ -129,6 +136,7 @@ export function useBuyAnalysis() {
     const clean = url.trim()
     if (!clean) return
     ev('listing_submitted', { listingKey: clean })
+    trackFunnel('analyze_start')
     if (submittedRef.current.size > 0 && !submittedRef.current.has(clean)) {
       ev('second_property_added', { listingKey: clean })
     }
@@ -156,6 +164,25 @@ export function useBuyAnalysis() {
     } catch {
       setState(s => ({ ...s, phase: 'error', message: 'No pudimos acceder al aviso. Probá de nuevo.' }))
     }
+  }, [ev, run])
+
+  /** Datos cargados a mano cuando el portal no deja leer el aviso. */
+  const submitManual = useCallback(async (url: string, m: ManualListing) => {
+    ev('listing_submitted', { listingKey: url, manual: true })
+    trackFunnel('analyze_start', { manual: true })
+    overridesRef.current = {}
+    startedAt.current = Date.now()
+    setState({ ...INITIAL, phase: 'analyzing', url })
+    const where = m.where?.slice(0, 120)
+    const scrape: ScrapeResult = {
+      status: 'partial', url, portal: null, method: 'paste', photos: [], missingFields: [],
+      data: {
+        title: where ? `Propiedad en ${where}` : 'Propiedad cargada a mano',
+        price: m.price, currency: m.currency, coveredM2: m.coveredM2, bedrooms: m.bedrooms,
+        city: where,
+      },
+    }
+    await run(scrape, false)
   }, [ev, run])
 
   const rerun = useCallback(async () => {
@@ -219,12 +246,14 @@ export function useBuyAnalysis() {
     ev('property_discarded', { reason: reason ?? null })
   }, [ev])
 
-  const share = useCallback((): string | null => {
+  const share = useCallback((channel: 'wa' | 'link' | 'native' = 'link'): string | null => {
     if (!state.analysis) return null
     const encoded = encodeShared(buildSharedAnalysis(state.analysis))
     if (!encoded) return null
     ev('analysis_shared')
-    return `${window.location.origin}/compartido#d=${encoded}`
+    trackFunnel('share', { channel, country: state.analysis.subjectProperty.country })
+    // `ref=share` va antes del fragmento: el servidor lo ve y mide quién llega por un link compartido.
+    return `${window.location.origin}/compartido?ref=share#d=${encoded}`
   }, [state.analysis, ev])
 
   const reset = useCallback(() => {
@@ -233,7 +262,7 @@ export function useBuyAnalysis() {
   }, [])
 
   return {
-    state, submit, addComparable, removeComparable, confirmField, applyProfile,
+    state, submit, submitManual, addComparable, removeComparable, confirmField, applyProfile,
     save, discard, share, reset, track: ev,
   }
 }

@@ -47,6 +47,7 @@ export async function createInvite(
     if (isMissingSchema(error)) return { error: 'NOT_READY' }
     return { error: error.code === '23505' ? 'DUPLICATE' : 'FAILED' }
   }
+  void import('@/lib/funnel/track').then(m => m.trackFunnel('invite_sent', { role }), () => undefined)
   return { data }
 }
 

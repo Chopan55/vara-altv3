@@ -25,5 +25,5 @@ async function sessionEmail(): Promise<{ id: string; email: string } | null> {
 export async function allowedUser(): Promise<{ id: string; email: string } | null> {
   if (!process.env.OPENAI_API_KEY) return null
   const user = await sessionEmail()
-  return user && isAiAllowed(user.email, process.env.AI_ALLOWED_EMAILS) ? user : null
+  return user && isAiAllowed(user.email) ? user : null
 }

@@ -31,3 +31,16 @@ describe('interruptores de rollback', () => {
     expect(isEnabled('publicApi')).toBe(false)
   })
 })
+
+describe('análisis de avisos (puerta de entrada de la home)', () => {
+  afterEach(() => { vi.unstubAllEnvs(); vi.resetModules() })
+
+  it('arranca encendido y se apaga con NEXT_PUBLIC_FLAGS_OFF', async () => {
+    const on = await import('@/lib/flags')
+    expect(on.isEnabled('buyWowV3')).toBe(true)
+    vi.stubEnv('NEXT_PUBLIC_FLAGS_OFF', 'buyWowV3')
+    vi.resetModules()
+    const off = await import('@/lib/flags')
+    expect(off.isEnabled('buyWowV3')).toBe(false)
+  })
+})

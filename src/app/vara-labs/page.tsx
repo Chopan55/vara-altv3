@@ -151,7 +151,7 @@ const FEATURES: LabFeature[] = [
     id: 'lf-015',
     nombre: 'Event Engine + Workflow Engine',
     descripcion: 'Reglas que revisan tus operaciones y te avisan: tareas vencidas, ofertas sin responder, operaciones frenadas.',
-    detalle: 'Activás las reglas que te sirven y, cada vez que abrís VARA, revisan tus tareas, documentos, ofertas y actividad. Lo que detectan aparece en Automatizaciones. Por ahora son avisos dentro de la app: todavía no mandan mails ni crean tareas solas.',
+    detalle: 'Activás las reglas que te sirven y, cada vez que abrís VARA, revisan tus tareas, documentos, ofertas y actividad. Lo que detectan aparece en Automatizaciones. Lo urgente (vencimientos y documentos con problemas) también te puede llegar en un resumen diario por email si lo activás en Configuración. Todavía no crean tareas solas.',
     estado: 'LISTO',
     href: '/workflows',
     icon: Workflow,

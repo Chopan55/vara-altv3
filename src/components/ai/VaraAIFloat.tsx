@@ -74,7 +74,9 @@ export function VaraAIFloat() {
     pathname === '/login' ||
     pathname === '/partner/entrar' ||
     pathname === '/asistente' ||
-    pathname.startsWith('/visit/')
+    pathname.startsWith('/visit/') ||
+    // La operación tiene su propio asistente con el contexto de la operación: dos botones iguales confunden.
+    pathname.startsWith('/operacion/')
   ) return null
 
   async function send(text?: string) {
@@ -108,7 +110,7 @@ export function VaraAIFloat() {
       {open && (
         <div
           className={cn(
-            'fixed bottom-20 right-4 z-50',
+            'fixed bottom-36 lg:bottom-20 right-4 z-50',
             'w-[340px] max-w-[calc(100vw-2rem)]',
             'bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col',
           )}
@@ -204,7 +206,7 @@ export function VaraAIFloat() {
       <button
         onClick={() => setOpen(o => !o)}
         className={cn(
-          'fixed bottom-4 right-4 z-50 w-12 h-12 rounded-2xl shadow-lg',
+          'fixed bottom-20 lg:bottom-4 right-4 z-50 w-12 h-12 rounded-2xl shadow-lg',
           'flex items-center justify-center transition-all duration-200',
           open
             ? 'bg-slate-700 hover:bg-slate-800 text-white'

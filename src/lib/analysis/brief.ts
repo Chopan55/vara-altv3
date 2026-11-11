@@ -11,7 +11,7 @@
  * podría cerrar el bloque de datos o dar órdenes al modelo.
  */
 
-import type { PropertyAnalysis } from './types'
+import type { ListingCurrency, PropertyAnalysis } from './types'
 
 export interface AnalysisBrief {
   v: 1
@@ -24,7 +24,7 @@ export interface AnalysisBrief {
     landArea?: number
     totalArea?: number
     ageYears?: number
-    asking?: { amount: number; currency: 'USD' | 'ARS' }
+    asking?: { amount: number; currency: ListingCurrency }
   }
   conclusion: { verdict: string; headline: string; why: string; price: string; unknown: string }
   price: {
@@ -33,11 +33,11 @@ export interface AnalysisBrief {
     confidenceReasons: string[]
     differencePct: number | null
     scope: string
-    range?: { low: number; median: number; high: number; currency: 'USD' | 'ARS'; sampleSize: number }
+    range?: { low: number; median: number; high: number; currency: ListingCurrency; sampleSize: number }
   }
   comparables: {
     price?: number
-    currency?: 'USD' | 'ARS'
+    currency?: ListingCurrency
     where?: string
     bedrooms?: number
     coveredArea?: number
@@ -51,8 +51,8 @@ export interface AnalysisBrief {
   missing: { label: string; why: string }[]
   risks: { title: string; reason: string }[]
   cost: {
-    total?: { min: number; max: number; currency: 'USD' | 'ARS' }
-    lines: { label: string; kind: string; min: number | null; max: number | null; currency: 'USD' | 'ARS' }[]
+    total?: { min: number; max: number; currency: ListingCurrency }
+    lines: { label: string; kind: string; min: number | null; max: number | null; currency: ListingCurrency }[]
     notIncluded: string[]
   }
   fit?: { score: number | null; items: { label: string; status: string; detail: string }[] }
@@ -141,7 +141,7 @@ export function buildBrief(a: PropertyAnalysis): AnalysisBrief {
 // ───────────────────────── Entrada no confiable ─────────────────────────
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && isFinite(v)
-const cur = (v: unknown): 'USD' | 'ARS' | undefined => (v === 'USD' || v === 'ARS' ? v : undefined)
+const cur = (v: unknown): ListingCurrency | undefined => (v === 'USD' || v === 'ARS' ? v : undefined)
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {})
 const arr = (v: unknown, max: number): unknown[] => (Array.isArray(v) ? v.slice(0, max) : [])
 const strs = (v: unknown, max: number, n: number) => arr(v, max).map(s => clean(s, n)).filter(Boolean)

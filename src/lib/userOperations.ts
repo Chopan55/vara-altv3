@@ -239,6 +239,8 @@ export async function loadOperations(): Promise<StoredOperation[]> {
 
 export async function createOperationAnywhere(input: NewOperationInput): Promise<StoredOperation> {
   const local = createOperation(input)
+  void import('@/lib/funnel/track')
+    .then(m => m.trackFunnel('operation_created', { type: local.type, country: local.country ?? 'AR' }), () => undefined)
   if (await hasSession()) {
     try {
       const { insertOperation } = await remoteOperations()

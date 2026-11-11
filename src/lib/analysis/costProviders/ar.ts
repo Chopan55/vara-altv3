@@ -74,7 +74,7 @@ export const AR_COST_PROVIDER: CostProvider = {
     ]
 
     return {
-      jurisdiction: 'AR', lines,
+      jurisdiction: 'AR', region: input.provinceCode, lines,
       totalRange: { min: Math.round(min), max: Math.round(max), currency: 'USD' },
       notIncluded: NOT_INCLUDED, assumptions,
     }

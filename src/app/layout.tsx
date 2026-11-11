@@ -1,10 +1,15 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { AppShell } from '@/components/layout/AppShell'
+import { FunnelBeacon } from '@/components/layout/FunnelBeacon'
+
+const description = 'Pegá el link de un aviso y en segundos ves cuánto sale de verdad: costo total, precio frente a avisos parecidos y qué preguntar antes de avanzar.'
 
 export const metadata: Metadata = {
   title: { default: 'VARA — Comprá y vendé a tu manera', template: '%s · VARA' },
-  description: 'Más libertad para decidir. Más control para avanzar. Menos costos innecesarios. VARA empieza donde terminan los portales.',
+  description,
+  openGraph: { siteName: 'VARA', title: '¿Cuánto te sale de verdad esa propiedad?', description, type: 'website', locale: 'es_AR' },
+  twitter: { card: 'summary_large_image', title: '¿Cuánto te sale de verdad esa propiedad?', description },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -17,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Saltar al contenido principal
         </a>
+        <FunnelBeacon />
         <AppShell>
           {children}
         </AppShell>

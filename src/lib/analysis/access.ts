@@ -2,7 +2,7 @@
  * Acceso a VARA Buy WOW V3.
  *
  * Tres formas de entrar, de más a menos permanente:
- *   1. flag `buyWowV3` (NEXT_PUBLIC_FLAGS)
+ *   1. flag `buyWowV3` (encendido por defecto; se apaga con NEXT_PUBLIC_FLAGS_OFF)
  *   2. `?v3=1` en la URL: queda recordado en este navegador
  *   3. clave `vara_v3_preview` en localStorage
  *

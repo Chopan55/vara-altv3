@@ -6,7 +6,7 @@
  * Viven solo en este navegador y nunca se incluyen en lo que se comparte.
  */
 
-import type { PreferenceRule, UserPreferences } from './types'
+import type { ListingCurrency, PreferenceRule, UserPreferences } from './types'
 
 const KEY = 'vara_v3_prefs'
 
@@ -14,7 +14,7 @@ export type MustHave = 'pool' | 'garden' | 'parking' | 'study'
 
 export interface ProfileAnswers {
   budget?: number
-  budgetCurrency?: 'USD' | 'ARS'
+  budgetCurrency?: ListingCurrency
   location?: string
   bedrooms?: number
   mustHaves?: MustHave[]

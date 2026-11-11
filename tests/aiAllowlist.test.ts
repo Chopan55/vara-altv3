@@ -37,8 +37,14 @@ describe('lista de permiso de IA: una sola, que falla cerrado', () => {
     expect(canonical(null)).toBe(false)
   })
 
-  it('la variable vieja VARA_AI_ALLOWED_EMAILS ya no habilita a nadie', () => {
+  it('el nombre anterior VARA_AI_ALLOWED_EMAILS cuenta solo si no está el nuevo: nunca se suman', () => {
     process.env.VARA_AI_ALLOWED_EMAILS = 'yo@x.com'
+    expect(canonical('yo@x.com')).toBe(true)
+    process.env.AI_ALLOWED_EMAILS = 'otra@y.com'
+    expect(canonical('yo@x.com')).toBe(false)
+    expect(canonical('otra@y.com')).toBe(true)
+    // La nueva presente pero vacía sigue fallando cerrado: no se cae a la vieja.
+    process.env.AI_ALLOWED_EMAILS = '   '
     expect(canonical('yo@x.com')).toBe(false)
   })
 
@@ -75,7 +81,8 @@ describe('lista de permiso de IA: una sola, que falla cerrado', () => {
         if (statSync(p).isDirectory()) { walk(p); continue }
         if (!/\.(ts|tsx)$/.test(name)) continue
         const text = readFileSync(p, 'utf8')
-        if (text.includes('VARA_AI_ALLOWED_EMAILS')) offenders.push(`${p}: variable vieja`)
+        // El nombre anterior solo puede aparecer en la lista única (lib/ai/allowlist.ts).
+        if (text.includes('VARA_AI_ALLOWED_EMAILS') && !p.endsWith(path.join('lib', 'ai', 'allowlist.ts'))) offenders.push(`${p}: variable vieja`)
         if (!p.endsWith(path.join('lib', 'ai', 'allowlist.ts')) && /split\(','\)[^\n]*toLowerCase\(\)[^\n]*filter\(Boolean\)/.test(text) && /ALLOWED/i.test(text)) {
           offenders.push(`${p}: parece otra lista de permiso`)
         }

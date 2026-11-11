@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, Menu, X, Inbox,
   LogIn, LogOut, BookOpen, Search, Plus, Sparkles,
   ShieldAlert, Users, MapPin, CalendarCheck,
-  ClipboardCheck, Zap, BarChart2, Globe,
+  ClipboardCheck, Zap, BarChart2, Globe, FolderOpen, LifeBuoy, ChevronDown, Wrench,
 } from 'lucide-react'
 import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -36,62 +36,69 @@ interface NavItem {
   section?: string
 }
 
-function getBuyNav(operationId: string): NavItem[] {
+/**
+ * Menú en tres niveles, para que nadie se pierda:
+ *  1. Cinco destinos fijos (los mismos en la barra de abajo del celular).
+ *  2. Herramientas del recorrido (compra o venta), plegadas.
+ *  3. Más: país, compartidas, VARA Visit y Labs, plegadas.
+ */
+function getPrimaryNav(operationId: string): NavItem[] {
   const opHref = operationId ? `/operacion/${operationId}` : '/operacion/inicio'
   return [
     { href: '/dashboard', icon: Home, label: 'Inicio' },
-    { href: '/acciones', icon: Zap, label: 'Qué hago ahora' },
-    // VARA Buy WOW V3: pegás el link de una propiedad y VARA la analiza.
-    ...(isEnabled('buyWowV3')
-      ? [{ href: '/analizar', icon: Search, label: 'Analizar propiedad', tag: 'Nuevo', section: 'Buscar' } as NavItem]
-      : []),
-    { href: '/mi-busqueda', icon: ClipboardCheck, label: 'Mi búsqueda', section: 'Buscar' },
-    { href: '/propiedades', icon: Building2, label: 'Propiedades', section: 'Buscar' },
-    { href: '/comparar', icon: BarChart2, label: 'Comparar', section: 'Buscar' },
-    { href: '/visitas', icon: ClipboardCheck, label: 'Checklist de visita', section: 'Visitar' },
-    { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas', section: 'Visitar' },
-    { href: opHref, icon: FileText, label: 'Resumen', section: 'Mi operación' },
-    { href: `${opHref}?tab=documentos`, icon: FileText, label: 'Documentos', section: 'Mi operación' },
-    { href: `${opHref}?tab=riesgos`, icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
-    { href: '/dinero', icon: DollarSign, label: 'Costos y financiamiento', section: 'Mi operación' },
-    { href: '/profesionales', icon: Users, label: 'Profesionales', section: 'Mi operación' },
+    { href: opHref, icon: FileText, label: 'Mi operación' },
+    { href: '/dinero', icon: DollarSign, label: 'Dinero' },
+    { href: `${opHref}?tab=documentos`, icon: FolderOpen, label: 'Documentos' },
+    { href: '/guia', icon: LifeBuoy, label: 'Ayuda' },
   ]
 }
 
-function getSellNav(operationId: string): NavItem[] {
+function getBuyTools(operationId: string): NavItem[] {
   const opHref = operationId ? `/operacion/${operationId}` : '/operacion/inicio'
   return [
-    { href: '/dashboard', icon: Home, label: 'Inicio' },
     { href: '/acciones', icon: Zap, label: 'Qué hago ahora' },
-    { href: '/publicar', icon: Share2, label: 'Mi propiedad', section: 'Mi venta' },
-    { href: '/precio-venta', icon: DollarSign, label: 'Precio', section: 'Mi venta' },
-    { href: '/revisar-publicacion', icon: Eye, label: 'Publicación', section: 'Mi venta' },
-    { href: '/fotos-venta', icon: Eye, label: 'Fotos y video', section: 'Mi venta' },
-    { href: '/interesados', icon: Users, label: 'Interesados', section: 'Interesados' },
-    { href: '/ofertas', icon: Inbox, label: 'Ofertas', section: 'Interesados' },
-    { href: '/visitas-vendedor', icon: CalendarCheck, label: 'Visitas', section: 'Interesados' },
-    { href: '/preparar-venta', icon: FileText, label: 'Papeles de la venta', section: 'Mi operación' },
-    { href: opHref, icon: FileText, label: 'Resumen', section: 'Mi operación' },
-    { href: `${opHref}?tab=documentos`, icon: FileText, label: 'Documentos', section: 'Mi operación' },
-    { href: `${opHref}?tab=riesgos`, icon: ShieldAlert, label: 'Riesgos', section: 'Mi operación' },
-    { href: '/dinero', icon: DollarSign, label: 'Neto de la venta', section: 'Mi operación' },
-    { href: '/profesionales', icon: Users, label: 'Profesionales', section: 'Mi operación' },
+    // VARA Buy WOW V3: pegás el link de una propiedad y VARA la analiza.
+    ...(isEnabled('buyWowV3') ? [{ href: '/analizar', icon: Search, label: 'Analizar propiedad' } as NavItem] : []),
+    { href: '/mi-busqueda', icon: ClipboardCheck, label: 'Mi búsqueda' },
+    { href: '/propiedades', icon: Building2, label: 'Propiedades' },
+    { href: '/comparar', icon: BarChart2, label: 'Comparar' },
+    { href: '/visitas', icon: ClipboardCheck, label: 'Checklist de visita' },
+    { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas' },
+    { href: `${opHref}?tab=riesgos`, icon: ShieldAlert, label: 'Riesgos' },
+    { href: '/profesionales', icon: Users, label: 'Profesionales' },
+  ]
+}
+
+function getSellTools(operationId: string): NavItem[] {
+  const opHref = operationId ? `/operacion/${operationId}` : '/operacion/inicio'
+  return [
+    { href: '/acciones', icon: Zap, label: 'Qué hago ahora' },
+    { href: '/publicar', icon: Share2, label: 'Mi propiedad' },
+    { href: '/precio-venta', icon: DollarSign, label: 'Precio' },
+    { href: '/revisar-publicacion', icon: Eye, label: 'Publicación' },
+    { href: '/fotos-venta', icon: Eye, label: 'Fotos y video' },
+    { href: '/interesados', icon: Users, label: 'Interesados' },
+    { href: '/ofertas', icon: Inbox, label: 'Ofertas' },
+    { href: '/visitas-vendedor', icon: CalendarCheck, label: 'Visitas' },
+    { href: '/preparar-venta', icon: FileText, label: 'Papeles de la venta' },
+    { href: `${opHref}?tab=riesgos`, icon: ShieldAlert, label: 'Riesgos' },
+    { href: '/profesionales', icon: Users, label: 'Profesionales' },
   ]
 }
 
 const JOURNEY_TOOL_HREFS = new Set(['/mi-busqueda', '/preparar-venta', '/precio-venta', '/property-pack', '/video-presentacion', '/interesados', '/fotos-venta', '/revisar-publicacion', '/recorrido-ia'])
 
-const SECONDARY_NAV: NavItem[] = [
-  { href: '/vara-visit', icon: MapPin, label: 'VARA Visit' },
-  { href: '/guia', icon: BookOpen, label: 'Guía' },
-  { href: '/asistente', icon: MessageSquare, label: 'Asistente' },
+/** Lo que no es del día a día: plegado bajo "Más". Labs (lo que está en prueba) va acá, no en el menú principal. */
+const MORE_NAV: NavItem[] = [
+  { href: '/configuracion', icon: Globe, label: 'País y alertas' },
   { href: '/compartida', icon: Users, label: 'Compartidas conmigo' },
-  { href: '/configuracion', icon: Globe, label: 'País' },
+  { href: '/asistente', icon: MessageSquare, label: 'Asistente' },
+  { href: '/vara-visit', icon: MapPin, label: 'VARA Visit' },
+  { href: '/vara-labs', icon: Sparkles, label: 'VARA Labs' },
 ]
 
-/** Lo que todavía está en prueba, aparte del menú principal. */
-/** Labs va aparte del menú principal: lo que está en prueba no se mezcla con compra, venta y operación. */
-const LABS_NAV: NavItem = { href: '/vara-labs', icon: Sparkles, label: 'VARA Labs' }
+/** Sin cuenta ni operación, estas pantallas se ven sin menú: el que llega de un link no tiene nada que administrar. */
+const PUBLIC_WHEN_NEW = new Set(['/analizar', '/compartido'])
 
 function isActive(pathname: string, search: string, href: string) {
   const [path, query] = href.split('?')
@@ -151,6 +158,72 @@ function NavLink({
   )
 }
 
+/** Grupo plegable del menú. Con el menú angosto (solo íconos) se muestra abierto. */
+function NavGroup({
+  label, icon: Icon, open, collapsed, onToggle, children,
+}: {
+  label: string; icon: React.ElementType; open: boolean; collapsed: boolean; onToggle: () => void; children: React.ReactNode
+}) {
+  return (
+    <div className="pt-1">
+      {!collapsed && (
+        <button type="button" onClick={onToggle} aria-expanded={open}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-400 hover:bg-slate-50 hover:text-slate-600">
+          <Icon size={15} className="flex-shrink-0" aria-hidden="true" />
+          <span className="flex-1">{label}</span>
+          <ChevronDown size={14} aria-hidden="true" className={cn('transition-transform', open && 'rotate-180')} />
+        </button>
+      )}
+      {open && <div className="space-y-0.5">{children}</div>}
+    </div>
+  )
+}
+
+/**
+ * Barra de abajo en el celular: los mismos cinco destinos fijos que el menú.
+ * Se alcanza con el pulgar y no hace falta abrir el menú para lo de todos los días.
+ */
+function MobileTabBar({ operationId }: { operationId: string }) {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const search = searchParams.toString()
+  return (
+    <nav aria-label="Accesos principales"
+      className="lg:hidden fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
+      <ul className="grid grid-cols-5">
+        {getPrimaryNav(operationId).map(item => {
+          const active = isActive(pathname, search, item.href)
+          const Icon = item.icon
+          return (
+            <li key={item.label}>
+              <Link href={item.href} aria-current={active ? 'page' : undefined}
+                className={cn('flex flex-col items-center gap-0.5 px-1 pt-2 pb-1.5 text-[10px] font-semibold',
+                  active ? 'text-brand-700' : 'text-slate-500')}>
+                <Icon size={20} strokeWidth={active ? 2.2 : 1.8} aria-hidden="true" />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </nav>
+  )
+}
+
+/** Marco mínimo para quien llega de afuera (sin cuenta ni operación): logo, entrar y el contenido. */
+function PublicFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-[var(--background)]">
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur">
+        <VaraLogo size={24} />
+        <Link href="/login" className="rounded-xl px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100">Entrar</Link>
+      </header>
+      {/* Las páginas ya traen su propio <main>: acá solo el ancla del "saltar al contenido". */}
+      <div id="main-content">{children}</div>
+    </div>
+  )
+}
+
 function SidebarContent({
   collapsed,
   onClose,
@@ -168,15 +241,22 @@ function SidebarContent({
   operationId: string
   onChangeJourney: (j: JourneyType) => void
 }) {
-  const allNav = journey === 'SELL' ? getSellNav(operationId) : getBuyNav(operationId)
-  // Interruptores de rollback: sin las herramientas nuevas o sin encabezados de grupo.
-  const primaryNav = allNav
+  const primaryNav = getPrimaryNav(operationId)
+  // Interruptor de rollback: sin las herramientas nuevas del recorrido.
+  const tools = (journey === 'SELL' ? getSellTools(operationId) : getBuyTools(operationId))
     .filter(i => isEnabled('journeyTools') || !JOURNEY_TOOL_HREFS.has(i.href))
-    .map(i => (isEnabled('groupedMenu') ? i : { ...i, section: undefined }))
   // useSearchParams obliga a un límite de Suspense; lo acotamos al menú
   // para no suspender el contenido de la página entera.
   const searchParams = useSearchParams()
   const search = searchParams.toString()
+  // Un grupo plegado se abre solo si estás en una de sus pantallas. Con el menú agrupado
+  // apagado (rollback), las herramientas quedan siempre a la vista.
+  const inTools = tools.some(t => isActive(pathname, search, t.href))
+  const inMore = MORE_NAV.some(t => isActive(pathname, search, t.href))
+  const [toolsOpen, setToolsOpen] = useState(inTools || !isEnabled('groupedMenu'))
+  const [moreOpen, setMoreOpen] = useState(inMore)
+  const showTools = toolsOpen || inTools || collapsed
+  const showMore = moreOpen || inMore || collapsed
 
   return (
     <div className="flex flex-col h-full py-5">
@@ -209,25 +289,28 @@ function SidebarContent({
         </div>
       )}
 
-      <nav className="flex-1 space-y-0.5 px-3 overflow-y-auto no-scrollbar">
-        {primaryNav.map((item, i) => (
-          <div key={`${item.href}|${item.label}`}>
-            {!collapsed && item.section && item.section !== primaryNav[i - 1]?.section && (
-              <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">{item.section}</p>
-            )}
-            <NavLink item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
-          </div>
+      <nav aria-label="Menú principal" className="flex-1 space-y-0.5 px-3 overflow-y-auto no-scrollbar">
+        {primaryNav.map(item => (
+          <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
         ))}
 
         <div className="my-3 border-t border-slate-200 mx-2" />
 
-        {SECONDARY_NAV.filter(item => !primaryNav.some(p => p.href === item.href)).map(item => (
-          <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
-        ))}
+        <NavGroup
+          label={journey === 'SELL' ? 'Herramientas de venta' : 'Herramientas de compra'}
+          icon={Wrench} open={showTools} collapsed={collapsed}
+          onToggle={() => setToolsOpen(o => !o)}
+        >
+          {tools.map(item => (
+            <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
+          ))}
+        </NavGroup>
 
-        <div className="mt-3 border-t border-slate-200 pt-2">
-          <NavLink item={LABS_NAV} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
-        </div>
+        <NavGroup label="Más" icon={BookOpen} open={showMore} collapsed={collapsed} onToggle={() => setMoreOpen(o => !o)}>
+          {MORE_NAV.map(item => (
+            <NavLink key={`${item.href}|${item.label}`} item={item} collapsed={collapsed} onClick={onClose} pathname={pathname} search={search} />
+          ))}
+        </NavGroup>
       </nav>
 
       {/* Acceso permanente al asistente: es el atajo cuando el usuario no sabe dónde mirar. */}
@@ -439,7 +522,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [guiaMenuOpen, setGuiaMenuOpen] = useState(false)
 
-  const { journey, activeOperationId, operations: allOps } = useOperations()
+  const { journey, activeOperationId, operations: allOps, loaded: opsLoaded } = useOperations()
   const changeJourney = (j: JourneyType) => vara.setJourneyType(journeyToStored(j))
 
   // Una pantalla de compra o de venta ajusta el modo a sí misma: menú, guía y contenido nunca se contradicen.
@@ -466,6 +549,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // es otra puerta, con su propia barra (ver app/partner/layout.tsx).
   if (NO_SHELL.has(pathname) || pathname.startsWith('/visit/') || pathname.startsWith('/partner')) {
     return <>{children}</>
+  }
+  // Quien llega a analizar un aviso o a ver un análisis compartido, sin operación propia, no necesita el menú.
+  if (PUBLIC_WHEN_NEW.has(pathname) && (!opsLoaded || allOps.length === 0)) {
+    return <PublicFrame>{children}</PublicFrame>
   }
 
   const sidebarWidth = collapsed ? 'w-[68px]' : 'w-[248px]'
@@ -537,12 +624,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onToggleGuia={() => setGuiaMenuOpen(o => !o)}
         />
 
-        <main id="main-content" className="flex-1 min-w-0">
+        {/* pb-20: en el celular la barra de abajo no tapa el final de la página. */}
+        <main id="main-content" className="flex-1 min-w-0 pb-20 lg:pb-0">
           {children}
         </main>
 
         <GuiameButton menuOpen={guiaMenuOpen} onMenuOpenChange={setGuiaMenuOpen} />
         <VaraAIFloat />
+        <Suspense fallback={null}>
+          <MobileTabBar operationId={activeOperationId ?? ''} />
+        </Suspense>
       </div>
     </div>
   )

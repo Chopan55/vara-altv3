@@ -17,6 +17,9 @@ import { buildConclusion, decideNextAction } from './conclusion'
 import { assessConfidence } from './confidence'
 import { estimateTransactionCost } from './cost'
 import './costProviders/ar'
+import './costProviders/mx'
+import { detectMxState } from './country'
+import { MX_CODES } from '@/lib/regulations'
 import { findMissing } from './missing'
 import {
   applyUserOverrides, evaluateExtraction, flattenSubject, subjectFromScrape, type UserOverrides,
@@ -28,7 +31,7 @@ import { deriveRisks } from './risks'
 import { evaluateFit } from './userFit'
 import {
   ANALYSIS_VERSION,
-  type ExtractionQuality, type PropertyAnalysis, type ProvenanceEntry, type StageTimings,
+  type ExtractionQuality, type ListingFacts, type PropertyAnalysis, type ProvenanceEntry, type StageTimings,
   type SubjectProperty, type UserPreferences, type ComparableEvidence,
 } from './types'
 
@@ -70,6 +73,22 @@ function quickInsight(subject: SubjectProperty, q: ExtractionQuality): string {
     ? ` Todavía no sabemos ${q.missing.slice(0, 2).join(' ni ')}.`
     : ' El aviso trae los datos principales.'
   return head + rest
+}
+
+/**
+ * Provincia o estado para los costos. En México sale del aviso (colonia,
+ * ciudad, estado); si no se reconoce, de la provincia de la persona si es
+ * mexicana. Nunca se cruzan: una provincia argentina no se usa para un aviso
+ * de México ni al revés.
+ */
+export function costJurisdiction(facts: ListingFacts, userProvince?: string): string | undefined {
+  if (facts.country === 'MX') {
+    const text = [facts.address, facts.neighborhood, facts.city, facts.title].filter(Boolean).join(' . ')
+    return detectMxState(text)
+      ?? (facts.description ? detectMxState(facts.description) : undefined)
+      ?? (userProvince && MX_CODES.has(userProvince) ? userProvince : undefined)
+  }
+  return userProvince && !MX_CODES.has(userProvince) ? userProvince : undefined
 }
 
 export async function analyzeProperty(input: AnalyzeInput): Promise<PropertyAnalysis> {
@@ -156,7 +175,7 @@ export async function analyzeProperty(input: AnalyzeInput): Promise<PropertyAnal
     facts, price: pricePositioning, missing, fit, completenessWarnings: extraction.warnings,
   })
   const cost = estimateTransactionCost(facts.country, {
-    price: facts.price, currency: facts.currency, provinceCode: input.provinceCode,
+    price: facts.price, currency: facts.currency, provinceCode: costJurisdiction(facts, input.provinceCode),
   })
   const ctx = { fit, price: pricePositioning, missing, risks }
   const nextBestAction = decideNextAction(ctx)

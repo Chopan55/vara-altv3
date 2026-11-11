@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowRight, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { readUserComparables } from '@/lib/analysis/providers'
+import { accountUrl } from '@/lib/auth/entryJourney'
 import type { UserOverrides } from '@/lib/analysis/normalize'
 import type { NbaType, PropertyAnalysis } from '@/lib/analysis/types'
 import type { ProfileAnswers } from '@/lib/analysis/prefs'
@@ -13,8 +14,9 @@ import { AskVara } from './AskVara'
 import { AddComparables, ProfilePrompt } from './Entry'
 import { ComparableList, EvidenceSummary } from './Evidence'
 import { CostSection, DetailSection, FitSection, GoodSection, MissingSection, RisksSection, Section } from './Sections'
+import { SellerQuestionsCard, ShareCard, TotalCostCard, type ShareChannel } from './Highlights'
 import {
-  CONFIDENCE_DOTS, CONFIDENCE_TEXT, KIND_TEXT, POSITION_TEXT, VERDICT_STYLE, copyText, money,
+  CONFIDENCE_DOTS, CONFIDENCE_TEXT, KIND_TEXT, POSITION_TEXT, VERDICT_STYLE, money,
 } from './format'
 
 export interface ResultActions {
@@ -24,7 +26,7 @@ export interface ResultActions {
   applyProfile: (a: ProfileAnswers) => Promise<void>
   save: () => Promise<void>
   discard: (reason?: string) => void
-  share: () => string | null
+  share: (channel?: ShareChannel) => string | null
   reset: () => void
   track: (name: 'comparable_opened' | 'nba_clicked' | 'missing_data_action' | 'visit_started', props?: Record<string, string | number | boolean | null>) => void
 }
@@ -33,10 +35,11 @@ function Header({ analysis, photo }: { analysis: PropertyAnalysis; photo?: strin
   const f = analysis.subjectProperty.fields
   const ask = analysis.pricePositioning.subjectAskingPrice
   const where = [f.community?.value, f.neighborhood?.value, f.city?.value].filter(Boolean).join(' · ')
+  const mx = analysis.subjectProperty.country === 'MX'
   const facts = [
     f.kind?.value ? KIND_TEXT[f.kind.value] : null,
-    f.bedrooms?.value ? `${f.bedrooms.value} dormitorios` : null,
-    f.coveredArea?.value ? `${f.coveredArea.value} m² cubiertos` : null,
+    f.bedrooms?.value ? `${f.bedrooms.value} ${mx ? 'recámaras' : 'dormitorios'}` : null,
+    f.coveredArea?.value ? `${f.coveredArea.value} m² ${mx ? 'construidos' : 'cubiertos'}` : null,
     f.landArea?.value ? `${f.landArea.value} m² de terreno` : null,
   ].filter(Boolean)
 
@@ -98,13 +101,10 @@ export function ResultView({
     }
   }
 
-  const share = async () => {
-    const url = actions.share()
-    if (!url) return setNotice('No pude armar el link para compartir.')
-    const ok = await copyText(url)
-    setNotice(ok
-      ? 'Link copiado. Incluye la propiedad, la conclusión de precio y los comparables. No incluye tus preferencias.'
-      : url)
+  // Seguir la compra es tener una operación: se entra con la cuenta y después se arma (si ya hay sesión, va directo).
+  const follow = async () => {
+    await actions.save()
+    router.push(accountUrl(`/onboarding?intent=BUY&country=${analysis.subjectProperty.country === 'MX' ? 'MX' : 'AR'}`))
   }
 
   return (
@@ -113,13 +113,16 @@ export function ResultView({
         <div className="min-w-0 flex-1">
           <Header analysis={analysis} photo={photo} />
         </div>
-        <button type="button" onClick={share} aria-label="Compartir este análisis"
+        <button type="button" onClick={() => scrollTo('compartir')} aria-label="Compartir este análisis"
           className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
           <Share2 size={14} /> <span className="hidden sm:inline">Compartir</span>
         </button>
       </div>
 
-      {/* Primer viewport: conclusión, tres señales y UNA acción */}
+      {/* Primero, lo que siempre se puede calcular y más impacta: cuánto sale en total. */}
+      <TotalCostCard analysis={analysis} onDetail={() => scrollTo('costos')} />
+
+      {/* Después: conclusión, tres señales y UNA acción */}
       <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
         <div className={cn('h-1.5', style.bar)} />
         <div className="p-5 sm:p-6">
@@ -172,6 +175,12 @@ export function ResultView({
         </p>
       )}
 
+      {/* Lo que más importa para decidir, a la vista: preguntas al vendedor y compartir (el total va arriba). */}
+      <SellerQuestionsCard analysis={analysis} onAction={kind => actions.track('missing_data_action', { kind })} />
+      <div id="compartir" className="scroll-mt-6">
+        <ShareCard analysis={analysis} share={actions.share} onFollow={follow} />
+      </div>
+
       {/* VARA con su avatar, a la vista apenas termina el análisis (solo si la IA está habilitada) */}
       <AskVara analysis={analysis} onAsk={() => actions.track('missing_data_action', { kind: 'ask_vara' })} />
 
@@ -192,6 +201,8 @@ export function ResultView({
       {userFit.state === 'NO_PROFILE' && !profileDismissed && (
         <div className="mt-8">
           <ProfilePrompt
+            currency={price.subjectAskingPrice?.currency ?? 'USD'}
+            mx={analysis.subjectProperty.country === 'MX'}
             onSubmit={a => { setProfileDismissed(true); return actions.applyProfile(a) }}
             onSkip={() => setProfileDismissed(true)}
           />

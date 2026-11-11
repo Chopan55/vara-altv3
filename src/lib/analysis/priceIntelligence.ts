@@ -15,7 +15,7 @@
  *   5. La banda se redondea: sin falsa precisión.
  */
 
-import type { PriceBand, PricePosition, ScoredComparable } from './types'
+import type { ListingCurrency, PriceBand, PricePosition, ScoredComparable } from './types'
 
 export const PRICE_METHOD =
   'Mediana ponderada y banda intercuartil (P25–P75) de precios publicados de avisos ' +
@@ -26,9 +26,9 @@ export const PRICE_METHOD =
  * Precio mínimo creíble de una venta. Por debajo suele ser un marcador
  * ("consultar", USD 1) y no un precio: tomarlo arruinaría el rango entero.
  */
-export const MIN_PLAUSIBLE_PRICE = { USD: 5_000, ARS: 1_000_000 } as const
+export const MIN_PLAUSIBLE_PRICE = { USD: 5_000, ARS: 1_000_000, MXN: 100_000 } as const
 
-export function isPlausiblePrice(price: number, currency: 'USD' | 'ARS' | undefined): boolean {
+export function isPlausiblePrice(price: number, currency: ListingCurrency | undefined): boolean {
   if (!currency) return false
   return price >= MIN_PLAUSIBLE_PRICE[currency]
 }
@@ -38,7 +38,7 @@ export const OUTLIER_MIN_RELATIVE_DISTANCE = 0.25
 
 export interface PriceInput {
   subjectPrice?: number
-  subjectCurrency?: 'USD' | 'ARS'
+  subjectCurrency?: ListingCurrency
   subjectCoveredArea?: number
   comparables: ScoredComparable[]
 }
@@ -160,15 +160,16 @@ export function calculatePrice(input: PriceInput): PriceCalc {
   return { band, position, differencePct, used, excludedOutliers, notes }
 }
 
-const fmt = (n: number, cur: string) => `${cur} ${n.toLocaleString('es-AR')}`
+const loc = (cur: string) => (cur === 'MXN' ? 'es-MX' : 'es-AR')
+const fmt = (n: number, cur: string) => `${cur} ${n.toLocaleString(loc(cur))}`
 const shortK = (n: number, cur: string) =>
-  n >= 1000 ? `${cur} ${Math.round(n / 1000).toLocaleString('es-AR')}k` : fmt(n, cur)
+  n >= 1000 ? `${cur} ${Math.round(n / 1000).toLocaleString(loc(cur))}k` : fmt(n, cur)
 
 /** Texto para mostrar. Siempre habla de precios publicados. */
 export function interpretPrice(
   calc: PriceCalc,
   subjectPrice: number | undefined,
-  currency: 'USD' | 'ARS',
+  currency: ListingCurrency,
   confidenceInsufficient: boolean,
 ): string {
   if (confidenceInsufficient || !calc.band) {

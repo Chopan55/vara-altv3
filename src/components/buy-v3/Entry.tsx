@@ -66,8 +66,8 @@ export function ProgressPanel({ state }: { state: BuyState }) {
   const price = f?.price?.value && f.currency?.value ? money(f.price.value, f.currency.value) : null
   const facts = f ? [
     f.kind?.value ? KIND_TEXT[f.kind.value] : null,
-    f.bedrooms?.value ? `${f.bedrooms.value} dorm.` : null,
-    f.coveredArea?.value ? `${f.coveredArea.value} m² cub.` : null,
+    f.bedrooms?.value ? `${f.bedrooms.value} ${s?.country === 'MX' ? 'rec.' : 'dorm.'}` : null,
+    f.coveredArea?.value ? `${f.coveredArea.value} m² ${s?.country === 'MX' ? 'const.' : 'cub.'}` : null,
   ].filter(Boolean) : []
 
   return (
@@ -105,10 +105,62 @@ export function ProgressPanel({ state }: { state: BuyState }) {
 
 // ───────────────────────── Aviso bloqueado: pegar el texto ─────────────────────────
 
+export interface ManualListing {
+  price: number
+  currency: 'USD' | 'ARS' | 'MXN'
+  coveredM2?: number
+  bedrooms?: number
+  where?: string
+}
+
+/** Último recurso: cinco datos a mano. Con eso ya hay costo total y preguntas. */
+function ManualForm({ mx, onSubmit }: { mx: boolean; onSubmit: (m: ManualListing) => void }) {
+  const currencies = mx ? (['MXN', 'USD'] as const) : (['USD', 'ARS'] as const)
+  const [price, setPrice] = useState('')
+  const [currency, setCurrency] = useState<ManualListing['currency']>(currencies[0])
+  const [m2, setM2] = useState('')
+  const [beds, setBeds] = useState('')
+  const [where, setWhere] = useState('')
+  const toNum = (s: string) => { const n = Number(s.replace(/[^\d]/g, '')); return Number.isFinite(n) && n > 0 ? n : undefined }
+  const p = toNum(price)
+  return (
+    <form className="mt-3 grid gap-3 sm:grid-cols-2"
+      onSubmit={e => { e.preventDefault(); if (p) onSubmit({ price: p, currency, coveredM2: toNum(m2), bedrooms: toNum(beds), where: where.trim() || undefined }) }}>
+      <label className="text-sm text-slate-600">Precio publicado
+        <div className="mt-1 flex gap-2">
+          <select value={currency} onChange={e => setCurrency(e.target.value as ManualListing['currency'])} aria-label="Moneda"
+            className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm">
+            {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <input value={price} onChange={e => setPrice(e.target.value)} inputMode="numeric" required placeholder={mx ? '4500000' : '185000'}
+            className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+        </div>
+      </label>
+      <label className="text-sm text-slate-600">{mx ? 'Colonia o ciudad' : 'Barrio o ciudad'}
+        <input value={where} onChange={e => setWhere(e.target.value)} placeholder={mx ? 'Polanco, CDMX' : 'Palermo, CABA'}
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+      </label>
+      <label className="text-sm text-slate-600">{mx ? 'm² construidos' : 'm² cubiertos'}
+        <input value={m2} onChange={e => setM2(e.target.value)} inputMode="numeric"
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+      </label>
+      <label className="text-sm text-slate-600">{mx ? 'Recámaras' : 'Dormitorios'}
+        <input value={beds} onChange={e => setBeds(e.target.value)} inputMode="numeric"
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+      </label>
+      <button type="submit" disabled={!p}
+        className="rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 sm:col-span-2 sm:justify-self-start">
+        Analizar con estos datos
+      </button>
+    </form>
+  )
+}
+
 export function BlockedPaste({
-  message, onSubmit,
-}: { message?: string; onSubmit: (text: string) => void }) {
+  message, onSubmit, mx = false, onManual,
+}: { message?: string; onSubmit: (text: string) => void; mx?: boolean; onManual?: (m: ManualListing) => void }) {
   const [text, setText] = useState('')
+  const [manual, setManual] = useState(false)
   return (
     <div className="pt-10">
       <p className="text-slate-800">{message ?? 'No pudimos leer ese aviso.'}</p>
@@ -127,6 +179,20 @@ export function BlockedPaste({
       {text.trim().length > 0 && text.trim().length < 150 && (
         <p className="mt-2 text-xs text-slate-500">Pegá la publicación completa para que pueda leerla.</p>
       )}
+      {onManual && (
+        <div className="mt-8 border-t border-slate-200 pt-5">
+          {manual ? (
+            <>
+              <p className="text-sm font-medium text-slate-800">Cargá los datos del aviso</p>
+              <ManualForm mx={mx} onSubmit={onManual} />
+            </>
+          ) : (
+            <button type="button" onClick={() => setManual(true)} className="text-sm font-medium text-brand-700 hover:underline">
+              ¿No podés copiar el texto? Cargá el precio y los datos a mano
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -138,9 +204,17 @@ const MUST_HAVES: { key: MustHave; label: string }[] = [
   { key: 'parking', label: 'Cochera' }, { key: 'study', label: 'Escritorio' },
 ]
 
+const MX_MUST_LABEL: Partial<Record<MustHave, string>> = { pool: 'Alberca', parking: 'Estacionamiento', study: 'Estudio' }
+
 export function ProfilePrompt({
-  onSubmit, onSkip,
-}: { onSubmit: (a: ProfileAnswers) => void | Promise<void>; onSkip: () => void }) {
+  onSubmit, onSkip, currency = 'USD', mx = false,
+}: {
+  onSubmit: (a: ProfileAnswers) => void | Promise<void>
+  onSkip: () => void
+  /** Moneda del aviso: el presupuesto se pide en la misma, así se puede comparar. */
+  currency?: 'USD' | 'ARS' | 'MXN'
+  mx?: boolean
+}) {
   const [budget, setBudget] = useState('')
   const [location, setLocation] = useState('')
   const [bedrooms, setBedrooms] = useState('')
@@ -157,15 +231,15 @@ export function ProfilePrompt({
         Si me contás cuatro cosas sobre lo que buscás, también puedo decirte qué tan bien encaja con vos.
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <label className="text-sm text-slate-600">Presupuesto máximo (USD)
+        <label className="text-sm text-slate-600">Presupuesto máximo ({currency})
           <input value={budget} onChange={e => setBudget(e.target.value)} inputMode="numeric"
             className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2" />
         </label>
-        <label className="text-sm text-slate-600">Zona
+        <label className="text-sm text-slate-600">{mx ? 'Zona o colonia' : 'Zona'}
           <input value={location} onChange={e => setLocation(e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2" />
         </label>
-        <label className="text-sm text-slate-600">Dormitorios (mínimo)
+        <label className="text-sm text-slate-600">{mx ? 'Recámaras (mínimo)' : 'Dormitorios (mínimo)'}
           <input value={bedrooms} onChange={e => setBedrooms(e.target.value)} inputMode="numeric"
             className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2" />
         </label>
@@ -177,14 +251,14 @@ export function ProfilePrompt({
             <button key={m.key} type="button" onClick={() => toggle(m.key)} aria-pressed={must.includes(m.key)}
               className={cn('rounded-full border px-3 py-1.5 text-sm',
                 must.includes(m.key) ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-300 bg-white text-slate-700')}>
-              {m.label}
+              {(mx && MX_MUST_LABEL[m.key]) || m.label}
             </button>
           ))}
         </div>
       </fieldset>
       <div className="mt-5 flex items-center gap-4">
         <button type="button" disabled={empty}
-          onClick={() => onSubmit({ budget: num(budget), location, bedrooms: num(bedrooms), mustHaves: must })}
+          onClick={() => onSubmit({ budget: num(budget), budgetCurrency: currency, location, bedrooms: num(bedrooms), mustHaves: must })}
           className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40">
           Ver cómo encaja
         </button>

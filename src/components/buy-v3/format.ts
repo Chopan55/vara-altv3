@@ -1,9 +1,12 @@
-import type { Confidence, FreshnessInfo, PropertyCondition, PropertyKind, SearchScope, Verdict, PricePosition } from '@/lib/analysis/types'
+import type { Confidence, FreshnessInfo, ListingCurrency, PropertyCondition, PropertyKind, SearchScope, Verdict, PricePosition } from '@/lib/analysis/types'
 
-export const money = (n: number, cur: 'USD' | 'ARS'): string => `${cur} ${n.toLocaleString('es-AR')}`
+/** Separadores como se leen en cada país: 1.250.000 en Argentina, 1,250,000 en México. */
+const localeOf = (cur: ListingCurrency): string => (cur === 'MXN' ? 'es-MX' : 'es-AR')
 
-export const moneyK = (n: number, cur: 'USD' | 'ARS'): string =>
-  n >= 1000 ? `${cur} ${Math.round(n / 1000).toLocaleString('es-AR')}k` : money(n, cur)
+export const money = (n: number, cur: ListingCurrency): string => `${cur} ${n.toLocaleString(localeOf(cur))}`
+
+export const moneyK = (n: number, cur: ListingCurrency): string =>
+  n >= 1000 ? `${cur} ${Math.round(n / 1000).toLocaleString(localeOf(cur))}k` : money(n, cur)
 
 export const SCOPE_TEXT: Record<SearchScope, string> = {
   SAME_COMMUNITY: 'la misma comunidad',
