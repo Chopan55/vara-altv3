@@ -102,7 +102,7 @@ Estados finales: `DONE`, `READY_FOR_REVIEW`, `READY_FOR_PRODUCTION`, `WAITING_FO
 - **OpenAI**: tokens del Manager (pocas llamadas chicas por corrida).
 - **Claude Code**: el costo real aparece en el resumen de cada corrida.
 - **GitHub Actions**: minutos del runner. Cada reanudación es una corrida corta aparte; el CI suma otra.
-- **Tope por llamada a Claude:** `CLAUDE_MAX_BUDGET_USD` (por defecto **2,50**). Se pasa a cada llamada como `--max-budget-usd` (existe en Claude Code 2.1.267; `--max-turns` no figura en su ayuda y no limitó los turnos en la prueba real, así que no se confía en él como tope de gasto).
+- **Tope por llamada a Claude:** `CLAUDE_MAX_BUDGET_USD` (por defecto **2,50**). Se pasa a cada llamada como `--max-budget-usd`. El bridge no pasa `--max-turns`: versiones actuales de Claude Code pueden cortar con `error_max_turns` antes de entregar el resultado estructurado. El gasto sigue acotado por presupuesto, timeout y rondas.
 - **Tope acumulado de la corrida:** `MAX_AGENT_COST_USD` (por defecto **8,00**). Después de cada ronda el bridge suma el costo real que informa Claude (y el de OpenAI si cargaste precios). Si lo supera, **se detiene solo**: no inicia otra llamada a Claude ni otra ronda, deja el trabajo en la rama y te pregunta en el Issue. El gasto se arrastra entre reanudaciones, y si respondés `APPROVE` o `CONTINUE` se habilita **una ventana nueva** de ese monto a partir de lo ya gastado, no un cheque en blanco.
 - Con 4 rondas por corrida y 8 en total, más estos dos topes, el gasto está acotado. Para ver el estimado de OpenAI definí `OPENAI_PRICE_INPUT_PER_M` y `OPENAI_PRICE_OUTPUT_PER_M`. Probá primero con `dry_run`.
 

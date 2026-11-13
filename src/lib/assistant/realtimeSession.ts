@@ -3,6 +3,8 @@
  * Pura: se prueba sin red. La usa `/api/assistant/realtime`.
  */
 
+import { contextBlock } from '@/lib/assistant/context'
+
 export const DEFAULT_REALTIME_MODEL = 'gpt-realtime-2.1'
 export const REALTIME_VOICE = 'marin'
 export const TRANSCRIPTION_MODEL = 'gpt-4o-mini-transcribe'
@@ -41,13 +43,14 @@ export interface RealtimeSessionConfig {
   }
 }
 
-export function buildRealtimeSession(model?: string): RealtimeSessionConfig {
+/** `context`: el mismo contexto de la operación que usa el chat de texto (ya sanitizado por el servidor). */
+export function buildRealtimeSession(model?: string, context?: string | null): RealtimeSessionConfig {
   return {
     expires_after: { anchor: 'created_at', seconds: CLIENT_SECRET_TTL_SECONDS },
     session: {
       type: 'realtime',
       model: model?.trim() || DEFAULT_REALTIME_MODEL,
-      instructions: VOICE_INSTRUCTIONS,
+      instructions: context ? `${VOICE_INSTRUCTIONS}\n\n${contextBlock(context)}` : VOICE_INSTRUCTIONS,
       max_output_tokens: 700,
       audio: {
         input: {

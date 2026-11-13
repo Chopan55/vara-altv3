@@ -24,21 +24,23 @@ interface Options {
   /** Chat de texto actual: la voz lo usa como contexto inicial. */
   getHistory: () => { role: 'user' | 'assistant'; content: string }[]
   isError: (text: string) => boolean
+  /** Contexto de la operación (el mismo que usa el chat de texto). */
+  getContext: () => string
 }
 
 class LiveError extends Error {
   constructor(readonly code: LiveErrorCode) { super(code) }
 }
 
-export function useRealtimeVoice({ onFinal, getHistory, isError }: Options) {
+export function useRealtimeVoice({ onFinal, getHistory, isError, getContext }: Options) {
   const [status, setStatus] = useState<LiveStatus>('off')
   const [errorCode, setErrorCode] = useState<LiveErrorCode | null>(null)
   const [partial, setPartial] = useState<LiveEntry[]>([])
   /** Volumen de la voz de VARA (0..1): mueve la boca del avatar. */
   const levelRef = useRef(0)
 
-  const opts = useRef({ onFinal, getHistory, isError })
-  useEffect(() => { opts.current = { onFinal, getHistory, isError } })
+  const opts = useRef({ onFinal, getHistory, isError, getContext })
+  useEffect(() => { opts.current = { onFinal, getHistory, isError, getContext } })
 
   const res = useRef<{
     pc: RTCPeerConnection | null
@@ -140,7 +142,11 @@ export function useRealtimeVoice({ onFinal, getHistory, isError }: Options) {
       // 2. Secreto efímero desde el servidor.
       let secret = ''
       try {
-        const resp = await fetch('/api/assistant/realtime', { method: 'POST' })
+        const resp = await fetch('/api/assistant/realtime', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ context: opts.current.getContext() }),
+        })
         if (resp.status === 403 || resp.status === 401) throw new LiveError('not-allowed')
         if (resp.status === 429) throw new LiveError('limit')
         if (!resp.ok) throw new LiveError('unavailable')

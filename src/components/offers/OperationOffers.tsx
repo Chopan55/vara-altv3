@@ -26,6 +26,7 @@ import {
 import {
   hasOfferSession, fetchOffers, createOffer, setOfferStatus, counterOffer,
 } from '@/lib/supabase/offers'
+import { NegotiationInsightCard } from '@/components/offers/NegotiationInsight'
 
 const TONE: Record<OfferStatus, string> = {
   DRAFT: 'bg-slate-50 text-slate-500 border-slate-200',
@@ -396,6 +397,8 @@ export function OperationOffers({ operationId, propertyId, askingPrice, currency
           />
         )}
       </div>
+
+      <NegotiationInsightCard offers={offers} askingPrice={askingPrice} />
 
       {soon.length > 0 && (() => {
         const d = daysUntil(soon[0].validUntil)
