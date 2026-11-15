@@ -25,8 +25,14 @@ export async function GET(req: Request) {
   }
 
   const result = await pingDatabase()
-  if (result.status === 'ok') log.info('db.keepalive.ok', { ms: result.ms })
-  else log.warn('db.keepalive.failed', result.note, { status: result.status })
+  if (result.status === 'ok') {
+    log.info('db.keepalive.ok', { ms: result.ms })
+    // Una línea por día en los logs de Vercel: es la única prueba de que el
+    // cron corrió (el logger no imprime los info).
+    console.info('[db.keepalive.ok]', { ms: result.ms })
+  } else {
+    log.warn('db.keepalive.failed', result.note, { status: result.status })
+  }
 
   const status = result.status === 'ok' ? 200 : result.status === 'not_configured' ? 503 : 502
   return NextResponse.json(result, { status, headers: { 'cache-control': 'no-store' } })

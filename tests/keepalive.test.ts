@@ -62,8 +62,11 @@ describe('cron /api/keepalive/cron', () => {
   const original = { ...process.env }
   const SECRET = 'a-very-long-test-secret-value'
 
+  let info: ReturnType<typeof vi.spyOn>
+
   beforeEach(() => {
     resetRateLimits()
+    info = vi.spyOn(console, 'info').mockImplementation(() => {})
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://demo.supabase.co'
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key'
     delete process.env.CRON_SECRET
@@ -71,6 +74,7 @@ describe('cron /api/keepalive/cron', () => {
   afterEach(() => {
     process.env = { ...original }
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it('sin CRON_SECRET corre igual y no devuelve hosts ni claves', async () => {
@@ -81,6 +85,16 @@ describe('cron /api/keepalive/cron', () => {
     expect(JSON.parse(text).status).toBe('ok')
     expect(text).not.toContain('supabase.co')
     expect(text).not.toContain('anon-key')
+  })
+
+  it('cada corrida buena deja una línea en los logs, sin hosts ni claves', async () => {
+    vi.stubGlobal('fetch', okFetch())
+    await keepaliveCron(new Request('http://x/api/keepalive/cron'))
+    expect(info).toHaveBeenCalledTimes(1)
+    expect(info.mock.calls[0][0]).toBe('[db.keepalive.ok]')
+    const printed = JSON.stringify(info.mock.calls[0])
+    expect(printed).not.toContain('supabase.co')
+    expect(printed).not.toContain('anon-key')
   })
 
   it('con CRON_SECRET exige el header que manda Vercel', async () => {
