@@ -14,6 +14,15 @@
 
 import type { ScrapedData } from '@/app/api/scrape-property/route'
 import type { MeliItem } from '@/lib/comparables/model'
+import { log } from '@/lib/observability/logger'
+
+/** Lo que MeLi dice cuando rechaza (código y mensaje), sin nada de las credenciales. */
+async function rejection(res: Response): Promise<string> {
+  try {
+    const b = (await res.json()) as Record<string, unknown>
+    return [b.error, b.code, b.message, b.error_description].filter(x => typeof x === 'string').join(' | ').slice(0, 300)
+  } catch { return '' }
+}
 
 const TOKEN_URL = 'https://api.mercadolibre.com/oauth/token'
 const ITEM_URL = 'https://api.mercadolibre.com/items'
@@ -48,7 +57,10 @@ export async function getMeliToken(
       body: new URLSearchParams({ grant_type: 'client_credentials', client_id: clientId, client_secret: clientSecret }),
       cache: 'no-store',
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      log.warn('meli.token.rejected', await rejection(res), { httpStatus: res.status })
+      return null
+    }
     const data = (await res.json()) as { access_token?: string; expires_in?: number }
     if (!data.access_token) return null
     cached = { value: data.access_token, expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000 }
@@ -78,9 +90,13 @@ export async function fetchMeliItem(
       signal: opts.signal,
     })
     if (res.status === 404) return { status: 'not_found' }
-    if (!res.ok) return { status: 'rejected', httpStatus: res.status }
+    if (!res.ok) {
+      log.warn('meli.item.rejected', await rejection(res), { httpStatus: res.status, withToken: Boolean(token) })
+      return { status: 'rejected', httpStatus: res.status }
+    }
     return { status: 'ok', item: (await res.json()) as MeliItem }
-  } catch {
+  } catch (err) {
+    log.warn('meli.item.failed', err instanceof Error ? err.message : 'error')
     return { status: 'error' }
   }
 }
