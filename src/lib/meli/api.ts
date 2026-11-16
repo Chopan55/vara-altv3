@@ -89,7 +89,10 @@ export async function fetchMeliItem(
       cache: 'no-store',
       signal: opts.signal,
     })
-    if (res.status === 404) return { status: 'not_found' }
+    if (res.status === 404) {
+      log.warn('meli.item.not_found', await rejection(res), { withToken: Boolean(token) })
+      return { status: 'not_found' }
+    }
     if (!res.ok) {
       log.warn('meli.item.rejected', await rejection(res), { httpStatus: res.status, withToken: Boolean(token) })
       return { status: 'rejected', httpStatus: res.status }
