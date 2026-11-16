@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { fetchMeliItem, getMeliToken, isMeliBlockPage, meliItemToScraped, resetMeliToken } from '@/lib/meli/api'
+import { fetchMeliExtras, fetchMeliItem, getMeliToken, isMeliBlockPage, meliItemToScraped, meliSignals, resetMeliToken } from '@/lib/meli/api'
 import type { MeliItem } from '@/lib/comparables/model'
 
 const ITEM: MeliItem = {
@@ -39,6 +39,49 @@ describe('meliItemToScraped', () => {
   it('no inventa lo que el item no trae', () => {
     const { data } = meliItemToScraped({ id: 'MLA1', title: 'Lote' })
     expect(data).toEqual({ title: 'Lote' })
+  })
+})
+
+describe('señales del aviso', () => {
+  const now = new Date('2026-11-16T12:00:00Z')
+
+  it('días publicado, baja de precio y cocheras salen del item', () => {
+    const item: MeliItem = {
+      ...ITEM, start_time: '2026-05-20T12:00:00Z', original_price: 350000,
+      attributes: [...(ITEM.attributes ?? []), { id: 'PARKING_LOTS', value_name: '2' }],
+    }
+    const { data } = meliItemToScraped(item, now)
+    expect(data.features).toEqual([
+      'Cocheras: 2',
+      'Publicado hace 180 días en MercadoLibre',
+      'Bajó de precio: de USD 350.000 a USD 320.000',
+    ])
+  })
+
+  it('sin fecha ni precio original no inventa señales', () => {
+    expect(meliSignals({ id: 'MLA1', price: 100 }, now)).toEqual([])
+    expect(meliSignals({ id: 'MLA1', price: 100, original_price: 90, start_time: 'x' }, now)).toEqual([])
+  })
+})
+
+describe('fetchMeliExtras', () => {
+  beforeEach(() => resetMeliToken())
+
+  it('suma descripción, tipo de vendedor y visitas', async () => {
+    const f = vi.fn(async (u: string) => {
+      if (u.endsWith('/description')) return new Response(JSON.stringify({ plain_text: 'Casa luminosa con pileta.' }), { status: 200 })
+      if (u.includes('/users/')) return new Response(JSON.stringify({ user_type: 'real_estate_agency' }), { status: 200 })
+      if (u.includes('/visits/items')) return new Response(JSON.stringify({ MLA1234567890: 1543 }), { status: 200 })
+      return new Response('', { status: 404 })
+    })
+    const r = await fetchMeliExtras({ ...ITEM, seller_id: 99 }, { env: {}, fetchImpl: f })
+    expect(r.description).toBe('Casa luminosa con pileta.')
+    expect(r.features).toEqual(['Lo publica una inmobiliaria', '1.543 visitas en MercadoLibre'])
+  })
+
+  it('si MeLi no da nada, no agrega nada', async () => {
+    const r = await fetchMeliExtras({ ...ITEM, seller_id: 99 }, { env: {}, fetchImpl: async () => new Response('', { status: 403 }) })
+    expect(r).toEqual({ features: [] })
   })
 })
 

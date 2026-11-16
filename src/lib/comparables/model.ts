@@ -83,6 +83,11 @@ export interface MeliItem {
     state?: { name?: string | null } | null
   } | null
   pictures?: { url?: string; secure_url?: string }[]
+  status?: string
+  start_time?: string
+  date_created?: string
+  original_price?: number | null
+  seller_id?: number
 }
 
 /**
