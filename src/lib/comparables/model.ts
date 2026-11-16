@@ -76,6 +76,13 @@ export interface MeliItem {
   permalink?: string
   attributes?: MeliAttribute[]
   address?: { neighborhood?: string | null; city_name?: string | null } | null
+  location?: {
+    address_line?: string | null
+    neighborhood?: { name?: string | null } | null
+    city?: { name?: string | null } | null
+    state?: { name?: string | null } | null
+  } | null
+  pictures?: { url?: string; secure_url?: string }[]
 }
 
 /**

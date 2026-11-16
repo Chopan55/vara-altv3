@@ -6,6 +6,8 @@ import { requireAiAccess } from '@/lib/api/aiAccess'
 import { isMexicanUrl } from '@/lib/analysis/country'
 import { parseListingText } from '@/lib/scrape/parseText'
 import { allowRequest, clientKey } from '@/lib/api/rateLimit'
+import { meliItemIdFromUrl } from '@/lib/comparables/model'
+import { fetchMeliItem, isMeliBlockPage, meliItemToScraped } from '@/lib/meli/api'
 
 export const maxDuration = 60
 
@@ -428,8 +430,22 @@ export async function POST(req: NextRequest) {
       } satisfies ScrapeResult)
     }
 
+    // ── Layer 0: MercadoLibre por su API oficial (la página bloquea a los servidores) ──
+    const meliId = portal === 'MercadoLibre' ? meliItemIdFromUrl(url) : null
+    if (meliId) {
+      const r = await fetchMeliItem(meliId, { signal: controller.signal })
+      if (r.status === 'ok') {
+        const m = meliItemToScraped(r.item)
+        data = m.data
+        photos = m.photos
+        method = 'json-ld'
+      } else if (r.status === 'not_found') {
+        expired = true
+      }
+    }
+
     // ── Layer 1+2: direct fetch (manual redirects — re-validate each Location) ──
-    try {
+    if (missingOf(data).length > 0) try {
       let fetchUrl = url
       let hops = 0
       let res: Response | null = null
@@ -449,15 +465,15 @@ export async function POST(req: NextRequest) {
         // 410/404 = aviso dado de baja, pero el body suele traer datos igual.
         expired = res.status === 410 || res.status === 404
         const body = await res.text()
-        blocked = isBotWall(res.status, body)
+        blocked = isBotWall(res.status, body) || (portal === 'MercadoLibre' && isMeliBlockPage(body))
         if (!blocked && (res.ok || expired)) html = body
       }
     } catch { /* cae a reader */ }
 
     if (html) {
       const ld = fromJsonLd(html)
-      if (Object.keys(ld.data).length) { data = ld.data; method = 'json-ld' }
-      photos = ld.photos
+      if (Object.keys(ld.data).length) { data = merge(data, ld.data); if (method === 'none') method = 'json-ld' }
+      photos = [...photos, ...ld.photos]
 
       // La ficha técnica del portal es lo más confiable (sale del aviso mismo): va antes que las claves sueltas.
       const specs = fromPortalSpecs(html)
@@ -482,7 +498,9 @@ export async function POST(req: NextRequest) {
     if (missingOf(data).length > 1) {
       readerText = await viaReader(url, controller.signal)
       // El Reader también choca contra Cloudflare y devuelve la página de desafío.
-      if (readerText && /Just a moment|security verification|CAPTCHA/i.test(readerText.slice(0, 1500))) {
+      const readerHead = readerText?.slice(0, 1500) ?? ''
+      const meliWall = portal === 'MercadoLibre' && /^Title:\s*Mercado ?Libre\s*$|account-verification/im.test(readerHead)
+      if (readerText && (meliWall || /Just a moment|security verification|CAPTCHA/i.test(readerHead))) {
         blocked = true
         readerText = null
       }

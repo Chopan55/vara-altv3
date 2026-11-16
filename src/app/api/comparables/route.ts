@@ -6,6 +6,7 @@ import {
 } from '@/lib/comparables/model'
 import { log } from '@/lib/observability/logger'
 import { requireAuth } from '@/lib/api/requireAuth'
+import { getMeliToken } from '@/lib/meli/api'
 
 /**
  * Lee un aviso de MercadoLibre por su link.
@@ -27,45 +28,7 @@ import { requireAuth } from '@/lib/api/requireAuth'
 
 export const runtime = 'nodejs'
 
-const TOKEN_URL = 'https://api.mercadolibre.com/oauth/token'
 const ITEM_URL = 'https://api.mercadolibre.com/items'
-
-interface CachedToken { value: string; expiresAt: number }
-let cached: CachedToken | null = null
-
-async function getToken(): Promise<string | null> {
-  const clientId = process.env.MELI_CLIENT_ID
-  const clientSecret = process.env.MELI_CLIENT_SECRET
-  if (!clientId || !clientSecret) return null
-
-  // Un minuto de margen: un token que vence mientras viaja la request es peor
-  // que pedir uno de más.
-  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.value
-
-  const res = await fetch(TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Accept: 'application/json',
-    },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
-    cache: 'no-store',
-  })
-
-  if (!res.ok) return null
-  const data = (await res.json()) as { access_token?: string; expires_in?: number }
-  if (!data.access_token) return null
-
-  cached = {
-    value: data.access_token,
-    expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000,
-  }
-  return cached.value
-}
 
 export interface ComparablesResponse {
   status: 'ok' | 'not_configured' | 'not_found' | 'not_meli' | 'error'
@@ -95,7 +58,7 @@ export async function POST(req: Request) {
     })
   }
 
-  const token = await getToken()
+  const token = await getMeliToken()
   if (!token) {
     return NextResponse.json({
       status: 'not_configured',
