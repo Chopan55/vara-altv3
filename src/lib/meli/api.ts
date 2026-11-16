@@ -1,0 +1,153 @@
+/**
+ * Lectura de avisos de MercadoLibre por la API oficial.
+ *
+ * La página del aviso no sirve desde el servidor: MeLi la bloquea y devuelve
+ * una página genérica titulada "Mercado Libre" (sin precio ni superficie). La
+ * API `/items/{id}` sí responde, con los datos estructurados.
+ *
+ * Con `MELI_CLIENT_ID` y `MELI_CLIENT_SECRET` (una app gratuita de MeLi) se
+ * pide un token de aplicación. Sin ellas se intenta igual sin token: si MeLi
+ * lo rechaza, el que llama sigue con el resto de los caminos.
+ *
+ * Solo servidor: el `client_secret` nunca pasa por el navegador.
+ */
+
+import type { ScrapedData } from '@/app/api/scrape-property/route'
+import type { MeliItem } from '@/lib/comparables/model'
+
+const TOKEN_URL = 'https://api.mercadolibre.com/oauth/token'
+const ITEM_URL = 'https://api.mercadolibre.com/items'
+
+type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
+
+interface CachedToken { value: string; expiresAt: number }
+let cached: CachedToken | null = null
+
+/** Solo para tests. */
+export function resetMeliToken(): void { cached = null }
+
+export function meliConfigured(env: Record<string, string | undefined> = process.env): boolean {
+  return Boolean(env.MELI_CLIENT_ID && env.MELI_CLIENT_SECRET)
+}
+
+export async function getMeliToken(
+  env: Record<string, string | undefined> = process.env,
+  fetchImpl: FetchLike = fetch,
+): Promise<string | null> {
+  const clientId = env.MELI_CLIENT_ID
+  const clientSecret = env.MELI_CLIENT_SECRET
+  if (!clientId || !clientSecret) return null
+
+  // Un minuto de margen: un token que vence mientras viaja la request es peor que pedir uno de más.
+  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.value
+
+  try {
+    const res = await fetchImpl(TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+      body: new URLSearchParams({ grant_type: 'client_credentials', client_id: clientId, client_secret: clientSecret }),
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as { access_token?: string; expires_in?: number }
+    if (!data.access_token) return null
+    cached = { value: data.access_token, expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000 }
+    return cached.value
+  } catch {
+    return null
+  }
+}
+
+export type MeliFetch =
+  | { status: 'ok'; item: MeliItem }
+  | { status: 'not_found' }
+  | { status: 'rejected'; httpStatus: number }
+  | { status: 'error' }
+
+/** Un aviso por id. Con token si está configurado; si no, sin token. */
+export async function fetchMeliItem(
+  itemId: string,
+  opts: { env?: Record<string, string | undefined>; fetchImpl?: FetchLike; signal?: AbortSignal } = {},
+): Promise<MeliFetch> {
+  const fetchImpl = opts.fetchImpl ?? fetch
+  const token = await getMeliToken(opts.env ?? process.env, fetchImpl)
+  try {
+    const res = await fetchImpl(`${ITEM_URL}/${encodeURIComponent(itemId)}`, {
+      headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      cache: 'no-store',
+      signal: opts.signal,
+    })
+    if (res.status === 404) return { status: 'not_found' }
+    if (!res.ok) return { status: 'rejected', httpStatus: res.status }
+    return { status: 'ok', item: (await res.json()) as MeliItem }
+  } catch {
+    return { status: 'error' }
+  }
+}
+
+function attr(item: MeliItem, ids: string[]): number | undefined {
+  for (const a of item.attributes ?? []) {
+    if (!a.id || !ids.includes(a.id)) continue
+    const n = a.value_struct?.number
+    if (typeof n === 'number' && isFinite(n) && n > 0) return n
+    const parsed = parseFloat((a.value_name ?? '').replace(/\./g, '').replace(',', '.'))
+    if (isFinite(parsed) && parsed > 0) return parsed
+  }
+  return undefined
+}
+
+function attrText(item: MeliItem, id: string): string | undefined {
+  const a = (item.attributes ?? []).find(x => x.id === id)
+  const v = a?.value_name?.trim()
+  return v ? v : undefined
+}
+
+/** Un item de la API, en el formato del lector de avisos. Solo lo que el aviso trae: nada inventado. */
+export function meliItemToScraped(item: MeliItem): { data: ScrapedData; photos: string[] } {
+  const data: ScrapedData = {}
+  if (item.title) data.title = item.title
+  if (typeof item.price === 'number' && isFinite(item.price) && item.price > 0) {
+    data.price = item.price
+    if (item.currency_id) data.currency = item.currency_id
+  }
+  const loc = item.location
+  const street = loc?.address_line?.trim()
+  if (street) data.address = street
+  const neighborhood = loc?.neighborhood?.name ?? item.address?.neighborhood ?? undefined
+  if (neighborhood) data.neighborhood = neighborhood
+  const city = loc?.city?.name ?? item.address?.city_name ?? undefined
+  if (city) data.city = city
+  if (loc?.state?.name) data.province = loc.state.name
+
+  const total = attr(item, ['TOTAL_AREA'])
+  const covered = attr(item, ['COVERED_AREA'])
+  if (total) data.totalM2 = total
+  if (covered) data.coveredM2 = covered
+  const rooms = attr(item, ['ROOMS'])
+  if (rooms) data.rooms = rooms
+  const bedrooms = attr(item, ['BEDROOMS'])
+  if (bedrooms) data.bedrooms = bedrooms
+  const bathrooms = attr(item, ['FULL_BATHROOMS', 'BATHROOMS'])
+  if (bathrooms) data.bathrooms = bathrooms
+  const expenses = attr(item, ['MAINTENANCE_FEE'])
+  if (expenses) data.expenses = expenses
+  const type = attrText(item, 'PROPERTY_TYPE')
+  if (type) data.propertyType = type
+
+  const photos = (item.pictures ?? [])
+    .map(p => p.secure_url ?? p.url)
+    .filter((u): u is string => typeof u === 'string' && /^https:\/\//.test(u))
+    .slice(0, 12)
+  return { data, photos }
+}
+
+/**
+ * ¿MeLi devolvió su página de bloqueo en vez del aviso? Pasa con la lectura
+ * directa desde servidores: título genérico o la verificación de cuenta.
+ */
+export function isMeliBlockPage(html: string): boolean {
+  const head = html.slice(0, 20000)
+  if (/account-verification|\/gz\/login|suspicious-traffic|captcha/i.test(head)) return true
+  const title = head.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim()
+  return title !== undefined && /^mercado ?libre(\s*(argentina|m[ée]xico))?$/i.test(title)
+}
