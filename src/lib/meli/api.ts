@@ -102,8 +102,37 @@ function attrText(item: MeliItem, id: string): string | undefined {
   return v ? v : undefined
 }
 
+/** Días entre una fecha ISO y `now`, o undefined si la fecha no sirve. */
+function daysSince(iso: string | undefined, now: Date): number | undefined {
+  if (!iso) return undefined
+  const t = Date.parse(iso)
+  if (!isFinite(t)) return undefined
+  const d = Math.floor((now.getTime() - t) / 86_400_000)
+  return d >= 0 ? d : undefined
+}
+
+function money(n: number, currency?: string): string {
+  return `${currency === 'ARS' ? '$' : currency ?? 'USD'} ${Math.round(n).toLocaleString('es-AR')}`
+}
+
+/**
+ * Señales para negociar que salen del aviso mismo: hace cuánto está
+ * publicado y si bajó de precio. Van como texto en `features`, que la ficha
+ * ya muestra; todo es dato de MeLi, nada estimado.
+ */
+export function meliSignals(item: MeliItem, now: Date = new Date()): string[] {
+  const out: string[] = []
+  const days = daysSince(item.start_time ?? item.date_created, now)
+  if (days !== undefined) out.push(days === 0 ? 'Publicado hoy en MercadoLibre' : `Publicado hace ${days} día${days === 1 ? '' : 's'} en MercadoLibre`)
+  const op = item.original_price
+  if (typeof op === 'number' && typeof item.price === 'number' && op > item.price) {
+    out.push(`Bajó de precio: de ${money(op, item.currency_id)} a ${money(item.price, item.currency_id)}`)
+  }
+  return out
+}
+
 /** Un item de la API, en el formato del lector de avisos. Solo lo que el aviso trae: nada inventado. */
-export function meliItemToScraped(item: MeliItem): { data: ScrapedData; photos: string[] } {
+export function meliItemToScraped(item: MeliItem, now: Date = new Date()): { data: ScrapedData; photos: string[] } {
   const data: ScrapedData = {}
   if (item.title) data.title = item.title
   if (typeof item.price === 'number' && isFinite(item.price) && item.price > 0) {
@@ -134,6 +163,12 @@ export function meliItemToScraped(item: MeliItem): { data: ScrapedData; photos: 
   const type = attrText(item, 'PROPERTY_TYPE')
   if (type) data.propertyType = type
 
+  const features: string[] = []
+  const parking = attr(item, ['PARKING_LOTS'])
+  if (parking) features.push(`Cocheras: ${parking}`)
+  features.push(...meliSignals(item, now))
+  if (features.length) data.features = features
+
   const photos = (item.pictures ?? [])
     .map(p => p.secure_url ?? p.url)
     .filter((u): u is string => typeof u === 'string' && /^https:\/\//.test(u))
@@ -150,4 +185,42 @@ export function isMeliBlockPage(html: string): boolean {
   if (/account-verification|\/gz\/login|suspicious-traffic|captcha/i.test(head)) return true
   const title = head.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim()
   return title !== undefined && /^mercado ?libre(\s*(argentina|m[ée]xico))?$/i.test(title)
+}
+
+/**
+ * Lo que no viene en el item: la descripción completa, si lo publica una
+ * inmobiliaria o una cuenta personal, y cuántas visitas tuvo. Cada pedido es
+ * independiente y opcional: si MeLi no lo da, no se muestra.
+ */
+export async function fetchMeliExtras(
+  item: MeliItem,
+  opts: { env?: Record<string, string | undefined>; fetchImpl?: FetchLike; timeoutMs?: number } = {},
+): Promise<{ description?: string; features: string[] }> {
+  const fetchImpl = opts.fetchImpl ?? fetch
+  const token = await getMeliToken(opts.env ?? process.env, fetchImpl)
+  const headers = { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+  const get = async <T>(url: string): Promise<T | null> => {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 4000)
+    try {
+      const res = await fetchImpl(url, { headers, cache: 'no-store', signal: ctrl.signal })
+      return res.ok ? ((await res.json()) as T) : null
+    } catch { return null } finally { clearTimeout(timer) }
+  }
+  const id = encodeURIComponent(item.id ?? '')
+  const [desc, seller, visits] = await Promise.all([
+    item.id ? get<{ plain_text?: string }>(`${ITEM_URL}/${id}/description`) : null,
+    item.seller_id ? get<{ user_type?: string; tags?: string[] }>(`https://api.mercadolibre.com/users/${item.seller_id}`) : null,
+    item.id ? get<Record<string, number>>(`https://api.mercadolibre.com/visits/items?ids=${id}`) : null,
+  ])
+
+  const features: string[] = []
+  if (seller) {
+    const agency = seller.user_type === 'real_estate_agency' || (seller.tags ?? []).includes('real_estate_agency')
+    features.push(agency ? 'Lo publica una inmobiliaria' : 'Lo publica una cuenta personal (no inmobiliaria)')
+  }
+  const v = item.id && visits ? visits[item.id] : undefined
+  if (typeof v === 'number' && v >= 0) features.push(`${v.toLocaleString('es-AR')} visitas en MercadoLibre`)
+  const text = desc?.plain_text?.trim()
+  return { ...(text ? { description: text.slice(0, 1200) } : {}), features }
 }

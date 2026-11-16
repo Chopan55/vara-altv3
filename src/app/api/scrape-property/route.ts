@@ -7,7 +7,7 @@ import { isMexicanUrl } from '@/lib/analysis/country'
 import { parseListingText } from '@/lib/scrape/parseText'
 import { allowRequest, clientKey } from '@/lib/api/rateLimit'
 import { meliItemIdFromUrl } from '@/lib/comparables/model'
-import { fetchMeliItem, isMeliBlockPage, meliItemToScraped } from '@/lib/meli/api'
+import { fetchMeliExtras, fetchMeliItem, isMeliBlockPage, meliItemToScraped } from '@/lib/meli/api'
 
 export const maxDuration = 60
 
@@ -436,9 +436,13 @@ export async function POST(req: NextRequest) {
       const r = await fetchMeliItem(meliId, { signal: controller.signal })
       if (r.status === 'ok') {
         const m = meliItemToScraped(r.item)
-        data = m.data
+        const extras = await fetchMeliExtras(r.item)
+        data = { ...m.data, ...(extras.description ? { description: extras.description } : {}) }
+        if (extras.features.length) data.features = [...(data.features ?? []), ...extras.features]
         photos = m.photos
         method = 'json-ld'
+        // Finalizado o pausado: se muestran los datos, avisando que ya no está publicado.
+        if (r.item.status && r.item.status !== 'active') expired = true
       } else if (r.status === 'not_found') {
         expired = true
       }
