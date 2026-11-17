@@ -35,16 +35,29 @@ let cached: CachedToken | null = null
 /** Solo para tests. */
 export function resetMeliToken(): void { cached = null }
 
+/** Saca espacios, saltos de línea, comillas y caracteres invisibles de una credencial pegada a mano. */
+export function cleanCredential(raw: string | undefined): string {
+  return (raw ?? '').replace(/[\s\u200B-\u200D\uFEFF"'`]/g, '')
+}
+
+/** Forma de una credencial, sin revelarla: largo y si traía basura alrededor. */
+export function credentialShape(raw: string | undefined): { length: number; cleanLength: number; hadJunk: boolean; digitsOnly: boolean } {
+  const v = raw ?? ''
+  const clean = cleanCredential(v)
+  return { length: v.length, cleanLength: clean.length, hadJunk: clean !== v, digitsOnly: /^\d+$/.test(clean) }
+}
+
 export function meliConfigured(env: Record<string, string | undefined> = process.env): boolean {
-  return Boolean(env.MELI_CLIENT_ID && env.MELI_CLIENT_SECRET)
+  return Boolean(cleanCredential(env.MELI_CLIENT_ID) && cleanCredential(env.MELI_CLIENT_SECRET))
 }
 
 export async function getMeliToken(
   env: Record<string, string | undefined> = process.env,
   fetchImpl: FetchLike = fetch,
 ): Promise<string | null> {
-  const clientId = env.MELI_CLIENT_ID
-  const clientSecret = env.MELI_CLIENT_SECRET
+  // Al copiar y pegar suelen colarse espacios, saltos de línea o comillas: MeLi responde invalid_client.
+  const clientId = cleanCredential(env.MELI_CLIENT_ID)
+  const clientSecret = cleanCredential(env.MELI_CLIENT_SECRET)
   if (!clientId || !clientSecret) return null
 
   // Un minuto de margen: un token que vence mientras viaja la request es peor que pedir uno de más.

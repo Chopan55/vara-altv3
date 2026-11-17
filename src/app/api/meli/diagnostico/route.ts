@@ -4,7 +4,7 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { allowRequest, clientKey } from '@/lib/api/rateLimit'
 import { meliItemIdFromUrl } from '@/lib/comparables/model'
-import { meliConfigured } from '@/lib/meli/api'
+import { cleanCredential, credentialShape, meliConfigured } from '@/lib/meli/api'
 
 /**
  * Diagnóstico de la conexión con MercadoLibre: ¿se consigue el token de
@@ -42,8 +42,8 @@ export async function GET(req: Request) {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
         body: new URLSearchParams({
           grant_type: 'client_credentials',
-          client_id: process.env.MELI_CLIENT_ID ?? '',
-          client_secret: process.env.MELI_CLIENT_SECRET ?? '',
+          client_id: cleanCredential(process.env.MELI_CLIENT_ID),
+          client_secret: cleanCredential(process.env.MELI_CLIENT_SECRET),
         }),
         cache: 'no-store', signal: AbortSignal.timeout(8000),
       })
@@ -58,6 +58,9 @@ export async function GET(req: Request) {
 
   const result: Record<string, unknown> = {
     credenciales: meliConfigured() ? 'cargadas' : 'faltan',
+    // Solo la forma: largo y si traían basura. Nunca el valor.
+    clientId: credentialShape(process.env.MELI_CLIENT_ID),
+    clientSecret: { ...credentialShape(process.env.MELI_CLIENT_SECRET), digitsOnly: undefined },
     token: { status: tokenStatus, ok: Boolean(token), detail: tokenDetail },
   }
   if (itemId) {
