@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { fetchMeliExtras, fetchMeliItem, getMeliToken, isMeliBlockPage, meliItemToScraped, meliSignals, resetMeliToken } from '@/lib/meli/api'
+import { cleanCredential, credentialShape, fetchMeliExtras, fetchMeliItem, getMeliToken, isMeliBlockPage, meliItemToScraped, meliSignals, resetMeliToken } from '@/lib/meli/api'
 import type { MeliItem } from '@/lib/comparables/model'
 
 const ITEM: MeliItem = {
@@ -176,5 +176,29 @@ describe('scrape-property con un link de MeLi', () => {
     const body = await (await POST(req as never)).json()
     expect(body.status).toBe('blocked')
     expect(body.data.title).toBeUndefined()
+  })
+})
+
+describe('credenciales pegadas a mano', () => {
+  it('limpia espacios, saltos de línea, comillas e invisibles', () => {
+    expect(cleanCredential(' 2812844893070877\n')).toBe('2812844893070877')
+    expect(cleanCredential('"abcDEF123"')).toBe('abcDEF123')
+    expect(cleanCredential('abc\u200Bdef')).toBe('abcdef')
+  })
+
+  it('describe la forma sin revelar el valor', () => {
+    expect(credentialShape(' 123 ')).toEqual({ length: 5, cleanLength: 3, hadJunk: true, digitsOnly: true })
+    expect(JSON.stringify(credentialShape('secretoXYZ'))).not.toContain('secreto')
+  })
+
+  it('usa las credenciales limpias al pedir el token', async () => {
+    resetMeliToken()
+    const f = vi.fn(async (_u: string, i?: RequestInit) => {
+      const body = String(i?.body)
+      return body.includes('client_id=123&') && body.includes('client_secret=abc')
+        ? new Response(JSON.stringify({ access_token: 't', expires_in: 60 }), { status: 200 })
+        : new Response('{}', { status: 400 })
+    })
+    expect(await getMeliToken({ MELI_CLIENT_ID: ' 123\n', MELI_CLIENT_SECRET: '"abc" ' }, f)).toBe('t')
   })
 })
