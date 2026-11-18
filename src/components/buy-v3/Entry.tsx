@@ -295,8 +295,10 @@ export function ProgressPanel({
           {paused && (
             <div className="mt-3">
               <p className="text-sm text-amber-900/90">Dejé de esperar el link para que cargues tus datos tranquilo.</p>
-              {onRetry && (
-                <button type="button" onClick={onRetry} className="inline-flex min-h-11 items-center font-semibold text-brand-700 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+              {/* Volver a leer solo con el formulario cerrado: si no, la respuesta del reintento podría reemplazar lo que se está escribiendo.
+                  Al cerrar el reintento deja de estar "en pausa": volver a abrir pegar/manual pausa de nuevo y anula la lectura en curso. */}
+              {onRetry && mode === null && (
+                <button type="button" onClick={() => { setPaused(false); onRetry() }} className="inline-flex min-h-11 items-center font-semibold text-brand-700 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
                   Volver a leer el link
                 </button>
               )}

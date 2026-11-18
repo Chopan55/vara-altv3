@@ -49,6 +49,16 @@ export function PublishStep({ form, published, copiedPortal, blockedPortal, hand
                 )}
               </div>
 
+              {blockedPortal === portal.id && (
+                <p role="alert" className="mb-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  Tu navegador bloqueó la pestaña nueva. Permití las ventanas emergentes, o abrí {portal.name}{' '}
+                  <a href={portal.url} target="_blank" rel="noopener noreferrer" className="font-semibold underline">en otra pestaña</a>
+                  {' '}o{' '}
+                  <a href={portal.url} className="font-semibold underline">en esta misma</a>
+                  {' '}(tu aviso queda guardado: volvés con «Atrás»).
+                </p>
+              )}
+
               {isPublished ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-emerald-600">
@@ -70,12 +80,6 @@ export function PublishStep({ form, published, copiedPortal, blockedPortal, hand
                 </div>
               ) : (
                 <div>
-                  {blockedPortal === portal.id && (
-                    <p role="alert" className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                      Tu navegador bloqueó la pestaña. Permití las ventanas emergentes o abrí el portal a mano:{' '}
-                      <a href={portal.url} target="_blank" rel="noopener noreferrer" className="font-semibold underline">{portal.name}</a>.
-                    </p>
-                  )}
                 <button
                   onClick={() => handlePublish(portal)}
                   className="w-full bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5"

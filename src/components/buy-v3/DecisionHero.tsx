@@ -139,6 +139,12 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
             )}
           </div>
         </dl>
+        {firstQuestion && (
+          <p aria-hidden="true" className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-sm leading-snug ring-1 ring-white/10">
+            <span className="block text-[11px] font-semibold uppercase tracking-wide text-brand-200">Preguntá primero</span>
+            <span className="font-semibold">{firstQuestion.question}</span>
+          </p>
+        )}
       </div>
 
       {/* Abajo: la prueba, la pregunta y qué hacer */}
@@ -158,12 +164,16 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
             <>
               <RangeBar analysis={analysis} />
               <p className="mt-2 text-xs text-slate-500">
-                {analysis.comparableEvidence.strongMatches} aviso{analysis.comparableEvidence.strongMatches === 1 ? '' : 's'} comparable{analysis.comparableEvidence.strongMatches === 1 ? '' : 's'}. Son precios pedidos, no de venta.
+                Rango armado con {band.sampleSize} aviso{band.sampleSize === 1 ? '' : 's'} comparable{band.sampleSize === 1 ? '' : 's'}. Son precios pedidos, no de venta.
               </p>
             </>
           ) : (
             <div className="mt-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-800">Todavía no hay comparables reales</p>
+              <p className="text-sm font-semibold text-slate-800">
+                {analysis.comparableEvidence.strongMatches > 0
+                  ? `Encontré ${analysis.comparableEvidence.strongMatches} aviso${analysis.comparableEvidence.strongMatches === 1 ? '' : 's'} parecido${analysis.comparableEvidence.strongMatches === 1 ? '' : 's'}, pero no alcanzan para fijar un rango`
+                  : 'Todavía no hay comparables reales'}
+              </p>
               <p className="mt-1 text-sm text-slate-600">Sin esa referencia no puedo decirte si el precio es alto o bajo.</p>
               <button type="button" onClick={() => onScroll('sumar')}
                 className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
