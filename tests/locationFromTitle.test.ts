@@ -7,27 +7,33 @@ describe('ubicación desde el título de MercadoLibre', () => {
       .toEqual({ neighborhood: 'Estancias Del Pilar', city: 'Pilar' })
   })
 
-  it('con un solo dato antes de la región no inventa; sin región lee los dos', () => {
-    expect(locationFromTitle('Departamento en venta ubicado en Belgrano, Capital Federal')).toEqual({})
-    expect(locationFromTitle('Casa en venta ubicada en San Isidro Labrador, San Isidro'))
-      .toEqual({ neighborhood: 'San Isidro Labrador', city: 'San Isidro' })
+  it('la región es obligatoria y debe quedar exactamente barrio + ciudad', () => {
+    expect(locationFromTitle('Casa ubicada en Barrio Uno, Ciudad Dos')).toEqual({}) // sin región: ambiguo
+    expect(locationFromTitle('Departamento en venta ubicado en Belgrano, Capital Federal')).toEqual({}) // un solo nombre
+    expect(locationFromTitle('Casa ubicada en Pilar')).toEqual({})
+    expect(locationFromTitle('Casa ubicada en A, B, C, G.b.a. Norte')).toEqual({}) // tres nombres: ambiguo
   })
 
-  it('si no hay patrón o solo hay un dato, no inventa nada', () => {
+  it('rechaza formas rotas o con sufijos desconocidos', () => {
+    expect(locationFromTitle('Casa ubicada en Pilar, , GBA, Argentina')).toEqual({})
+    expect(locationFromTitle('Casa ubicada en Pilar, GBA, Argentina')).toEqual({})
+    expect(locationFromTitle('Casa ubicada en <script>, Pilar, G.b.a. Norte')).toEqual({})
+  })
+
+  it('sin patrón no inventa nada', () => {
     expect(locationFromTitle('Hermosa casa con pileta')).toEqual({})
-    expect(locationFromTitle('Casa ubicada en Pilar')).toEqual({})
     expect(locationFromTitle(undefined)).toEqual({})
   })
 
   it('no pisa lo que ya vino del aviso', () => {
-    const d = { title: 'Casa ubicada en Barrio Uno, Ciudad Dos', neighborhood: 'Otro barrio' }
+    const d = { title: 'Casa ubicada en Barrio Uno, Ciudad Dos, G.b.a. Norte', neighborhood: 'Otro barrio' }
     expect(withLocationFromTitle(d)).toBe(d)
-    const e = { title: 'Casa ubicada en Barrio Uno, Ciudad Dos', city: 'Otra ciudad' }
+    const e = { title: 'Casa ubicada en Barrio Uno, Ciudad Dos, G.b.a. Norte', city: 'Otra ciudad' }
     expect(withLocationFromTitle(e)).toBe(e)
   })
 
-  it('completa cuando faltan ambos', () => {
+  it('cuando completa, lo deja marcado como inferido', () => {
     expect(withLocationFromTitle({ title: 'Casa ubicada en Barrio Uno, Ciudad Dos, G.b.a. Norte' }))
-      .toEqual({ title: 'Casa ubicada en Barrio Uno, Ciudad Dos, G.b.a. Norte', neighborhood: 'Barrio Uno', city: 'Ciudad Dos' })
+      .toEqual({ title: 'Casa ubicada en Barrio Uno, Ciudad Dos, G.b.a. Norte', neighborhood: 'Barrio Uno', city: 'Ciudad Dos', locationFromTitle: true })
   })
 })

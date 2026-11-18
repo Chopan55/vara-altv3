@@ -191,17 +191,26 @@ function Step({ done, active, children }: { done: boolean; active: boolean; chil
 
 /** Cada paso aparece cuando existe de verdad. Si no hay dato, no hay barra de progreso. */
 export function ProgressPanel({
-  state, onConfirm, onPaste, onManual, mx = false,
+  state, onConfirm, onPaste, onManual, onPause, onRetry, mx = false,
 }: {
   state: BuyState
   onConfirm?: (p: UserOverrides) => Promise<void> | void
   onPaste?: (text: string) => void
   onManual?: (m: ManualListing) => void
+  /** Se llama al abrir pegar/manual: la lectura del link deja de contar (no pisa lo que se escribe). */
+  onPause?: () => void
+  /** Volver a leer el link después de haber dejado de esperar. */
+  onRetry?: () => void
   mx?: boolean
 }) {
   const [pasted, setPasted] = useState('')
   const [slow, setSlow] = useState(false)
   const [mode, setMode] = useState<null | 'texto' | 'manual'>(null)
+  const [paused, setPaused] = useState(false)
+  const open = (m: 'texto' | 'manual') => {
+    if (!paused) { onPause?.(); setPaused(true) }
+    setMode(cur => (cur === m ? null : m))
+  }
   const s = state.subject
   const f = s?.fields
   // Si pasan unos segundos sin ficha, la salida (pegar el texto o cargar a mano) se muestra sola, sin esperar el error.
@@ -257,7 +266,7 @@ export function ProgressPanel({
       {state.insight && <p className="mt-5 text-lg text-slate-800">{state.insight}</p>}
 
       <ul className="mt-6 space-y-3">
-        <Step done={!!s} active={!s}>Leí la publicación</Step>
+        <Step done={!!s} active={!s}>{s ? 'Leí la publicación' : 'Leyendo la publicación'}</Step>
         <Step done={!!state.evidence} active={!!s && !state.evidence}>
           {state.evidence
             ? `Encontré ${state.evidence.strongMatches} aviso${state.evidence.strongMatches === 1 ? '' : 's'} comparable${state.evidence.strongMatches === 1 ? '' : 's'}`
@@ -273,16 +282,26 @@ export function ProgressPanel({
           <p className="mt-1 text-sm text-amber-900/80">Algunos portales demoran o no dejan leer el aviso. Podés seguir sin esperar:</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             {onPaste && (
-              <button type="button" onClick={() => setMode(m => (m === 'texto' ? null : 'texto'))} aria-expanded={mode === 'texto'} className={SECONDARY_BTN}>
+              <button type="button" onClick={() => open('texto')} aria-expanded={mode === 'texto'} className={SECONDARY_BTN}>
                 <ClipboardPaste size={16} aria-hidden="true" /> Pegar el texto del aviso
               </button>
             )}
             {onManual && (
-              <button type="button" onClick={() => setMode(m => (m === 'manual' ? null : 'manual'))} aria-expanded={mode === 'manual'} className={SECONDARY_BTN}>
+              <button type="button" onClick={() => open('manual')} aria-expanded={mode === 'manual'} className={SECONDARY_BTN}>
                 <PencilLine size={16} aria-hidden="true" /> Cargar los datos a mano
               </button>
             )}
           </div>
+          {paused && (
+            <div className="mt-3">
+              <p className="text-sm text-amber-900/90">Dejé de esperar el link para que cargues tus datos tranquilo.</p>
+              {onRetry && (
+                <button type="button" onClick={onRetry} className="inline-flex min-h-11 items-center font-semibold text-brand-700 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+                  Volver a leer el link
+                </button>
+              )}
+            </div>
+          )}
           {mode === 'texto' && onPaste && (
             <div className="mt-3">
               <p className="text-sm text-slate-700">Abrí el aviso, seleccioná todo, copialo y pegalo acá. Lo leo igual.</p>

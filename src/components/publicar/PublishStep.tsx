@@ -4,10 +4,11 @@ import { CheckCircle2, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PORTALS, type Portal, type PublishForm } from './model'
 
-export function PublishStep({ form, published, copiedPortal, handlePublish }: {
+export function PublishStep({ form, published, copiedPortal, blockedPortal, handlePublish }: {
   form: PublishForm
   published: string[]
   copiedPortal: string | null
+  blockedPortal: string | null
   handlePublish: (portal: Portal) => void
 }) {
   return (
@@ -68,12 +69,20 @@ export function PublishStep({ form, published, copiedPortal, handlePublish }: {
                   </button>
                 </div>
               ) : (
+                <div>
+                  {blockedPortal === portal.id && (
+                    <p role="alert" className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                      Tu navegador bloqueó la pestaña. Permití las ventanas emergentes o abrí el portal a mano:{' '}
+                      <a href={portal.url} target="_blank" rel="noopener noreferrer" className="font-semibold underline">{portal.name}</a>.
+                    </p>
+                  )}
                 <button
                   onClick={() => handlePublish(portal)}
                   className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5"
                 >
                   <ExternalLink size={12} /> Ir a publicar en {portal.name}
                 </button>
+                </div>
               )}
             </div>
           )

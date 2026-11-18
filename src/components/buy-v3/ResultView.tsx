@@ -42,15 +42,30 @@ export function ResultView({
   const photo = state.subject?.photos[0]
   const lowEvidence = price.confidence === 'INSUFFICIENT' || price.confidence === 'LOW'
 
-  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // El salto también lleva el foco: con teclado o lector de pantalla se sigue leyendo desde el destino. Sin animación si se pidió menos movimiento.
+  const scrollTo = (id: string) => {
+    const el = document.getElementById(id)
+    if (!el) return
+    const calm = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' })
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1')
+    el.focus({ preventScroll: true })
+  }
+
+  /** Guarda y avisa si no se pudo: nada avanza dando por hecho un guardado que falló. */
+  const saveOrWarn = async (): Promise<boolean> => {
+    const saved = await actions.save()
+    if (!saved) setNotice('No pudimos guardar la propiedad, así que no seguimos. Probá de nuevo en un momento.')
+    return saved
+  }
 
   const act = async (type: NbaType) => {
     actions.track('nba_clicked', { type })
     switch (type) {
       case 'GET_MISSING_INFORMATION': return scrollTo('faltantes')
       case 'ADD_COMPARABLES': return scrollTo('sumar')
-      case 'COMPARE': await actions.save(); return router.push('/comparar')
-      case 'VISIT': actions.track('visit_started'); await actions.save(); return router.push('/vara-visit/solicitar')
+      case 'COMPARE': if (await saveOrWarn()) router.push('/comparar'); return
+      case 'VISIT': actions.track('visit_started'); if (await saveOrWarn()) router.push('/vara-visit/solicitar'); return
       case 'SAVE': {
         const saved = await actions.save()
         return setNotice(saved
@@ -69,7 +84,7 @@ export function ResultView({
 
   // Seguir la compra es tener una operación: se entra con la cuenta y después se arma (si ya hay sesión, va directo).
   const follow = async () => {
-    await actions.save()
+    if (!(await saveOrWarn())) return
     router.push(accountUrl(`/onboarding?intent=BUY&country=${analysis.subjectProperty.country === 'MX' ? 'MX' : 'AR'}`))
   }
 

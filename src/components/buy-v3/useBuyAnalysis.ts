@@ -177,6 +177,10 @@ export function useBuyAnalysis() {
     }
   }, [ev, run])
 
+  /** La persona eligió pegar el texto o cargar a mano mientras se leía el link: se deja de esperar esa lectura,
+   *  así su respuesta no reemplaza lo que está escribiendo. */
+  const holdRead = useCallback(() => { seqRef.current++ }, [])
+
   /** Datos cargados a mano cuando el portal no deja leer el aviso. */
   const submitManual = useCallback(async (url: string, m: ManualListing) => {
     ev('listing_submitted', { listingKey: url, manual: true })
@@ -285,6 +289,6 @@ export function useBuyAnalysis() {
 
   return {
     state, submit, submitManual, addComparable, removeComparable, confirmField, applyProfile,
-    save, discard, share, reset, track: ev,
+    save, discard, share, reset, holdRead, track: ev,
   }
 }

@@ -61,10 +61,16 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
     f.landArea?.value ? `${f.landArea.value} m² terreno` : null,
   ].filter(Boolean)
   const kind = f.kind?.value
-  const firstQuestion = sellerQuestions({
-    country: analysis.subjectProperty.country,
-    hasCommonCharges: kind === 'apartment' || kind === 'ph' || !!f.community?.value,
-  })[0]
+  // Si falta la superficie cubierta (el dato que más cambia la comparación), esa es la primera pregunta; si no, la de trámites.
+  const missingCovered = !f.coveredArea?.value && kind !== 'lot'
+  const firstQuestion = missingCovered
+    ? { question: mx ? '¿Cuántos m² construidos tiene exactamente?' : '¿Cuántos m² cubiertos tiene exactamente?',
+        why: 'Es el dato que más cambia la comparación y hoy falta o está en duda en el aviso.' }
+    : sellerQuestions({
+        country: analysis.subjectProperty.country,
+        hasCommonCharges: kind === 'apartment' || kind === 'ph' || !!f.community?.value,
+      })[0]
+  const locationInferred = f.neighborhood?.status === 'INFERRED' || f.city?.status === 'INFERRED'
   const hasSurfaceAlert = uniqueWarnings(warnings).length > 0
   const reasons = price.confidenceReasons.slice(0, 2)
 
@@ -88,6 +94,7 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
           <div className="min-w-0 flex-1">
             <p className="line-clamp-2 text-sm font-semibold leading-snug">{f.title?.value ?? 'Propiedad'}</p>
             <p className="mt-0.5 truncate text-xs text-brand-100">{[where, ...facts].filter(Boolean).join(' · ')}</p>
+            {locationInferred && <p className="mt-0.5 text-[11px] text-brand-200">Ubicación tomada del título del aviso</p>}
           </div>
           <button type="button" onClick={onShare} aria-label="Compartir este análisis"
             className="-mr-1 -mt-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
@@ -173,10 +180,12 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
             </span>
           </div>
           {reasons.length > 0 && <p className="mt-1 text-xs text-slate-500">{reasons.join(' · ')}</p>}
-          <button type="button" onClick={() => onScroll('evidencia')}
-            className="mt-1 inline-flex min-h-11 items-center text-xs font-semibold text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
-            Ver los avisos que usé
-          </button>
+          {band && (
+            <button type="button" onClick={() => onScroll('evidencia')}
+              className="mt-1 inline-flex min-h-11 items-center text-xs font-semibold text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+              Ver los avisos que usé
+            </button>
+          )}
         </div>
 
         {firstQuestion && (

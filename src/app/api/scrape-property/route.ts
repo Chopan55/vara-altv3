@@ -32,6 +32,8 @@ export interface ScrapedData {
   expenses?: number
   description?: string
   features?: string[]
+  /** Barrio y ciudad salieron del título del aviso (inferidos), no de un campo de ubicación. */
+  locationFromTitle?: boolean
 }
 
 export interface ScrapeResult {
@@ -536,7 +538,8 @@ export async function POST(req: NextRequest) {
     clearTimeout(timer)
 
     photos = cleanPhotos(photos)
-    data = withLocationFromTitle(data) // el título de MercadoLibre trae barrio y ciudad aunque la lectura no traiga dirección
+    // Solo MercadoLibre: su título trae barrio y ciudad aunque la lectura no traiga dirección. Queda marcado como inferido.
+    if (portal === 'MercadoLibre') data = withLocationFromTitle(data)
     const reviewed = reviewSurfaces(data)
     data = reviewed.data
     const warnings = reviewed.warnings

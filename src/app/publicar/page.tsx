@@ -41,6 +41,8 @@ export default function PublicarPage() {
   const [copyError, setCopyError] = useState<string | null>(null)
   const [highlights, setHighlights] = useState<string[]>([])
   const [copiedPortal, setCopiedPortal] = useState<string | null>(null)
+  // Portal cuya pestaña bloqueó el navegador: se explica y se ofrece el enlace, en vez de dar por abierto lo que no se abrió.
+  const [blockedPortal, setBlockedPortal] = useState<string | null>(null)
 
   useEffect(() => {
     if (form === EMPTY_FORM) return
@@ -85,15 +87,18 @@ export default function PublicarPage() {
    * No promete ningún "coordinador" que no existe: la publicación la hace el usuario.
    */
   const handlePublish = useCallback(async (portal: Portal) => {
-    setPublished(prev => prev.includes(portal.id) ? prev : [...prev, portal.id])
+    // Se abre ANTES de cualquier espera: así el navegador lo cuenta como acción de la persona y no lo bloquea.
+    // Sin "noopener" en la llamada devuelve la ventana (o null si la bloquearon); el opener se corta a mano.
+    const opened = window.open(portal.url, '_blank')
+    if (opened) { try { opened.opener = null } catch { /* mismo origen cruzado: ya está aislada */ } }
+    setBlockedPortal(opened ? null : portal.id)
+    if (opened) setPublished(prev => prev.includes(portal.id) ? prev : [...prev, portal.id])
 
     try {
       await navigator.clipboard.writeText(buildAdText(form))
       setCopiedPortal(portal.id)
       setTimeout(() => setCopiedPortal(p => p === portal.id ? null : p), 4000)
     } catch { /* el usuario puede copiar el texto manualmente */ }
-
-    window.open(portal.url, '_blank', 'noopener,noreferrer')
   }, [form])
 
   const formComplete = Boolean(form.title && form.price && form.address && form.description)
@@ -173,7 +178,7 @@ export default function PublicarPage() {
         )}
 
         {activeTab === 'publicar' && (
-          <PublishStep form={form} published={published} copiedPortal={copiedPortal} handlePublish={handlePublish} />
+          <PublishStep form={form} published={published} copiedPortal={copiedPortal} blockedPortal={blockedPortal} handlePublish={handlePublish} />
         )}
 
       </div>

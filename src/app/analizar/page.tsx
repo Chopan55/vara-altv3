@@ -73,6 +73,8 @@ function Analizar() {
         onConfirm={a.confirmField}
         onPaste={text => a.submit(state.url, text)}
         onManual={m => a.submitManual(state.url, m)}
+        onPause={a.holdRead}
+        onRetry={() => a.submit(state.url)}
       />
     )
   } else if (state.phase === 'blocked') {
