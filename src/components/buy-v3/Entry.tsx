@@ -202,6 +202,9 @@ function ManualForm({ mx, onSubmit }: { mx: boolean; onSubmit: (m: ManualListing
   )
 }
 
+/** El servidor lee el texto solo si tiene MÁS de 150 caracteres: el botón se habilita desde 151, no antes. */
+const MIN_PASTED_CHARS = 151
+
 /** Lo que VARA ya entendió del texto pegado, al instante y sin enviar nada: es la prueba de que "lo leemos igual". */
 function PastePreview({ text, mx }: { text: string; mx: boolean }) {
   const { data, warnings } = reviewSurfaces(parseListingText(text, { mx }))
@@ -265,11 +268,11 @@ export function BlockedPaste({
         className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
       />
       <PastePreview text={text} mx={mx} />
-      <button type="button" disabled={text.trim().length < 150} onClick={() => onSubmit(text)}
+      <button type="button" disabled={text.trim().length < MIN_PASTED_CHARS} onClick={() => onSubmit(text)}
         className="mt-3 rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">
         Analizar con este texto
       </button>
-      {text.trim().length > 0 && text.trim().length < 150 && (
+      {text.trim().length > 0 && text.trim().length < MIN_PASTED_CHARS && (
         <p className="mt-2 text-xs text-slate-500">Pegá la publicación completa para que pueda leerla.</p>
       )}
       {onManual && (
@@ -402,7 +405,7 @@ export function AddComparables({
           className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
       )}
       <div className="mt-3 flex items-center gap-4">
-        <button type="button" disabled={busy || (asText ? text.trim().length < 150 : !url.trim())} onClick={submit}
+        <button type="button" disabled={busy || (asText ? text.trim().length < MIN_PASTED_CHARS : !url.trim())} onClick={submit}
           className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40">
           {busy ? 'Leyendo…' : 'Sumar'}
         </button>
