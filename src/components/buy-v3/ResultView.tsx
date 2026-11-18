@@ -2,22 +2,19 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { readUserComparables } from '@/lib/analysis/providers'
 import { accountUrl } from '@/lib/auth/entryJourney'
 import type { UserOverrides } from '@/lib/analysis/normalize'
-import type { NbaType, PropertyAnalysis } from '@/lib/analysis/types'
+import type { NbaType } from '@/lib/analysis/types'
 import type { ProfileAnswers } from '@/lib/analysis/prefs'
 import type { BuyState } from './useBuyAnalysis'
 import { AskVara } from './AskVara'
 import { AddComparables, ProfilePrompt, SurfaceWarningCard } from './Entry'
-import { ComparableList, EvidenceSummary, RangeBar } from './Evidence'
+import { ComparableList, EvidenceSummary } from './Evidence'
 import { CostSection, DetailSection, FitSection, GoodSection, MissingSection, RisksSection, Section } from './Sections'
-import { SellerQuestionsCard, ShareCard, TotalCostCard, type ShareChannel } from './Highlights'
-import {
-  CONFIDENCE_DOTS, CONFIDENCE_TEXT, KIND_TEXT, POSITION_TEXT, VERDICT_STYLE, money,
-} from './format'
+import { SellerQuestionsCard, ShareCard, type ShareChannel } from './Highlights'
+import { DecisionHero } from './DecisionHero'
 
 export interface ResultActions {
   confirmField: (p: UserOverrides) => Promise<void>
@@ -31,46 +28,6 @@ export interface ResultActions {
   track: (name: 'comparable_opened' | 'nba_clicked' | 'missing_data_action' | 'visit_started', props?: Record<string, string | number | boolean | null>) => void
 }
 
-function Header({ analysis, photo }: { analysis: PropertyAnalysis; photo?: string }) {
-  const f = analysis.subjectProperty.fields
-  const ask = analysis.pricePositioning.subjectAskingPrice
-  const where = [f.community?.value, f.neighborhood?.value, f.city?.value].filter(Boolean).join(' · ')
-  const mx = analysis.subjectProperty.country === 'MX'
-  const facts = [
-    f.kind?.value ? KIND_TEXT[f.kind.value] : null,
-    f.bedrooms?.value ? `${f.bedrooms.value} ${mx ? 'recámaras' : 'dormitorios'}` : null,
-    f.coveredArea?.value ? `${f.coveredArea.value} m² ${mx ? 'construidos' : 'cubiertos'}` : null,
-    f.landArea?.value ? `${f.landArea.value} m² de terreno` : null,
-  ].filter(Boolean)
-
-  return (
-    <div className="flex items-start gap-4">
-      {photo && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo} alt="" className="h-20 w-20 shrink-0 rounded-xl object-cover bg-slate-100" />
-      )}
-      <div className="min-w-0">
-        <p className="truncate font-semibold text-slate-900">{f.title?.value ?? 'Propiedad'}</p>
-        {where && <p className="text-sm text-slate-500">{where}</p>}
-        <p className="mt-1 text-sm text-slate-600">
-          {ask ? <span className="font-semibold text-slate-900">{money(ask.amount, ask.currency)}</span> : 'Sin precio publicado'}
-          {facts.length > 0 && <span> · {facts.join(' · ')}</span>}
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function Chip({ label, value, sub }: { label: string; value: string; sub?: React.ReactNode }) {
-  return (
-    <div className="rounded-xl bg-slate-50 px-3 py-2.5">
-      <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold text-slate-900">{value}</p>
-      {sub}
-    </div>
-  )
-}
-
 export function ResultView({
   state, actions, onAnother,
 }: { state: BuyState; actions: ResultActions; onAnother: () => void }) {
@@ -80,8 +37,7 @@ export function ResultView({
   const analysis = state.analysis
   if (!analysis) return null
 
-  const { conclusion, nextBestAction: nba, userFit, pricePositioning: price } = analysis
-  const style = VERDICT_STYLE[conclusion.verdict]
+  const { userFit, pricePositioning: price } = analysis
   const removable = new Set(readUserComparables().map(l => l.id))
   const photo = state.subject?.photos[0]
   const lowEvidence = price.confidence === 'INSUFFICIENT' || price.confidence === 'LOW'
@@ -119,87 +75,23 @@ export function ResultView({
 
   return (
     <article className="pb-24">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <Header analysis={analysis} photo={photo} />
-        </div>
-        <button type="button" onClick={() => scrollTo('compartir')} aria-label="Compartir este análisis"
-          className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-          <Share2 size={14} /> <span className="hidden sm:inline">Compartir</span>
-        </button>
-      </div>
+      <DecisionHero
+        analysis={analysis}
+        photo={photo}
+        warnings={state.warnings}
+        onAct={act}
+        onShare={() => scrollTo('compartir')}
+        onScroll={scrollTo}
+        onQuestionCopied={() => actions.track('missing_data_action', { kind: 'copy_questions' })}
+      />
 
-      <SurfaceWarningCard warnings={state.warnings} onConfirm={actions.confirmField} />
-
-      {/* Primero, lo que siempre se puede calcular y más impacta: cuánto sale en total. */}
-      <TotalCostCard analysis={analysis} onDetail={() => scrollTo('costos')} />
-
-      {/* Después: conclusión, tres señales y UNA acción */}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
-        <div className={cn('h-1.5', style.bar)} />
-        <div className="p-5 sm:p-6">
-          <p className={cn('text-xs font-semibold uppercase tracking-wide', style.text)}>{style.label}</p>
-          <h1 className="mt-1 text-xl font-semibold leading-snug text-slate-900 sm:text-2xl">{conclusion.headline}</h1>
-
-          <dl className="mt-4 space-y-2 text-sm">
-            <div className="flex gap-3"><dt className="w-14 shrink-0 text-slate-400">Encaje</dt><dd className="text-slate-700">{conclusion.why}</dd></div>
-            <div className="flex gap-3"><dt className="w-14 shrink-0 text-slate-400">Precio</dt><dd className="text-slate-700">{conclusion.price}</dd></div>
-            <div className="flex gap-3"><dt className="w-14 shrink-0 text-slate-400">Falta</dt><dd className="text-slate-700">{conclusion.unknown}</dd></div>
-          </dl>
-
-          <div className="mt-5 grid grid-cols-3 gap-2">
-            <Chip label="Encaje" value={userFit.score !== null ? `${userFit.score}/100` : 'Sin perfil'} />
-            <Chip label="Precio publicado" value={POSITION_TEXT[price.position]} />
-            <Chip
-              label="Confianza"
-              value={CONFIDENCE_TEXT[price.confidence]}
-              sub={
-                <div className="mt-1 flex gap-0.5" aria-hidden>
-                  {[0, 1, 2].map(i => (
-                    <span key={i} className={cn('h-1 w-5 rounded-full', i < CONFIDENCE_DOTS[price.confidence] ? 'bg-brand-600' : 'bg-slate-200')} />
-                  ))}
-                </div>
-              }
-            />
-          </div>
-
-          {/* La prueba junto al veredicto: dónde cae el precio entre los avisos comparables y por qué esa confianza. */}
-          <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/60 p-4" data-testid="verdict-proof">
-            {price.comparableListingRange
-              ? <RangeBar analysis={analysis} />
-              : <p className="text-sm text-slate-700">Todavía no puedo opinar sobre el precio: no hay avisos comparables suficientes.</p>}
-            {price.confidenceReasons.length > 0 && (
-              <p className="mt-3 text-xs text-slate-600">
-                <span className="font-semibold text-slate-700">Por qué esta confianza: </span>
-                {price.confidenceReasons.slice(0, 2).join(' · ')}
-              </p>
-            )}
-            <button type="button" onClick={() => scrollTo('evidencia')}
-              className="mt-2 text-xs font-semibold text-brand-700 hover:underline">
-              Ver los avisos que usé
-            </button>
-          </div>
-
-          <button type="button" onClick={() => act(nba.type)}
-            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3.5 text-base font-semibold text-white hover:bg-brand-800 sm:w-auto">
-            {nba.label} <ArrowRight size={18} />
-          </button>
-          <p className="mt-2 text-sm text-slate-500">{nba.reason}</p>
-          {nba.secondary.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
-              {nba.secondary.map(s => (
-                <button key={s.type} type="button" onClick={() => act(s.type)}
-                  className="text-sm text-slate-500 hover:text-slate-800 hover:underline">
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* El dato raro, completo y corregible; el bloque de arriba lleva hasta acá. */}
+      <div id="dato-raro" className="scroll-mt-6">
+        <SurfaceWarningCard warnings={state.warnings} onConfirm={actions.confirmField} />
       </div>
 
       {(notice || state.discarded || state.refreshing) && (
-        <p role="status" className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700 break-all">
+        <p role="status" className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700 break-all min-h-11">
           {state.refreshing ? 'Actualizando el análisis…' : notice ?? 'Descartada.'}
         </p>
       )}
@@ -253,7 +145,7 @@ export function ResultView({
         <p className="font-medium text-slate-900">¿Viste otra propiedad?</p>
         <p className="mt-1 text-sm text-slate-500">Pasame el link y la comparo con esta.</p>
         <button type="button" onClick={onAnother}
-          className="mt-3 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-100">
+          className="mt-3 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-100 min-h-11">
           Analizar otra propiedad
         </button>
       </div>

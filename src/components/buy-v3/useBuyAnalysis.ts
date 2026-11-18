@@ -74,7 +74,7 @@ export function useBuyAnalysis() {
     track(name, sessionId(), props)
   }, [])
 
-  const run = useCallback(async (scrape: ScrapeResult, refresh: boolean) => {
+  const run = useCallback(async (scrape: ScrapeResult, refresh: boolean, seq: number) => {
     scrapeRef.current = scrape
     // Latencia medida desde que la persona pegó el link (incluye leer el aviso).
     const t0 = refresh ? Date.now() : startedAt.current || Date.now()
@@ -98,6 +98,7 @@ export function useBuyAnalysis() {
         overrides: overridesRef.current,
         elapsedBeforeMs: refresh ? 0 : Date.now() - t0,
         onStage: e => {
+          if (seq !== seqRef.current) return // una lectura más nueva (texto pegado) ya tomó la pantalla
           if (refresh && e.stage !== 'done') return
           if (e.stage === 'property') {
             setState(s => ({ ...s, phase: 'analyzing', subject: e.subject, extraction: e.extraction }))
@@ -129,6 +130,7 @@ export function useBuyAnalysis() {
         },
       })
     } catch {
+      if (seq !== seqRef.current) return
       setState(s => ({
         ...s, phase: s.analysis ? 'done' : 'error', refreshing: false,
         message: 'No pudimos completar el análisis. Probá de nuevo en un momento.',
@@ -168,7 +170,7 @@ export function useBuyAnalysis() {
         return
       }
       if (scrape.warnings?.length) setState(s => ({ ...s, warnings: scrape.warnings }))
-      await run(scrape, false)
+      await run(scrape, false, seq)
     } catch {
       if (seq !== seqRef.current) return
       setState(s => ({ ...s, phase: 'error', message: 'No pudimos acceder al aviso. Probá de nuevo.' }))
@@ -179,7 +181,7 @@ export function useBuyAnalysis() {
   const submitManual = useCallback(async (url: string, m: ManualListing) => {
     ev('listing_submitted', { listingKey: url, manual: true })
     trackFunnel('analyze_start', { manual: true })
-    seqRef.current++
+    const seq = ++seqRef.current
     overridesRef.current = {}
     startedAt.current = Date.now()
     setState({ ...INITIAL, phase: 'analyzing', url })
@@ -192,13 +194,13 @@ export function useBuyAnalysis() {
         city: where,
       },
     }
-    await run(scrape, false)
+    await run(scrape, false, seq)
   }, [ev, run])
 
   const rerun = useCallback(async () => {
     if (!scrapeRef.current) return
     setState(s => ({ ...s, refreshing: true }))
-    await run(scrapeRef.current, true)
+    await run(scrapeRef.current, true, seqRef.current)
   }, [run])
 
   /** Suma un aviso parecido (link o texto) como evidencia. */
@@ -250,7 +252,8 @@ export function useBuyAnalysis() {
     if (!scrapeRef.current) return false
     try {
       const { addCandidate } = await import('@/lib/candidates/store')
-      await addCandidate(userPropertyFromScrape(scrapeRef.current))
+      const saved = await addCandidate(userPropertyFromScrape(scrapeRef.current))
+      if (!saved) return false // con sesión puede volver null; sin sesión, el navegador puede rechazar la escritura
       setState(s => ({ ...s, saved: true }))
       ev('property_saved')
       return true

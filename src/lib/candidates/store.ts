@@ -33,8 +33,9 @@ function readList(): PropertyCandidate[] {
   } catch { return [] }
 }
 
-function writeList(list: PropertyCandidate[]): void {
-  try { localStorage.setItem(LIST_KEY, JSON.stringify(list)) } catch {}
+/** Devuelve false si el navegador no dejó guardar (sin espacio, modo privado, bloqueado): quien confirma al usuario lo necesita. */
+function writeList(list: PropertyCandidate[]): boolean {
+  try { localStorage.setItem(LIST_KEY, JSON.stringify(list)); return true } catch { return false }
 }
 
 /**
@@ -122,8 +123,8 @@ export async function addCandidate(p: UserProperty): Promise<PropertyCandidate |
   } catch (err) { log.error('candidate.add.supabase.failed', err) }
 
   const c = toCandidate(p, { id: localId() })
-  writeList([...adoptLegacyProperty(), c])
-  return c
+  // Si el navegador no guardó, no hay candidato: nunca se devuelve uno que no existe.
+  return writeList([...adoptLegacyProperty(), c]) ? c : null
 }
 
 /**

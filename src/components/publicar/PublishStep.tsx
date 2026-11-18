@@ -53,7 +53,7 @@ export function PublishStep({ form, published, copiedPortal, handlePublish }: {
                   <div className="flex items-center gap-2 text-emerald-600">
                     <CheckCircle2 size={14} />
                     <span className="text-xs font-semibold">
-                      {copiedPortal === portal.id ? 'Texto copiado — pegalo en el portal' : 'Abierto en nueva pestaña'}
+                      {copiedPortal === portal.id ? 'Texto copiado — pegalo en el portal' : 'Te llevamos al portal en una pestaña nueva'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">
@@ -85,11 +85,11 @@ export function PublishStep({ form, published, copiedPortal, handlePublish }: {
           <div className="flex items-center gap-2 mb-1">
             <CheckCircle2 size={14} className="text-emerald-600" />
             <p className="text-sm font-bold text-emerald-800">
-              {published.length === 1 ? '1 portal abierto' : `${published.length} portales abiertos`}
+              Falta publicar en el portal
             </p>
           </div>
           <p className="text-xs text-emerald-700 leading-relaxed">
-            Abrimos el portal y copiamos el texto de tu aviso. Falta que lo publiques ahí.
+            Te llevamos al portal en una pestaña nueva: la publicación se completa ahí, no en VARA.
             La tarea de publicación en tu operación se completa cuando cargues la URL del aviso publicado.
           </p>
           <Link href="/asistente" className="mt-2 flex items-center gap-1 text-xs font-semibold text-green-700 hover:underline">

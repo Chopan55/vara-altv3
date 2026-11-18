@@ -189,7 +189,7 @@ export function MissingSection({
               </div>
               {fieldInput(i.field, country) && (
                 <button type="button" onClick={() => setOpen(open === i.field ? null : i.field)}
-                  className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  className="min-h-11 shrink-0 rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
                   Lo sé
                 </button>
               )}
@@ -206,12 +206,12 @@ export function MissingSection({
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button"
               onClick={async () => { if (await copyText(draftMessage)) { setCopied(true); onAction('copy'); setTimeout(() => setCopied(false), 2000) } }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white">
+              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white min-h-11">
               <Copy size={14} /> {copied ? 'Copiado' : 'Copiar mensaje'}
             </button>
             <a href={`https://wa.me/?text=${encodeURIComponent(draftMessage)}`} target="_blank" rel="noopener noreferrer"
               onClick={() => onAction('whatsapp')}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white">
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white min-h-11">
               <MessageCircle size={14} /> Abrir en WhatsApp
             </a>
           </div>

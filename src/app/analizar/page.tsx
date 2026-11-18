@@ -50,6 +50,8 @@ function Analizar() {
 
   const { state } = a
   const busy = state.phase === 'reading' || state.phase === 'analyzing'
+  // Un aviso pegado como texto o cargado a mano no tiene link: se le da uno único para que no se pisen entre sí.
+  const pastedUrl = () => `https://aviso.pegado/${Date.now()}`
 
   let body: React.ReactNode
   if (enabled === null) {
@@ -64,7 +66,15 @@ function Analizar() {
   } else if (state.phase === 'done') {
     body = <ResultView state={state} actions={a} onAnother={a.reset} />
   } else if (state.phase === 'reading' || state.phase === 'analyzing') {
-    body = <ProgressPanel state={state} onConfirm={a.confirmField} onPaste={text => a.submit(state.url, text)} />
+    body = (
+      <ProgressPanel
+        state={state}
+        mx={isMexicanUrl(state.url)}
+        onConfirm={a.confirmField}
+        onPaste={text => a.submit(state.url, text)}
+        onManual={m => a.submitManual(state.url, m)}
+      />
+    )
   } else if (state.phase === 'blocked') {
     body = (
       <BlockedPaste
@@ -81,7 +91,13 @@ function Analizar() {
         {state.phase === 'error' && state.message && (
           <p role="alert" className="mt-8 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{state.message}</p>
         )}
-        <EntryForm onSubmit={a.submit} busy={busy} initialUrl={initialUrl} />
+        <EntryForm
+          onSubmit={a.submit}
+          busy={busy}
+          initialUrl={initialUrl}
+          onPasteText={text => a.submit(pastedUrl(), text)}
+          onManual={m => a.submitManual(pastedUrl(), m)}
+        />
       </>
     )
   }

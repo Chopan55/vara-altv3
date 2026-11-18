@@ -78,7 +78,26 @@
   }
 }
 
+@keyframes vara-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes vara-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 @layer utilities {
+  /* Entrada suave de las tarjetas principales. */
+  .vara-rise { animation: vara-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  /* Marcador de lugar mientras llega un dato real: no simula contenido, solo reserva el espacio. */
+  .vara-shimmer {
+    background: linear-gradient(90deg, #e6e8f0 25%, #f5f6f8 37%, #e6e8f0 63%);
+    background-size: 400% 100%;
+    animation: vara-shimmer 1.4s ease-in-out infinite;
+  }
+
   .text-balance {
     text-wrap: balance;
   }
