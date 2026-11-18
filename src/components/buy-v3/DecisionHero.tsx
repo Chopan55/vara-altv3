@@ -85,7 +85,7 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
   return (
     <section aria-label="Resumen: ¿vale la pena avanzar?" className="vara-rise overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-elevated">
       {/* Arriba: qué encontró VARA y qué concluye */}
-      <div className="bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 p-5 text-white sm:p-6">
+      <div className="bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 p-4 text-white sm:p-6">
         <div className="flex items-start gap-3">
           {photo && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -102,30 +102,30 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
           </button>
         </div>
 
-        <p className="mt-5 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
+        <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
           <span className={cn('h-2 w-2 rounded-full', VERDICT_DOT[conclusion.verdict])} aria-hidden="true" />
           {style.label}
         </p>
         <h1 className="font-display mt-2 text-lg font-extrabold leading-snug text-balance sm:text-2xl">{conclusion.headline}</h1>
 
-        <dl className="mt-4 grid gap-2.5 sm:grid-cols-2">
+        <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
           <div className="rounded-2xl bg-white/[0.07] p-3 ring-1 ring-white/10">
             <div className="flex items-center justify-between gap-2">
-              <dt className="text-xs text-brand-100">Precio publicado</dt>
+              <p className="text-xs text-brand-100">Precio publicado</p>
               <Source kind="aviso" />
             </div>
-            <dd className="font-display mt-1 text-xl font-extrabold tabular-nums">
+            <p className="font-display mt-1 text-xl font-extrabold tabular-nums">
               {ask ? money(ask.amount, ask.currency) : 'Sin precio publicado'}
-            </dd>
+            </p>
           </div>
           <div className="rounded-2xl bg-white/[0.07] p-3 ring-1 ring-white/10">
             <div className="flex items-center justify-between gap-2">
-              <dt className="text-xs text-brand-100">Total para avanzar</dt>
+              <p className="text-xs text-brand-100">Total para avanzar</p>
               <Source kind="estimado" />
             </div>
-            <dd className="font-display mt-1 text-xl font-extrabold tabular-nums">
+            <p className="font-display mt-1 text-xl font-extrabold tabular-nums">
               {total ? rangeText(total.min, total.max, total.currency) : 'Sin estimar'}
-            </dd>
+            </p>
             {total && extra && (
               <>
                 <p className="mt-1 text-xs text-brand-100">
@@ -138,7 +138,7 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
               </>
             )}
           </div>
-        </dl>
+        </div>
         {firstQuestion && (
           <p aria-hidden="true" className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-sm leading-snug ring-1 ring-white/10">
             <span className="block text-[11px] font-semibold uppercase tracking-wide text-brand-200">Preguntá primero</span>

@@ -76,7 +76,7 @@ function toM2(n: number, unit: string): number {
 
 function kindOf(label: string): SurfaceKind {
   const l = label.toLowerCase()
-  if (/cubiert|construid|construcci/.test(l)) return 'covered'
+  if (/cubie|construid|construcci/.test(l)) return 'covered'
   if (/terreno|lote/.test(l)) return 'lot'
   return 'total'
 }
@@ -95,7 +95,7 @@ export function findSurfaces(text: string): FoundSurface[] {
   const labelled = new RegExp(`superficie\\s+(total|cubierta|construida|de[l]?\\s+terreno|de[l]?\\s+lote|terreno|lote)[ \\t]*[:\\n]?[ \\t]*([\\d][\\d.,]*)[ \\t]*${AREA_UNIT}`, 'gi')
   for (const m of text.matchAll(labelled)) add(m[2], m[3], m[1], m[0])
   // "250 m² totales" · "108 ha totales" · "180 m² cubiertos" · "1066 m² de terreno"
-  const inline = new RegExp(`([\\d][\\d.,]*)[ \\t]*${AREA_UNIT}\\.?[ \\t]*(?:²)?[ \\t]*(totales|total|cubiertos?|cubierta|construid[oa]s?|de construcci[oó]n|de terreno|de lote|terreno|lote)?`, 'gi')
+  const inline = new RegExp(`([\\d][\\d.,]*)[ \\t]*${AREA_UNIT}\\.?[ \\t]*(?:²)?[ \\t]*(totales|total|cubiertos?|cubierta|cubie|construid[oa]s?|de construcci[oó]n|de terreno|de lote|terreno|lote)?`, 'gi')
   for (const m of text.matchAll(inline)) {
     if (/^(?:metros)$/i.test(m[2]) && !m[3]) continue
     add(m[1], m[2], m[3] ?? '', m[0])

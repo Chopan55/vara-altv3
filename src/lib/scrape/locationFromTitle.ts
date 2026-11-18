@@ -32,3 +32,22 @@ export function withLocationFromTitle<T extends { title?: string; neighborhood?:
   const loc = locationFromTitle(data.title)
   return loc.neighborhood && loc.city ? { ...data, ...loc, locationFromTitle: true } : data
 }
+
+const plain = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
+
+/**
+ * Un aviso pegado como texto no trae barrio ni ciudad estructurados, y sin ellos no se puede ubicar entre los comparables.
+ * Si el título o el comienzo de su texto nombra EXACTAMENTE el barrio de la propiedad analizada, se usa ese barrio (y su ciudad)
+ * y queda marcado como inferido. Si no lo nombra, no se inventa nada.
+ */
+export function withSubjectLocation<T extends { title?: string; description?: string; neighborhood?: string; city?: string; locationFromTitle?: boolean }>(
+  data: T, subject: { neighborhood?: string; city?: string } | undefined,
+): T {
+  if (data.neighborhood || data.city) return data
+  const nb = subject?.neighborhood?.trim()
+  if (!nb || nb.length < 4) return data
+  const hay = plain(`${data.title ?? ''}\n${(data.description ?? '').slice(0, 300)}`)
+  const needle = plain(nb).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  if (!new RegExp(`(^|[^a-z0-9])${needle}([^a-z0-9]|$)`).test(hay)) return data
+  return { ...data, neighborhood: nb, ...(subject?.city ? { city: subject.city } : {}), locationFromTitle: true }
+}

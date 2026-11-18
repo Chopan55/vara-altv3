@@ -15,6 +15,7 @@ import { analyzeProperty } from '@/lib/analysis/run'
 import { track, type EventName } from '@/lib/analysis/events'
 import { trackFunnel } from '@/lib/funnel/track'
 import { listingFromScrape, type UserOverrides } from '@/lib/analysis/normalize'
+import { withSubjectLocation } from '@/lib/scrape/locationFromTitle'
 import {
   addUserComparable, candidatesProvider, readUserComparables, removeUserComparable,
   userListingsProvider, userPropertyFromScrape,
@@ -216,6 +217,8 @@ export function useBuyAnalysis() {
         body: JSON.stringify({ url: url.trim(), text }),
       })
       const scrape = (await res.json()) as ScrapeResult
+      // Un aviso pegado como texto no trae barrio ni ciudad: se toman de la propiedad analizada solo si el texto los nombra.
+      if (text) scrape.data = withSubjectLocation(scrape.data, scrapeRef.current?.data)
       const listing = listingFromScrape(scrape)
       if (!listing.price) {
         return { ok: false, message: scrape.errorMessage ?? 'Ese aviso no trae precio, así que no sirve para comparar.' }
@@ -223,6 +226,10 @@ export function useBuyAnalysis() {
       addUserComparable(listing)
       ev('missing_data_action', { kind: 'add_comparable' })
       await rerun()
+      // Sin barrio ni ciudad el aviso no se puede ubicar entre los comparables: se dice, en vez de prometer un recálculo que no lo cuenta.
+      if (!listing.neighborhood && !listing.city) {
+        return { ok: true, message: 'Lo sumé, pero el texto no dice el barrio ni la ciudad, así que todavía no cuenta para el rango. Pegá también la ubicación o usá el link del aviso.' }
+      }
       return { ok: true, message: 'Sumado. Recalculé la comparación.' }
     } catch {
       return { ok: false, message: 'No pudimos leer ese aviso. Probá pegando el texto.' }

@@ -47,11 +47,11 @@ export function EntryForm({
     <div className="pt-2 sm:pt-10">
       <div className="vara-rise relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-950 via-brand-900 to-brand-700 p-6 text-white shadow-product sm:p-10">
         <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-brand-500/30 blur-3xl" />
-        <p className="relative text-xs font-semibold uppercase tracking-widest text-brand-200">Análisis en segundos</p>
-        <h1 className="font-display relative mt-3 text-3xl font-extrabold leading-tight text-balance sm:text-5xl">
+        <p className="relative [@media(max-height:520px)]:hidden text-xs font-semibold uppercase tracking-widest text-brand-200">Análisis en segundos</p>
+        <h1 className="font-display relative mt-3 text-3xl font-extrabold leading-tight text-balance sm:text-5xl [@media(max-height:520px)]:mt-0 [@media(max-height:520px)]:text-2xl">
           ¿Vale la pena esta propiedad?
         </h1>
-        <p className="relative mt-3 max-w-xl text-base text-brand-100 sm:text-lg">
+        <p className="relative mt-3 [@media(max-height:520px)]:hidden max-w-xl text-base text-brand-100 sm:text-lg">
           Pegá el link del aviso y mirá cuánto te costaría avanzar, dónde cae el precio y qué preguntar antes de visitar.
         </p>
         <form

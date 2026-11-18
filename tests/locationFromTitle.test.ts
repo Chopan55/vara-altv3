@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { locationFromTitle, withLocationFromTitle } from '@/lib/scrape/locationFromTitle'
+import { locationFromTitle, withLocationFromTitle, withSubjectLocation } from '@/lib/scrape/locationFromTitle'
 
 describe('ubicación desde el título de MercadoLibre', () => {
   it('lee barrio y ciudad y descarta la región', () => {
@@ -35,5 +35,34 @@ describe('ubicación desde el título de MercadoLibre', () => {
   it('cuando completa, lo deja marcado como inferido', () => {
     expect(withLocationFromTitle({ title: 'Casa ubicada en Barrio Uno, Ciudad Dos, G.b.a. Norte' }))
       .toEqual({ title: 'Casa ubicada en Barrio Uno, Ciudad Dos, G.b.a. Norte', neighborhood: 'Barrio Uno', city: 'Ciudad Dos', locationFromTitle: true })
+  })
+})
+
+describe('ubicación de un aviso pegado a partir de la propiedad analizada', () => {
+  const subject = { neighborhood: 'Estancias Del Pilar', city: 'Pilar' }
+  it('hereda barrio y ciudad solo si su propio texto nombra ese barrio', () => {
+    const d = { title: 'Ruta 8 , Estancias del Pilar', description: 'Casa en una planta' }
+    expect(withSubjectLocation(d, subject)).toMatchObject({ neighborhood: 'Estancias Del Pilar', city: 'Pilar', locationFromTitle: true })
+  })
+  it('acepta tildes y mayúsculas distintas', () => {
+    const d: { title: string; neighborhood?: string } = { title: 'Casa en ÉSTANCIAS del pilar' }
+    expect(withSubjectLocation(d, { neighborhood: 'Estáncias del Pilar', city: 'Pilar' }).neighborhood).toBe('Estáncias del Pilar')
+  })
+  it('si el texto no lo nombra, no inventa nada', () => {
+    const d = { title: 'Casa en Barrio Santo Tomás', description: 'A 20 minutos de otro lado' }
+    expect(withSubjectLocation(d, subject)).toEqual(d)
+  })
+  it('no pisa una ubicación que el aviso ya trae', () => {
+    const d = { title: 'Estancias Del Pilar', city: 'Escobar' }
+    expect(withSubjectLocation(d, subject)).toEqual(d)
+  })
+  it('ignora menciones que no están al comienzo del texto', () => {
+    const d = { title: 'Casa en Escobar', description: 'x'.repeat(320) + ' Estancias Del Pilar' }
+    expect(withSubjectLocation(d, subject)).toEqual(d)
+  })
+  it('sin barrio en la propiedad analizada, no hereda', () => {
+    const d = { title: 'Casa en Pilar' }
+    expect(withSubjectLocation(d, { city: 'Pilar' })).toEqual(d)
+    expect(withSubjectLocation(d, undefined)).toEqual(d)
   })
 })

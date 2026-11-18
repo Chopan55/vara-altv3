@@ -103,3 +103,12 @@ describe('superficies', () => {
     expect(lotFromDescription('sin datos')).toBeUndefined()
   })
 })
+
+describe('abreviaturas de superficie de Argenprop', () => {
+  it('lee «260 m² cubie.» como superficie cubierta', async () => {
+    const { parseListingText } = await import('@/lib/scrape/parseText')
+    const d = parseListingText('Ruta 8 , Estancias Del Pilar\nUSD\n360.000\n260 m² cubie.\n3 dorm.\n3 baños\n4 ambientes\nCasa en venta con jardín y pileta, living comedor, cocina integrada y galería techada con parrilla.')
+    expect(d.coveredM2).toBe(260)
+    expect(d.totalM2).toBeUndefined()
+  })
+})
