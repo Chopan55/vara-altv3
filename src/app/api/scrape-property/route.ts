@@ -5,6 +5,7 @@ import OpenAI from 'openai'
 import { requireAiAccess } from '@/lib/api/aiAccess'
 import { isMexicanUrl } from '@/lib/analysis/country'
 import { parseListingText } from '@/lib/scrape/parseText'
+import { reviewSurfaces, type SurfaceWarning } from '@/lib/scrape/surfaces'
 import { allowRequest, clientKey } from '@/lib/api/rateLimit'
 import { meliItemIdFromUrl } from '@/lib/comparables/model'
 import { fetchMeliExtras, fetchMeliItem, isMeliBlockPage, meliItemToScraped } from '@/lib/meli/api'
@@ -22,6 +23,8 @@ export interface ScrapedData {
   propertyType?: string
   totalM2?: number
   coveredM2?: number
+  /** Superficie del terreno/lote (distinta de la superficie total declarada). */
+  lotM2?: number
   rooms?: number
   bedrooms?: number
   bathrooms?: number
@@ -38,6 +41,8 @@ export interface ScrapeResult {
   data: ScrapedData
   photos: string[]
   missingFields: string[]
+  /** Superficies que el aviso declara pero parecen un error de carga: se apartan del análisis hasta que la persona las confirme. */
+  warnings?: SurfaceWarning[]
   errorMessage?: string
 }
 
@@ -418,12 +423,13 @@ export async function POST(req: NextRequest) {
       const byRules = parseListingText(pastedText, { mx })
       const aiData = missingOf(byRules).length > 0 ? await ai(pastedText, byRules) : null
       clearTimeout(timer)
-      const d = aiData ?? byRules
+      const { data: d, warnings } = reviewSurfaces(aiData ?? byRules)
       const missingFields = missingOf(d)
       const got = CORE_FIELDS.length - missingFields.length
       return NextResponse.json({
         status: got === 0 ? 'error' : missingFields.length === 0 ? 'success' : 'partial',
         url, portal, method: 'paste', data: d, photos: [], missingFields,
+        ...(warnings.length ? { warnings } : {}),
         ...(got === 0 ? {
           errorMessage: 'No encontramos el precio ni la superficie en ese texto. Revisá que hayas copiado la publicación completa, o cargá los datos a mano.',
         } : {}),
@@ -529,6 +535,9 @@ export async function POST(req: NextRequest) {
     clearTimeout(timer)
 
     photos = cleanPhotos(photos)
+    const reviewed = reviewSurfaces(data)
+    data = reviewed.data
+    const warnings = reviewed.warnings
     const missingFields = missingOf(data)
     const got = CORE_FIELDS.length - missingFields.length
 
@@ -549,6 +558,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       status, url, portal, method, data, photos, missingFields,
+      ...(warnings.length ? { warnings } : {}),
       ...(expired ? { errorMessage: 'El aviso ya no está publicado, pero rescatamos estos datos.' } : {}),
     } satisfies ScrapeResult)
 
