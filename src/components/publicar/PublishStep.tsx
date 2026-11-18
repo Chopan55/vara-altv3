@@ -64,7 +64,7 @@ export function PublishStep({ form, published, copiedPortal, blockedPortal, hand
                   <div className="flex items-center gap-2 text-emerald-600">
                     <CheckCircle2 size={14} />
                     <span className="text-xs font-semibold">
-                      {copiedPortal === portal.id ? 'Texto copiado — pegalo en el portal' : 'Te llevamos al portal en una pestaña nueva'}
+                      {blockedPortal === portal.id ? 'El navegador no abrió el portal (ver aviso de arriba)' : copiedPortal === portal.id ? 'Texto copiado — pegalo en el portal' : 'Te llevamos al portal en una pestaña nueva'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">
@@ -102,7 +102,7 @@ export function PublishStep({ form, published, copiedPortal, blockedPortal, hand
             </p>
           </div>
           <p className="text-xs text-emerald-700 leading-relaxed">
-            Te llevamos al portal en una pestaña nueva: la publicación se completa ahí, no en VARA.
+            {blockedPortal ? 'La publicación se completa en el portal, no en VARA.' : 'Te llevamos al portal en una pestaña nueva: la publicación se completa ahí, no en VARA.'}
             La tarea de publicación en tu operación se completa cuando cargues la URL del aviso publicado.
           </p>
           <Link href="/asistente" className="mt-2 flex items-center gap-1 text-xs font-semibold text-green-700 hover:underline">

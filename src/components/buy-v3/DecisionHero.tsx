@@ -193,7 +193,9 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
           {band && (
             <button type="button" onClick={() => onScroll('evidencia')}
               className="mt-1 inline-flex min-h-11 items-center text-xs font-semibold text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
-              Ver los avisos que usé
+              {analysis.comparableEvidence.strongMatches === band.sampleSize
+                ? 'Ver los avisos que usé'
+                : `Ver los ${analysis.comparableEvidence.strongMatches} avisos parecidos (${band.sampleSize} entran en el rango)`}
             </button>
           )}
         </div>

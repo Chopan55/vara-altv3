@@ -39,7 +39,9 @@ export function EntryForm({
   const [url, setUrl] = useState(initialUrl)
   const [mode, setMode] = useState<null | 'texto' | 'manual'>(null)
   const [text, setText] = useState('')
-  const toggle = (m: 'texto' | 'manual') => setMode(cur => (cur === m ? null : m))
+  // La carga manual queda montada (oculta) una vez abierta: cerrar o cambiar de modo no borra lo escrito.
+  const [manualSeen, setManualSeen] = useState(false)
+  const toggle = (m: 'texto' | 'manual') => { if (m === 'manual') setManualSeen(true); setMode(cur => (cur === m ? null : m)) }
 
   return (
     <div className="pt-2 sm:pt-10">
@@ -100,7 +102,7 @@ export function EntryForm({
               <p className="text-sm text-slate-700">Abrí el aviso, seleccioná todo, copialo y pegalo acá. Lo leo igual.</p>
               <textarea value={text} onChange={e => setText(e.target.value)} rows={6} aria-label="Texto de la publicación"
                 placeholder="Pegá acá todo el texto de la publicación…"
-                className="mt-3 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200" />
+                className="mt-3 w-full rounded-xl border border-slate-500 bg-white p-3 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200" />
               <PastePreview text={text} mx={mx} />
               <button type="button" disabled={text.trim().length < MIN_PASTED_CHARS} onClick={() => onPasteText(text)}
                 className="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
@@ -111,8 +113,8 @@ export function EntryForm({
               )}
             </div>
           )}
-          {mode === 'manual' && onManual && (
-            <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+          {manualSeen && onManual && (
+            <div className={cn('mt-3 rounded-2xl border border-slate-200 bg-white p-4', mode !== 'manual' && 'hidden')}>
               <p className="text-sm font-medium text-slate-800">Cargá los datos del aviso</p>
               <ManualForm mx={mx} onSubmit={onManual} />
             </div>
@@ -207,7 +209,9 @@ export function ProgressPanel({
   const [slow, setSlow] = useState(false)
   const [mode, setMode] = useState<null | 'texto' | 'manual'>(null)
   const [paused, setPaused] = useState(false)
+  const [manualSeen, setManualSeen] = useState(false)
   const open = (m: 'texto' | 'manual') => {
+    if (m === 'manual') setManualSeen(true)
     if (!paused) { onPause?.(); setPaused(true) }
     setMode(cur => (cur === m ? null : m))
   }
@@ -308,7 +312,7 @@ export function ProgressPanel({
             <div className="mt-3">
               <p className="text-sm text-slate-700">Abrí el aviso, seleccioná todo, copialo y pegalo acá. Lo leo igual.</p>
               <textarea value={pasted} onChange={e => setPasted(e.target.value)} rows={5} aria-label="Texto del aviso"
-                className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200" />
+                className="mt-2 w-full rounded-xl border border-slate-500 bg-white p-3 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200" />
               <button type="button" disabled={pasted.trim().length < MIN_PASTED_CHARS} onClick={() => onPaste(pasted)}
                 className="mt-2 inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
                 Analizar este texto
@@ -316,8 +320,8 @@ export function ProgressPanel({
               {pasted.trim().length < MIN_PASTED_CHARS && <p className="mt-1 text-xs text-slate-600">Pegá el aviso completo (al menos unas pocas líneas).</p>}
             </div>
           )}
-          {mode === 'manual' && onManual && (
-            <div className="mt-3 rounded-xl bg-white p-3">
+          {manualSeen && onManual && (
+            <div className={cn('mt-3 rounded-xl bg-white p-3', mode !== 'manual' && 'hidden')}>
               <ManualForm mx={mx} onSubmit={onManual} />
             </div>
           )}
@@ -353,24 +357,24 @@ function ManualForm({ mx, onSubmit }: { mx: boolean; onSubmit: (m: ManualListing
       <label className="text-sm text-slate-600">Precio publicado
         <div className="mt-1 flex gap-2">
           <select value={currency} onChange={e => setCurrency(e.target.value as ManualListing['currency'])} aria-label="Moneda"
-            className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm min-h-11">
+            className="rounded-lg border border-slate-500 bg-white px-2 py-2 text-sm min-h-11">
             {currencies.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <input value={price} onChange={e => setPrice(e.target.value)} inputMode="numeric" required placeholder={mx ? '4500000' : '185000'}
-            className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm min-h-11" />
+            className="min-w-0 flex-1 rounded-lg border border-slate-500 px-3 py-2 text-sm min-h-11" />
         </div>
       </label>
       <label className="text-sm text-slate-600">{mx ? 'Colonia o ciudad' : 'Barrio o ciudad'}
         <input value={where} onChange={e => setWhere(e.target.value)} placeholder={mx ? 'Polanco, CDMX' : 'Palermo, CABA'}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm min-h-11" />
+          className="mt-1 w-full rounded-lg border border-slate-500 px-3 py-2 text-sm min-h-11" />
       </label>
       <label className="text-sm text-slate-600">{mx ? 'm² construidos' : 'm² cubiertos'}
         <input value={m2} onChange={e => setM2(e.target.value)} inputMode="numeric"
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm min-h-11" />
+          className="mt-1 w-full rounded-lg border border-slate-500 px-3 py-2 text-sm min-h-11" />
       </label>
       <label className="text-sm text-slate-600">{mx ? 'Recámaras' : 'Dormitorios'}
         <input value={beds} onChange={e => setBeds(e.target.value)} inputMode="numeric"
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm min-h-11" />
+          className="mt-1 w-full rounded-lg border border-slate-500 px-3 py-2 text-sm min-h-11" />
       </label>
       <button type="submit" disabled={!p}
         className="rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 sm:col-span-2 sm:justify-self-start">
@@ -443,7 +447,7 @@ export function BlockedPaste({
         rows={6}
         aria-label="Texto de la publicación"
         placeholder="Pegá acá todo el texto de la publicación…"
-        className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200"
+        className="mt-4 w-full rounded-xl border border-slate-500 bg-white p-3 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200"
       />
       <PastePreview text={text} mx={mx} />
       <button type="button" disabled={text.trim().length < MIN_PASTED_CHARS} onClick={() => onSubmit(text)}
@@ -507,15 +511,15 @@ export function ProfilePrompt({
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <label className="text-sm text-slate-600">Presupuesto máximo ({currency})
           <input value={budget} onChange={e => setBudget(e.target.value)} inputMode="numeric"
-            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 min-h-11" />
+            className="mt-1 w-full rounded-lg border border-slate-500 bg-white px-3 py-2 min-h-11" />
         </label>
         <label className="text-sm text-slate-600">{mx ? 'Zona o colonia' : 'Zona'}
           <input value={location} onChange={e => setLocation(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 min-h-11" />
+            className="mt-1 w-full rounded-lg border border-slate-500 bg-white px-3 py-2 min-h-11" />
         </label>
         <label className="text-sm text-slate-600">{mx ? 'Recámaras (mínimo)' : 'Dormitorios (mínimo)'}
           <input value={bedrooms} onChange={e => setBedrooms(e.target.value)} inputMode="numeric"
-            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 min-h-11" />
+            className="mt-1 w-full rounded-lg border border-slate-500 bg-white px-3 py-2 min-h-11" />
         </label>
       </div>
       <fieldset className="mt-4">
@@ -577,10 +581,10 @@ export function AddComparables({
       </p>
       {asText ? (
         <textarea value={text} onChange={e => setText(e.target.value)} rows={4} aria-label="Texto del aviso"
-          className="mt-3 w-full rounded-lg border border-slate-300 bg-white p-2 text-sm" />
+          className="mt-3 w-full rounded-lg border border-slate-500 bg-white p-2 text-sm" />
       ) : (
         <input value={url} onChange={e => setUrl(e.target.value)} type="url" placeholder="https://…" aria-label="Link del aviso"
-          className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm min-h-11" />
+          className="mt-3 w-full rounded-lg border border-slate-500 bg-white px-3 py-2 text-sm min-h-11" />
       )}
       <div className="mt-3 flex items-center gap-4">
         <button type="button" disabled={busy || (asText ? text.trim().length < MIN_PASTED_CHARS : !url.trim())} onClick={submit}
