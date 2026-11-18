@@ -11,7 +11,7 @@ import type { NbaType, PropertyAnalysis } from '@/lib/analysis/types'
 import type { ProfileAnswers } from '@/lib/analysis/prefs'
 import type { BuyState } from './useBuyAnalysis'
 import { AskVara } from './AskVara'
-import { AddComparables, ProfilePrompt } from './Entry'
+import { AddComparables, ProfilePrompt, SurfaceWarningCard } from './Entry'
 import { ComparableList, EvidenceSummary } from './Evidence'
 import { CostSection, DetailSection, FitSection, GoodSection, MissingSection, RisksSection, Section } from './Sections'
 import { SellerQuestionsCard, ShareCard, TotalCostCard, type ShareChannel } from './Highlights'
@@ -118,6 +118,8 @@ export function ResultView({
           <Share2 size={14} /> <span className="hidden sm:inline">Compartir</span>
         </button>
       </div>
+
+      <SurfaceWarningCard warnings={state.warnings} onConfirm={actions.confirmField} />
 
       {/* Primero, lo que siempre se puede calcular y más impacta: cuánto sale en total. */}
       <TotalCostCard analysis={analysis} onDetail={() => scrollTo('costos')} />

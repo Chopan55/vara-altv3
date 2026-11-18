@@ -35,12 +35,12 @@ const EXPENSE_HINT = /(expensas|mantenimiento|cuota|administraci[oó]n|abl|tasas
 function findMoney(text: string, mx: boolean): Money[] {
   const out: Money[] = []
   // Moneda y monto en la misma línea: "[ \t]" y no "\s", para no pegar un número de la línea de arriba.
-  const usd = /(?:USD|U\$S|US\$|u\$d|U\$D|d[oó]lares)[ \t]*([\d][\d.,]*)|([\d][\d.,]*)[ \t]*(?:USD|d[oó]lares)\b/gi
+  const usd = /(?:USD|U\$S|US\$|u\$d|U\$D|d[oó]lares)[ \t]*([\d][\d.,]*)|([\d][\d.,]*)[ \t]*(?:USD|d[oó]lares)\b|(?:USD|U\$S|US\$)[ \t]*\r?\n[ \t]*([\d][\d.,]*)[ \t]*(?:\r?\n|$)/gi
   const local = mx
     ? /(?:MXN|MN|\$)[ \t]*([\d][\d.,]*)[ \t]*(?:MXN|MN|pesos)?|([\d][\d.,]*)[ \t]*(?:MXN|pesos)\b/gi
     : /(?:ARS|\$)[ \t]*([\d][\d.,]*)|([\d][\d.,]*)[ \t]*(?:ARS|pesos)\b/gi
   const push = (m: RegExpExecArray, currency: Cur) => {
-    const amount = parseAmount(m[1] ?? m[2] ?? '')
+    const amount = parseAmount(m[1] ?? m[2] ?? m[3] ?? '')
     if (!amount) return
     if (out.some(x => x.index === m.index)) return
     const before = text.slice(Math.max(0, m.index - 40), m.index)
@@ -65,6 +65,44 @@ function firstInt(text: string, re: RegExp): number | undefined {
   return Number.isInteger(n) && n > 0 && n < 100 ? n : undefined
 }
 
+type SurfaceKind = 'total' | 'covered' | 'lot'
+export interface FoundSurface { kind: SurfaceKind; m2: number; raw: string }
+
+const AREA_UNIT = '(m²|m2|mts2?|mts|metros|ha|has|hect[aá]reas?)'
+
+function toM2(n: number, unit: string): number {
+  return /^h/i.test(unit) ? n * 10_000 : n
+}
+
+function kindOf(label: string): SurfaceKind {
+  const l = label.toLowerCase()
+  if (/cubiert|construid|construcci/.test(l)) return 'covered'
+  if (/terreno|lote/.test(l)) return 'lot'
+  return 'total'
+}
+
+/** Todas las superficies que el texto declara, con su unidad ya convertida a m². Sin filtrar valores raros. */
+export function findSurfaces(text: string): FoundSurface[] {
+  const out: FoundSurface[] = []
+  const add = (rawNum: string, unit: string, label: string, raw: string) => {
+    const n = parseAmount(rawNum)
+    if (!n) return
+    const m2 = toM2(n, unit)
+    if (m2 < 10 || m2 > 1e10) return
+    out.push({ kind: kindOf(label), m2, raw: raw.trim() })
+  }
+  // "Superficie total\n108 ha" · "Superficie cubierta: 120 m²" · "Superficie de terreno 1.066 m²"
+  const labelled = new RegExp(`superficie\\s+(total|cubierta|construida|de[l]?\\s+terreno|de[l]?\\s+lote|terreno|lote)[ \\t]*[:\\n]?[ \\t]*([\\d][\\d.,]*)[ \\t]*${AREA_UNIT}`, 'gi')
+  for (const m of text.matchAll(labelled)) add(m[2], m[3], m[1], m[0])
+  // "250 m² totales" · "108 ha totales" · "180 m² cubiertos" · "1066 m² de terreno"
+  const inline = new RegExp(`([\\d][\\d.,]*)[ \\t]*${AREA_UNIT}\\.?[ \\t]*(?:²)?[ \\t]*(totales|total|cubiertos?|cubierta|construid[oa]s?|de construcci[oó]n|de terreno|de lote|terreno|lote)?`, 'gi')
+  for (const m of text.matchAll(inline)) {
+    if (/^(?:metros)$/i.test(m[2]) && !m[3]) continue
+    add(m[1], m[2], m[3] ?? '', m[0])
+  }
+  return out
+}
+
 export function parseListingText(raw: string, opts: { mx?: boolean } = {}): ScrapedData {
   const mx = !!opts.mx
   const text = raw.replace(/ /g, ' ').slice(0, 20_000)
@@ -79,26 +117,24 @@ export function parseListingText(raw: string, opts: { mx?: boolean } = {}): Scra
   const expense = money.find(m => m.expense && m.currency !== 'USD')
   if (expense) data.expenses = expense.amount
 
-  // Superficies.
-  for (const m of text.matchAll(/([\d][\d.,]*)\s*m(?:²|2|ts2|t2|ts\.?\s?2)?\s*(?:²)?\s*(totales|total|cubiertos?|cubierta|construid[oa]s?|de construcci[oó]n|de terreno|terreno)?/gi)) {
-    if (!/m(?:²|2|ts|t)/i.test(m[0])) continue
-    const n = parseAmount(m[1])
-    if (!n || n < 10 || n > 100_000) continue
-    const label = (m[2] ?? '').toLowerCase()
-    if (/cubiert|construid|construcci/.test(label)) data.coveredM2 ??= n
-    else if (/terreno/.test(label)) continue
-    else data.totalM2 ??= n
+  // Superficies. Se leen en m² (las hectáreas se convierten) y SIN descartar las absurdas: eso lo decide
+  // `reviewSurfaces`, que las aparta y avisa en vez de callar. Un aviso real de MercadoLibre trajo
+  // "108 ha totales" y "1.080.000 m² cubiertos" para una casa en un lote de 1.066 m².
+  for (const s of findSurfaces(text)) {
+    if (s.kind === 'covered') data.coveredM2 ??= s.m2
+    else if (s.kind === 'lot') data.lotM2 ??= s.m2
+    else data.totalM2 ??= s.m2
   }
 
-  data.rooms = firstInt(text, /(\d{1,2})\s*amb(?:ientes?|\.|\b)/i)
-  data.bedrooms = firstInt(text, /(\d{1,2})\s*(?:dormitorios?|dorm\.?|habitaciones|rec[aá]maras?)\b/i)
-  data.bathrooms = firstInt(text, /(\d{1,2})\s*baños?\b/i)
+  data.rooms = firstInt(text, /(\d{1,2})\s*amb(?:ientes?|\.|\b)/i) ?? firstInt(text, /^[ \t]*ambientes?[ \t]*[:\n][ \t]*(\d{1,2})\b/im)
+  data.bedrooms = firstInt(text, /(\d{1,2})\s*(?:dormitorios?|dorm\.?|habitaciones|rec[aá]maras?)\b/i) ?? firstInt(text, /^[ \t]*(?:dormitorios?|habitaciones|rec[aá]maras?)[ \t]*[:\n][ \t]*(\d{1,2})\b/im)
+  data.bathrooms = firstInt(text, /(\d{1,2})\s*baños?\b/i) ?? firstInt(text, /^[ \t]*baños?[ \t]*[:\n][ \t]*(\d{1,2})\b/im)
 
   // Título: la primera línea con texto que no sea solo un precio.
   const firstLine = text.split('\n')
     .map(l => l.trim().replace(/^(?:title|t[ií]tulo)\s*:\s*/i, '').replace(/^#+\s*/, ''))
     .find(l => l.length >= 8 && l.length <= 140 && /[a-záéíóúñ]{3}/i.test(l) &&
-      !/^(?:url|https?:)/i.test(l) && !/^(?:USD|U\$S|US\$|MXN|ARS|\$)[ \t]*\d/i.test(l))
+      !/^(?:url|https?:)/i.test(l) && !/publicado\s+hace|^(?:casa|departamento|ph|terreno|lote|local|oficina)\s+en\s+(?:venta|alquiler)\s*\|/i.test(l) && !/^(?:USD|U\$S|US\$|MXN|ARS|\$)[ \t]*\d/i.test(l))
   if (firstLine) data.title = firstLine
   data.description = text.trim().slice(0, 1500)
 

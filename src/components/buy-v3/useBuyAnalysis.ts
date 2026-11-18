@@ -10,6 +10,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import type { ScrapeResult } from '@/app/api/scrape-property/route'
+import type { SurfaceWarning } from '@/lib/scrape/surfaces'
 import { analyzeProperty } from '@/lib/analysis/run'
 import { track, type EventName } from '@/lib/analysis/events'
 import { trackFunnel } from '@/lib/funnel/track'
@@ -39,6 +40,8 @@ export interface BuyState {
   insight?: string
   evidence?: ComparableEvidence
   analysis?: PropertyAnalysis
+  /** Superficies del aviso que parecen un error de carga: se apartaron del análisis hasta que la persona las confirme. */
+  warnings?: SurfaceWarning[]
   /** true mientras se recalcula con datos nuevos, sin borrar lo que ya se ve. */
   refreshing: boolean
   saved: boolean
@@ -160,6 +163,7 @@ export function useBuyAnalysis() {
         }))
         return
       }
+      if (scrape.warnings?.length) setState(s => ({ ...s, warnings: scrape.warnings }))
       await run(scrape, false)
     } catch {
       setState(s => ({ ...s, phase: 'error', message: 'No pudimos acceder al aviso. Probá de nuevo.' }))
@@ -221,6 +225,10 @@ export function useBuyAnalysis() {
   /** "LA SÉ": la persona confirma un dato. */
   const confirmField = useCallback(async (patch: UserOverrides) => {
     overridesRef.current = { ...overridesRef.current, ...patch }
+    // Si la persona confirma una superficie, el aviso de "revisá la superficie" ya está resuelto.
+    if (patch.coveredArea !== undefined || patch.totalArea !== undefined || patch.landArea !== undefined) {
+      setState(s => ({ ...s, warnings: undefined }))
+    }
     ev('missing_data_action', { kind: 'confirm', field: Object.keys(patch).join(',') })
     await rerun()
   }, [ev, rerun])

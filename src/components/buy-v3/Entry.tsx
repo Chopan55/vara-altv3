@@ -1,9 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowRight, Check, Loader2, Plus } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Check, ExternalLink, Loader2, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MustHave, ProfileAnswers } from '@/lib/analysis/prefs'
+import type { UserOverrides } from '@/lib/analysis/normalize'
+import { parseListingText } from '@/lib/scrape/parseText'
+import { reviewSurfaces, uniqueWarnings, type SurfaceWarning } from '@/lib/scrape/surfaces'
 import type { BuyState } from './useBuyAnalysis'
 import { KIND_TEXT, money } from './format'
 
@@ -45,6 +48,47 @@ export function EntryForm({
   )
 }
 
+// ───────────────────────── Superficie dudosa: confirmarla en un toque ─────────────────────────
+
+/**
+ * El aviso declara una superficie que no tiene sentido (por ejemplo 108 ha para una casa). VARA la apartó del
+ * análisis y lo dice acá, con el dato que sí se pueda confirmar en un toque. Nada se aplica sin que la persona lo toque.
+ */
+export function SurfaceWarningCard({
+  warnings, onConfirm,
+}: { warnings?: SurfaceWarning[]; onConfirm?: (p: UserOverrides) => Promise<void> | void }) {
+  const [m2, setM2] = useState('')
+  const list = uniqueWarnings(warnings)
+  if (list.length === 0) return null
+  const w = list[0]
+  const n = Number(m2.replace(/[^\d]/g, ''))
+  return (
+    <div role="alert" className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4">
+      <p className="flex items-center gap-2 text-sm font-semibold text-amber-900">
+        <AlertTriangle size={16} aria-hidden /> Detecté un dato raro en el aviso
+      </p>
+      <p className="mt-1 text-sm text-amber-900">{w.message}</p>
+      {onConfirm && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {w.suggestedLotM2 && (
+            <button type="button" onClick={() => onConfirm({ landArea: w.suggestedLotM2 })}
+              className="rounded-lg bg-amber-900 px-3 py-2 text-sm font-medium text-white">
+              Es un lote de {w.suggestedLotM2.toLocaleString('es-AR')} m²
+            </button>
+          )}
+          <input value={m2} onChange={e => setM2(e.target.value)} inputMode="numeric" aria-label="Superficie cubierta en metros cuadrados"
+            placeholder="m² cubiertos" className="w-32 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm" />
+          <button type="button" disabled={!Number.isFinite(n) || n < 10 || n > 20_000}
+            onClick={() => onConfirm({ coveredArea: n })}
+            className="rounded-lg border border-amber-900 px-3 py-2 text-sm font-medium text-amber-900 disabled:opacity-40">
+            Confirmar
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ───────────────────────── Progreso real, no simulado ─────────────────────────
 
 function Step({ done, active, children }: { done: boolean; active: boolean; children: React.ReactNode }) {
@@ -59,7 +103,7 @@ function Step({ done, active, children }: { done: boolean; active: boolean; chil
 }
 
 /** Cada paso aparece cuando existe de verdad. Si no hay dato, no hay barra de progreso. */
-export function ProgressPanel({ state }: { state: BuyState }) {
+export function ProgressPanel({ state, onConfirm }: { state: BuyState; onConfirm?: (p: UserOverrides) => Promise<void> | void }) {
   const s = state.subject
   const f = s?.fields
   const where = f ? [f.community?.value, f.neighborhood?.value, f.city?.value].filter(Boolean).join(' · ') : ''
@@ -87,6 +131,8 @@ export function ProgressPanel({ state }: { state: BuyState }) {
       ) : (
         <p className="text-slate-600">Leyendo la publicación…</p>
       )}
+
+      <SurfaceWarningCard warnings={state.warnings} onConfirm={onConfirm} />
 
       {state.insight && <p className="mt-5 text-lg text-slate-800">{state.insight}</p>}
 
@@ -156,27 +202,77 @@ function ManualForm({ mx, onSubmit }: { mx: boolean; onSubmit: (m: ManualListing
   )
 }
 
+/** El servidor lee el texto solo si tiene MÁS de 150 caracteres: el botón se habilita desde 151, no antes. */
+const MIN_PASTED_CHARS = 151
+
+/** Lo que VARA ya entendió del texto pegado, al instante y sin enviar nada: es la prueba de que "lo leemos igual". */
+function PastePreview({ text, mx }: { text: string; mx: boolean }) {
+  const { data, warnings } = reviewSurfaces(parseListingText(text, { mx }))
+  const facts = [
+    data.price ? `${data.currency === 'USD' ? 'US$' : data.currency === 'MXN' ? 'MX$' : '$'} ${data.price.toLocaleString('es-AR')}` : null,
+    data.rooms ? `${data.rooms} ambientes` : null,
+    data.bedrooms ? `${data.bedrooms} ${mx ? 'recámaras' : 'dormitorios'}` : null,
+    data.bathrooms ? `${data.bathrooms} baños` : null,
+    data.coveredM2 ? `${data.coveredM2.toLocaleString('es-AR')} m² ${mx ? 'construidos' : 'cubiertos'}` : null,
+    data.totalM2 ? `${data.totalM2.toLocaleString('es-AR')} m² totales` : null,
+  ].filter(Boolean)
+  if (facts.length === 0 && warnings.length === 0) return null
+  return (
+    <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3" role="status" aria-live="polite">
+      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-800"><Check size={14} aria-hidden /> Esto es lo que leí</p>
+      {data.title && <p className="mt-1 text-sm font-medium text-slate-900">{data.title}</p>}
+      <p className="mt-0.5 text-sm text-slate-700">{facts.join(' · ')}</p>
+      {uniqueWarnings(warnings).map(w => (
+        <p key={w.field} className="mt-2 flex items-start gap-1.5 text-sm text-amber-900">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden /> <span>{w.message}</span>
+        </p>
+      ))}
+    </div>
+  )
+}
+
 export function BlockedPaste({
-  message, onSubmit, mx = false, onManual,
-}: { message?: string; onSubmit: (text: string) => void; mx?: boolean; onManual?: (m: ManualListing) => void }) {
+  message, onSubmit, mx = false, onManual, url,
+}: { message?: string; onSubmit: (text: string) => void; mx?: boolean; onManual?: (m: ManualListing) => void; url?: string }) {
   const [text, setText] = useState('')
   const [manual, setManual] = useState(false)
+  const canOpen = !!url && /^https?:\/\//i.test(url)
   return (
     <div className="pt-10">
       <p className="text-slate-800">{message ?? 'No pudimos leer ese aviso.'}</p>
+      <p className="mt-1 text-sm text-slate-600">Son tres pasos y lo leo igual:</p>
+      <ol className="mt-3 space-y-2 text-sm text-slate-700">
+        <li className="flex items-center gap-2">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">1</span>
+          {canOpen ? (
+            <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">
+              Abrí el aviso <ExternalLink size={13} aria-hidden />
+            </a>
+          ) : 'Abrí el aviso en tu navegador'}
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">2</span>
+          Seleccioná todo y copialo (⌘A y ⌘C en Mac, Ctrl+A y Ctrl+C en Windows). En el celular: mantené apretado el texto y elegí “Seleccionar todo”.
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">3</span>
+          Pegalo acá abajo.
+        </li>
+      </ol>
       <textarea
         value={text}
         onChange={e => setText(e.target.value)}
         rows={6}
         aria-label="Texto de la publicación"
-        placeholder="Copiá todo el texto de la publicación y pegalo acá…"
+        placeholder="Pegá acá todo el texto de la publicación…"
         className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
       />
-      <button type="button" disabled={text.trim().length < 150} onClick={() => onSubmit(text)}
+      <PastePreview text={text} mx={mx} />
+      <button type="button" disabled={text.trim().length < MIN_PASTED_CHARS} onClick={() => onSubmit(text)}
         className="mt-3 rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">
         Analizar con este texto
       </button>
-      {text.trim().length > 0 && text.trim().length < 150 && (
+      {text.trim().length > 0 && text.trim().length < MIN_PASTED_CHARS && (
         <p className="mt-2 text-xs text-slate-500">Pegá la publicación completa para que pueda leerla.</p>
       )}
       {onManual && (
@@ -309,7 +405,7 @@ export function AddComparables({
           className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
       )}
       <div className="mt-3 flex items-center gap-4">
-        <button type="button" disabled={busy || (asText ? text.trim().length < 150 : !url.trim())} onClick={submit}
+        <button type="button" disabled={busy || (asText ? text.trim().length < MIN_PASTED_CHARS : !url.trim())} onClick={submit}
           className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40">
           {busy ? 'Leyendo…' : 'Sumar'}
         </button>
