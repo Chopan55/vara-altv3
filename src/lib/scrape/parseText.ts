@@ -134,7 +134,7 @@ export function parseListingText(raw: string, opts: { mx?: boolean } = {}): Scra
   const firstLine = text.split('\n')
     .map(l => l.trim().replace(/^(?:title|t[ií]tulo)\s*:\s*/i, '').replace(/^#+\s*/, ''))
     .find(l => l.length >= 8 && l.length <= 140 && /[a-záéíóúñ]{3}/i.test(l) &&
-      !/^(?:url|https?:)/i.test(l) && !/^(?:USD|U\$S|US\$|MXN|ARS|\$)[ \t]*\d/i.test(l))
+      !/^(?:url|https?:)/i.test(l) && !/publicado\s+hace|^(?:casa|departamento|ph|terreno|lote|local|oficina)\s+en\s+(?:venta|alquiler)\s*\|/i.test(l) && !/^(?:USD|U\$S|US\$|MXN|ARS|\$)[ \t]*\d/i.test(l))
   if (firstLine) data.title = firstLine
   data.description = text.trim().slice(0, 1500)
 

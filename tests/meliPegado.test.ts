@@ -42,6 +42,10 @@ describe('aviso de MercadoLibre pegado desde la página', () => {
     expect(parseListingText(AVISO)).toMatchObject({ price: 298000, currency: 'USD' })
   })
 
+  it('el título es el del aviso, no la línea de "Publicado hace…"', () => {
+    expect(parseListingText(AVISO).title).toBe('Casa En Venta Ubicado En Estancias Del Pilar, Pilar, G.b.a. Zona Norte')
+  })
+
   it('lee ambientes, dormitorios y baños de la ficha', () => {
     expect(parseListingText(AVISO)).toMatchObject({ rooms: 4, bedrooms: 3, bathrooms: 2 })
   })

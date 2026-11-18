@@ -64,12 +64,13 @@ function Analizar() {
   } else if (state.phase === 'done') {
     body = <ResultView state={state} actions={a} onAnother={a.reset} />
   } else if (state.phase === 'reading' || state.phase === 'analyzing') {
-    body = <ProgressPanel state={state} />
+    body = <ProgressPanel state={state} onConfirm={a.confirmField} />
   } else if (state.phase === 'blocked') {
     body = (
       <BlockedPaste
         message={state.message}
         mx={isMexicanUrl(state.url)}
+        url={state.url}
         onSubmit={text => a.submit(state.url, text)}
         onManual={m => a.submitManual(state.url, m)}
       />

@@ -69,3 +69,8 @@ export function reviewSurfaces(input: ScrapedData): { data: ScrapedData; warning
   }
   return { data, warnings }
 }
+
+/** Total y cubierta suelen fallar juntas con el mismo valor: se muestra un solo aviso por valor. */
+export function uniqueWarnings(warnings: SurfaceWarning[] | undefined): SurfaceWarning[] {
+  return (warnings ?? []).filter((w, i, all) => all.findIndex(x => x.observedM2 === w.observedM2) === i)
+}
