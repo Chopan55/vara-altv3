@@ -69,12 +69,12 @@ export function SellerQuestionsCard({
       <div className="mt-4 flex flex-wrap gap-2">
         <a href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noopener noreferrer"
           onClick={() => onAction('whatsapp_questions')}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 min-h-11">
           <MessageCircle size={14} aria-hidden="true" /> Preguntar por WhatsApp
         </a>
         <button type="button"
           onClick={async () => { if (await copyText(message)) { setCopied(true); onAction('copy_questions'); setTimeout(() => setCopied(false), 2000) } }}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 min-h-11">
           {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />} {copied ? 'Copiado' : 'Copiar las preguntas'}
         </button>
       </div>
@@ -124,21 +124,21 @@ export function ShareCard({
   }
 
   return (
-    <section aria-labelledby="share-title" className="mt-4 rounded-2xl bg-slate-900 p-5 text-white">
+    <section aria-labelledby="share-title" className="mt-4 rounded-2xl bg-brand-950 p-5 text-white">
       <h2 id="share-title" className="text-base font-semibold">¿Lo decidís con alguien más?</h2>
       <p className="mt-0.5 text-sm text-slate-300">Mandale este análisis. Ve el precio, los comparables y los costos; no ve tus preferencias.</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <button type="button" onClick={whatsapp}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600">
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 min-h-11">
           <MessageCircle size={15} aria-hidden="true" /> Compartir por WhatsApp
         </button>
         <button type="button" onClick={copy}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-white/25 px-3 py-2.5 text-sm font-medium text-white hover:bg-white/10">
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/25 px-3 py-2.5 text-sm font-medium text-white hover:bg-white/10 min-h-11">
           <Link2 size={15} aria-hidden="true" /> Copiar link
         </button>
         {canNative && (
           <button type="button" onClick={native} aria-label="Más formas de compartir"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/25 px-3 py-2.5 text-sm font-medium text-white hover:bg-white/10">
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/25 px-3 py-2.5 text-sm font-medium text-white hover:bg-white/10 min-h-11">
             <Share2 size={15} aria-hidden="true" /> Más
           </button>
         )}
@@ -147,7 +147,7 @@ export function ShareCard({
       <div className="mt-5 border-t border-white/10 pt-4">
         <p className="text-sm text-slate-300">¿Te interesa? VARA te acompaña hasta la firma: papeles, oferta y costos.</p>
         <button type="button" onClick={onFollow}
-          className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-white hover:underline">
+          className="mt-1 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-white hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
           Seguir esta compra con VARA <ArrowRight size={15} aria-hidden="true" />
         </button>
       </div>

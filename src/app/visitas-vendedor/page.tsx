@@ -20,53 +20,7 @@ interface SolicitudVisita {
   mensaje?: string
   estado: SolicitudEstado
   agente?: string
-  /** true solo en el ejemplo que se carga a pedido; nunca en datos reales. */
-  isMockData: boolean
 }
-
-const MOCK_SOLICITUDES: SolicitudVisita[] = [
-  {
-    id: 'sv-001',
-    compradorNombre: 'Martín Gutiérrez',
-    compradorTelefono: '+54 11 5555-1234',
-    fecha: '2026-09-22',
-    hora: '11:00',
-    mensaje: 'Tengo pre-aprobación hipotecaria. Quiero ver especialmente el garaje y el jardín.',
-    estado: 'PENDIENTE',
-    agente: 'Inmobiliaria del Norte',
-    isMockData: true,
-  },
-  {
-    id: 'sv-002',
-    compradorNombre: 'Valeria Moreno',
-    compradorTelefono: '+54 11 5555-5678',
-    fecha: '2026-09-23',
-    hora: '16:30',
-    mensaje: 'Vengo con mi pareja. Nos interesan los ambientes y la luz.',
-    estado: 'CONFIRMADA',
-    isMockData: true,
-  },
-  {
-    id: 'sv-003',
-    compradorNombre: 'Pablo Herrera',
-    compradorTelefono: '+54 11 5555-9012',
-    fecha: '2026-09-19',
-    hora: '10:00',
-    estado: 'REALIZADA',
-    agente: 'RE/MAX Pilar',
-    isMockData: true,
-  },
-  {
-    id: 'sv-004',
-    compradorNombre: 'Claudia Ríos',
-    compradorTelefono: '+54 11 5555-3456',
-    fecha: '2026-09-18',
-    hora: '15:00',
-    mensaje: 'Cancelé por viaje de trabajo.',
-    estado: 'RECHAZADA',
-    isMockData: true,
-  },
-]
 
 /** PIN determinístico de 6 dígitos derivado del ID de la visita. */
 function generatePin(id: string): string {
@@ -124,7 +78,6 @@ export default function VisitasVendedorPage() {
             mensaje: r.message ?? undefined,
             estado: r.status,
             agente: r.agent ?? undefined,
-            isMockData: false,
           })))
         }
       } catch {
@@ -135,18 +88,6 @@ export default function VisitasVendedorPage() {
     })()
     return () => { alive = false }
   }, [])
-
-  const showingExample = solicitudes.some(s => s.isMockData)
-
-  const loadExample = () => {
-    setSolicitudes(MOCK_SOLICITUDES)
-    setExpanded('sv-001')
-  }
-
-  const clearAll = () => {
-    setSolicitudes([])
-    setExpanded(null)
-  }
 
   const analyzeMessage = async (id: string, mensaje: string) => {
     if (analyzing[id]) return
@@ -213,18 +154,6 @@ export default function VisitasVendedorPage() {
 
       <div className="max-w-4xl mx-auto px-4 py-5 pb-20 space-y-4">
 
-        {showingExample && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
-            <Clock size={14} className="text-amber-500 flex-shrink-0" />
-            <p className="text-xs text-amber-800 flex-1">
-              Estás viendo un <strong>ejemplo</strong>. Estos compradores no son reales.
-            </p>
-            <button onClick={clearAll} className="text-xs font-bold text-amber-700 hover:text-amber-900 whitespace-nowrap">
-              Vaciar
-            </button>
-          </div>
-        )}
-
         {loaded && solicitudes.length === 0 && (
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-8 text-center">
             <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -239,10 +168,6 @@ export default function VisitasVendedorPage() {
                 className="flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
                 <Plus size={14} /> Publicar mi propiedad
               </Link>
-              <button onClick={loadExample}
-                className="flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-500 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
-                Ver un ejemplo
-              </button>
             </div>
           </div>
         )}

@@ -169,8 +169,9 @@ export function subjectFromScrape(scrape: ScrapeResult, now: Date = new Date()):
     photos: scrape.photos,
     fields: {
       title: mk(d.title, prov),
-      city: mk(d.city, prov),
-      neighborhood: mk(d.neighborhood, prov),
+      // Si salieron del título del aviso quedan como INFERRED (confianza baja) y se avisa: no se presentan como dato del aviso.
+      city: mk(d.city, d.locationFromTitle ? derivedProv : prov, !!d.locationFromTitle),
+      neighborhood: mk(d.neighborhood, d.locationFromTitle ? derivedProv : prov, !!d.locationFromTitle),
       address: mk(d.address, prov),
       community: mk(community, derivedProv, true),
       kind: mk(kind, d.propertyType ? prov : derivedProv, !d.propertyType),
@@ -310,6 +311,9 @@ export function evaluateExtraction(s: SubjectProperty): ExtractionQuality {
   const warnings: string[] = []
   if (s.fields.price?.value != null && s.fields.currency?.value == null) {
     warnings.push('El aviso no aclara la moneda del precio.')
+  }
+  if (s.fields.neighborhood?.status === 'INFERRED' || s.fields.city?.status === 'INFERRED') {
+    warnings.push('Barrio y ciudad se tomaron del título del aviso: conviene confirmarlos.')
   }
   if (method === 'ai' || method === 'paste') {
     warnings.push('Los datos fueron leídos del texto del aviso: conviene verificarlos.')

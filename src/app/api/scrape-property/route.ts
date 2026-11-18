@@ -5,6 +5,7 @@ import OpenAI from 'openai'
 import { requireAiAccess } from '@/lib/api/aiAccess'
 import { isMexicanUrl } from '@/lib/analysis/country'
 import { parseListingText } from '@/lib/scrape/parseText'
+import { withLocationFromTitle } from '@/lib/scrape/locationFromTitle'
 import { reviewSurfaces, type SurfaceWarning } from '@/lib/scrape/surfaces'
 import { allowRequest, clientKey } from '@/lib/api/rateLimit'
 import { meliItemIdFromUrl } from '@/lib/comparables/model'
@@ -31,6 +32,8 @@ export interface ScrapedData {
   expenses?: number
   description?: string
   features?: string[]
+  /** Barrio y ciudad salieron del título del aviso (inferidos), no de un campo de ubicación. */
+  locationFromTitle?: boolean
 }
 
 export interface ScrapeResult {
@@ -535,6 +538,8 @@ export async function POST(req: NextRequest) {
     clearTimeout(timer)
 
     photos = cleanPhotos(photos)
+    // Solo MercadoLibre: su título trae barrio y ciudad aunque la lectura no traiga dirección. Queda marcado como inferido.
+    if (portal === 'MercadoLibre') data = withLocationFromTitle(data)
     const reviewed = reviewSurfaces(data)
     data = reviewed.data
     const warnings = reviewed.warnings

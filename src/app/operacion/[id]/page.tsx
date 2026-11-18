@@ -8,7 +8,7 @@ import { ArrowLeft, CheckCircle2, Clock, AlertCircle, Lock, ChevronDown, Chevron
 import { InfoTip } from '@/components/ui/InfoTip'
 import { Badge } from '@/components/ui/Badge'
 import { Progress } from '@/components/ui/Progress'
-import { mockTransaction } from '@/data/mock'
+import type { mockTransaction } from '@/data/mock'
 import { useOperation } from '@/hooks/useOperation'
 import { useOperations } from '@/hooks/useOperations'
 import { buildTransaction, setTaskState } from '@/lib/operationFromChecklist'
@@ -122,11 +122,11 @@ export default function OperacionPage() {
   const { operation } = useOperation(operationId)
   const { relations, getTransactionData, getStoredOperation, operations, activeOperation, journey, loaded: opsLoaded } = useOperations()
   const crossRelations = relations.filter(r => r.fromOperationId === operationId || r.toOperationId === operationId)
-  const isDemoOperation = ['txn-001', 'txn-002', 'txn-003'].includes(operationId)
   // Para operaciones reales del usuario (guardadas en localStorage), buildTransaction las arma.
   // Solo la lista unificada (local + cuenta): leer localStorage en el render desfasa servidor y cliente.
-  const userOp = !operation && !isDemoOperation ? getStoredOperation(operationId) : null
-  const txn = operation ?? (userOp ? buildTransaction(userOp) : null) ?? (isDemoOperation ? mockTransaction : null)
+  const userOp = !operation ? getStoredOperation(operationId) : null
+  // Sin operación de demostración: si no existe la operación, se explica (ver `if (!txn)`), nunca se inventa una.
+  const txn = operation ?? (userOp ? buildTransaction(userOp) : null)
   // El país guardado en el dispositivo se lee después de montar: leerlo en el render desfasa servidor y cliente (React #418).
   const storedCountry = useBrowserValue<CountryCode>(() => (localStorage.getItem('vara_country') as CountryCode) || 'AR', 'AR')
   const country: CountryCode = userOp?.country ?? storedCountry
@@ -323,15 +323,6 @@ export default function OperacionPage() {
         </div>
       </div>
 
-      {isDemoOperation && (
-        <div className="px-4 pt-3 max-w-4xl mx-auto">
-          <div className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
-            <AlertCircle size={13} className="text-slate-400 flex-shrink-0" />
-            <p className="text-xs text-slate-500 flex-1">Operación de demostración — los datos son ficticios.</p>
-            <Link href="/onboarding" className="text-xs font-bold text-brand-600 whitespace-nowrap">Crear la mía →</Link>
-          </div>
-        </div>
-      )}
 
       {crossRelations.length > 0 && (
         <div className="px-4 pt-3 max-w-4xl mx-auto space-y-2">

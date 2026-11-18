@@ -15,6 +15,7 @@ import { analyzeProperty } from '@/lib/analysis/run'
 import { track, type EventName } from '@/lib/analysis/events'
 import { trackFunnel } from '@/lib/funnel/track'
 import { listingFromScrape, type UserOverrides } from '@/lib/analysis/normalize'
+import { withSubjectLocation } from '@/lib/scrape/locationFromTitle'
 import {
   addUserComparable, candidatesProvider, readUserComparables, removeUserComparable,
   userListingsProvider, userPropertyFromScrape,
@@ -67,12 +68,14 @@ export function useBuyAnalysis() {
   const overridesRef = useRef<UserOverrides>({})
   const submittedRef = useRef<Set<string>>(new Set())
   const startedAt = useRef(0)
+  /** Número de la última lectura pedida: si la persona pega el texto mientras se lee el link, gana la más nueva. */
+  const seqRef = useRef(0)
 
   const ev = useCallback((name: EventName, props?: Parameters<typeof track>[2]) => {
     track(name, sessionId(), props)
   }, [])
 
-  const run = useCallback(async (scrape: ScrapeResult, refresh: boolean) => {
+  const run = useCallback(async (scrape: ScrapeResult, refresh: boolean, seq: number) => {
     scrapeRef.current = scrape
     // Latencia medida desde que la persona pegó el link (incluye leer el aviso).
     const t0 = refresh ? Date.now() : startedAt.current || Date.now()
@@ -96,6 +99,7 @@ export function useBuyAnalysis() {
         overrides: overridesRef.current,
         elapsedBeforeMs: refresh ? 0 : Date.now() - t0,
         onStage: e => {
+          if (seq !== seqRef.current) return // una lectura más nueva (texto pegado) ya tomó la pantalla
           if (refresh && e.stage !== 'done') return
           if (e.stage === 'property') {
             setState(s => ({ ...s, phase: 'analyzing', subject: e.subject, extraction: e.extraction }))
@@ -127,6 +131,7 @@ export function useBuyAnalysis() {
         },
       })
     } catch {
+      if (seq !== seqRef.current) return
       setState(s => ({
         ...s, phase: s.analysis ? 'done' : 'error', refreshing: false,
         message: 'No pudimos completar el análisis. Probá de nuevo en un momento.',
@@ -146,6 +151,7 @@ export function useBuyAnalysis() {
     submittedRef.current.add(clean)
     overridesRef.current = {}
     startedAt.current = Date.now()
+    const seq = ++seqRef.current
     setState({ ...INITIAL, phase: 'reading', url: clean })
 
     try {
@@ -155,6 +161,7 @@ export function useBuyAnalysis() {
         body: JSON.stringify({ url: clean, text: pastedText }),
       })
       const scrape = (await res.json()) as ScrapeResult
+      if (seq !== seqRef.current) return // llegó una lectura más nueva (texto pegado): esta ya no vale
       const readable = scrape.status === 'success' || scrape.status === 'partial' || scrape.status === 'expired'
       if (!readable) {
         setState(s => ({
@@ -164,16 +171,22 @@ export function useBuyAnalysis() {
         return
       }
       if (scrape.warnings?.length) setState(s => ({ ...s, warnings: scrape.warnings }))
-      await run(scrape, false)
+      await run(scrape, false, seq)
     } catch {
+      if (seq !== seqRef.current) return
       setState(s => ({ ...s, phase: 'error', message: 'No pudimos acceder al aviso. Probá de nuevo.' }))
     }
   }, [ev, run])
+
+  /** La persona eligió pegar el texto o cargar a mano mientras se leía el link: se deja de esperar esa lectura,
+   *  así su respuesta no reemplaza lo que está escribiendo. */
+  const holdRead = useCallback(() => { seqRef.current++ }, [])
 
   /** Datos cargados a mano cuando el portal no deja leer el aviso. */
   const submitManual = useCallback(async (url: string, m: ManualListing) => {
     ev('listing_submitted', { listingKey: url, manual: true })
     trackFunnel('analyze_start', { manual: true })
+    const seq = ++seqRef.current
     overridesRef.current = {}
     startedAt.current = Date.now()
     setState({ ...INITIAL, phase: 'analyzing', url })
@@ -186,13 +199,13 @@ export function useBuyAnalysis() {
         city: where,
       },
     }
-    await run(scrape, false)
+    await run(scrape, false, seq)
   }, [ev, run])
 
   const rerun = useCallback(async () => {
     if (!scrapeRef.current) return
     setState(s => ({ ...s, refreshing: true }))
-    await run(scrapeRef.current, true)
+    await run(scrapeRef.current, true, seqRef.current)
   }, [run])
 
   /** Suma un aviso parecido (link o texto) como evidencia. */
@@ -204,6 +217,8 @@ export function useBuyAnalysis() {
         body: JSON.stringify({ url: url.trim(), text }),
       })
       const scrape = (await res.json()) as ScrapeResult
+      // Un aviso pegado como texto no trae barrio ni ciudad: se toman de la propiedad analizada solo si el texto los nombra.
+      if (text) scrape.data = withSubjectLocation(scrape.data, scrapeRef.current?.data)
       const listing = listingFromScrape(scrape)
       if (!listing.price) {
         return { ok: false, message: scrape.errorMessage ?? 'Ese aviso no trae precio, así que no sirve para comparar.' }
@@ -211,6 +226,10 @@ export function useBuyAnalysis() {
       addUserComparable(listing)
       ev('missing_data_action', { kind: 'add_comparable' })
       await rerun()
+      // Sin barrio ni ciudad el aviso no se puede ubicar entre los comparables: se dice, en vez de prometer un recálculo que no lo cuenta.
+      if (!listing.neighborhood && !listing.city) {
+        return { ok: true, message: 'Lo sumé, pero el texto no dice el barrio ni la ciudad, así que todavía no cuenta para el rango. Pegá también la ubicación o usá el link del aviso.' }
+      }
       return { ok: true, message: 'Sumado. Recalculé la comparación.' }
     } catch {
       return { ok: false, message: 'No pudimos leer ese aviso. Probá pegando el texto.' }
@@ -239,14 +258,20 @@ export function useBuyAnalysis() {
     await rerun()
   }, [ev, rerun])
 
-  const save = useCallback(async () => {
-    if (!scrapeRef.current) return
+  /** Devuelve true solo si la propiedad quedó guardada de verdad: la pantalla no debe confirmar un guardado que falló. */
+  const save = useCallback(async (): Promise<boolean> => {
+    if (!scrapeRef.current) return false
     try {
       const { addCandidate } = await import('@/lib/candidates/store')
-      await addCandidate(userPropertyFromScrape(scrapeRef.current))
+      const saved = await addCandidate(userPropertyFromScrape(scrapeRef.current))
+      if (!saved) return false // con sesión puede volver null; sin sesión, el navegador puede rechazar la escritura
       setState(s => ({ ...s, saved: true }))
       ev('property_saved')
-    } catch { /* guardar nunca rompe el resultado */ }
+      return true
+    } catch {
+      // Guardar nunca rompe el resultado, pero tampoco se confirma como hecho.
+      return false
+    }
   }, [ev])
 
   const discard = useCallback((reason?: string) => {
@@ -271,6 +296,6 @@ export function useBuyAnalysis() {
 
   return {
     state, submit, submitManual, addComparable, removeComparable, confirmField, applyProfile,
-    save, discard, share, reset, track: ev,
+    save, discard, share, reset, holdRead, track: ev,
   }
 }

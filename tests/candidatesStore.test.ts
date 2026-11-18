@@ -179,3 +179,22 @@ describe('toCandidate', () => {
     expect(toCandidate(newProperty()).status).toBe('ANALYZING')
   })
 })
+
+describe('guardar nunca confirma lo que no se guardó', () => {
+  it('si el navegador rechaza la escritura, addCandidate devuelve null y no inventa un candidato', async () => {
+    const original = store.setItem.bind(store)
+    store.setItem = () => { throw new Error('QuotaExceededError') }
+    try {
+      expect(await addCandidate(newProperty())).toBeNull()
+    } finally {
+      store.setItem = original
+    }
+    expect(await loadCandidates()).toHaveLength(0)
+  })
+
+  it('con escritura normal devuelve el candidato guardado', async () => {
+    const c = await addCandidate(newProperty())
+    expect(c).not.toBeNull()
+    expect(await loadCandidates()).toHaveLength(1)
+  })
+})
