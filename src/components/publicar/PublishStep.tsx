@@ -89,8 +89,8 @@ export function PublishStep({ form, published, copiedPortal, handlePublish }: {
             </p>
           </div>
           <p className="text-xs text-emerald-700 leading-relaxed">
-            Publicaste directamente. La tarea de publicación en tu operación
-            se completa cuando cargues la URL del aviso publicado.
+            Abrimos el portal y copiamos el texto de tu aviso. Falta que lo publiques ahí.
+            La tarea de publicación en tu operación se completa cuando cargues la URL del aviso publicado.
           </p>
           <Link href="/asistente" className="mt-2 flex items-center gap-1 text-xs font-semibold text-green-700 hover:underline">
             Estrategia de negociación con VARA →

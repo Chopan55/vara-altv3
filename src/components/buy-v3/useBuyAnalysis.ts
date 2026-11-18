@@ -67,6 +67,8 @@ export function useBuyAnalysis() {
   const overridesRef = useRef<UserOverrides>({})
   const submittedRef = useRef<Set<string>>(new Set())
   const startedAt = useRef(0)
+  /** Número de la última lectura pedida: si la persona pega el texto mientras se lee el link, gana la más nueva. */
+  const seqRef = useRef(0)
 
   const ev = useCallback((name: EventName, props?: Parameters<typeof track>[2]) => {
     track(name, sessionId(), props)
@@ -146,6 +148,7 @@ export function useBuyAnalysis() {
     submittedRef.current.add(clean)
     overridesRef.current = {}
     startedAt.current = Date.now()
+    const seq = ++seqRef.current
     setState({ ...INITIAL, phase: 'reading', url: clean })
 
     try {
@@ -155,6 +158,7 @@ export function useBuyAnalysis() {
         body: JSON.stringify({ url: clean, text: pastedText }),
       })
       const scrape = (await res.json()) as ScrapeResult
+      if (seq !== seqRef.current) return // llegó una lectura más nueva (texto pegado): esta ya no vale
       const readable = scrape.status === 'success' || scrape.status === 'partial' || scrape.status === 'expired'
       if (!readable) {
         setState(s => ({
@@ -166,6 +170,7 @@ export function useBuyAnalysis() {
       if (scrape.warnings?.length) setState(s => ({ ...s, warnings: scrape.warnings }))
       await run(scrape, false)
     } catch {
+      if (seq !== seqRef.current) return
       setState(s => ({ ...s, phase: 'error', message: 'No pudimos acceder al aviso. Probá de nuevo.' }))
     }
   }, [ev, run])
@@ -174,6 +179,7 @@ export function useBuyAnalysis() {
   const submitManual = useCallback(async (url: string, m: ManualListing) => {
     ev('listing_submitted', { listingKey: url, manual: true })
     trackFunnel('analyze_start', { manual: true })
+    seqRef.current++
     overridesRef.current = {}
     startedAt.current = Date.now()
     setState({ ...INITIAL, phase: 'analyzing', url })
@@ -239,14 +245,19 @@ export function useBuyAnalysis() {
     await rerun()
   }, [ev, rerun])
 
-  const save = useCallback(async () => {
-    if (!scrapeRef.current) return
+  /** Devuelve true solo si la propiedad quedó guardada de verdad: la pantalla no debe confirmar un guardado que falló. */
+  const save = useCallback(async (): Promise<boolean> => {
+    if (!scrapeRef.current) return false
     try {
       const { addCandidate } = await import('@/lib/candidates/store')
       await addCandidate(userPropertyFromScrape(scrapeRef.current))
       setState(s => ({ ...s, saved: true }))
       ev('property_saved')
-    } catch { /* guardar nunca rompe el resultado */ }
+      return true
+    } catch {
+      // Guardar nunca rompe el resultado, pero tampoco se confirma como hecho.
+      return false
+    }
   }, [ev])
 
   const discard = useCallback((reason?: string) => {

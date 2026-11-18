@@ -95,10 +95,7 @@ export default function OfertasPage() {
     ? Math.round(ofertas.reduce((s, o) => s + o.offeredPrice, 0) / ofertas.length)
     : 0
 
-  const cargarEjemplo = () => {
-    setOfertas(MOCK_OFERTAS)
-    setExpanded(MOCK_OFERTAS[0]?.id ?? null)
-  }
+  // Sin ejemplos ficticios: la pantalla solo muestra ofertas reales (regla de VARA: cero datos inventados a la vista).
   const vaciar = () => { setOfertas([]); setExpanded(null); setCompareIds([]) }
 
   return (
@@ -145,10 +142,6 @@ export default function OfertasPage() {
                 className="flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
                 Publicar mi propiedad
               </Link>
-              <button onClick={cargarEjemplo}
-                className="flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-500 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
-                Ver un ejemplo
-              </button>
             </div>
           </div>
         )}

@@ -12,7 +12,7 @@ import type { ProfileAnswers } from '@/lib/analysis/prefs'
 import type { BuyState } from './useBuyAnalysis'
 import { AskVara } from './AskVara'
 import { AddComparables, ProfilePrompt, SurfaceWarningCard } from './Entry'
-import { ComparableList, EvidenceSummary } from './Evidence'
+import { ComparableList, EvidenceSummary, RangeBar } from './Evidence'
 import { CostSection, DetailSection, FitSection, GoodSection, MissingSection, RisksSection, Section } from './Sections'
 import { SellerQuestionsCard, ShareCard, TotalCostCard, type ShareChannel } from './Highlights'
 import {
@@ -24,7 +24,7 @@ export interface ResultActions {
   addComparable: (url: string, text?: string) => Promise<{ ok: boolean; message: string }>
   removeComparable: (id: string) => Promise<void>
   applyProfile: (a: ProfileAnswers) => Promise<void>
-  save: () => Promise<void>
+  save: () => Promise<boolean>
   discard: (reason?: string) => void
   share: (channel?: ShareChannel) => string | null
   reset: () => void
@@ -95,8 +95,18 @@ export function ResultView({
       case 'ADD_COMPARABLES': return scrollTo('sumar')
       case 'COMPARE': await actions.save(); return router.push('/comparar')
       case 'VISIT': actions.track('visit_started'); await actions.save(); return router.push('/vara-visit/solicitar')
-      case 'SAVE': await actions.save(); return setNotice('Guardada. La encontrás en tus propiedades.')
-      case 'DISCARD': actions.discard(); return setNotice('Descartada. Podés recuperarla desde tus propiedades.')
+      case 'SAVE': {
+        const saved = await actions.save()
+        return setNotice(saved
+          ? 'Guardada. La encontrás en tus propiedades.'
+          : 'No pudimos guardarla. Probá de nuevo en un momento.')
+      }
+      case 'DISCARD':
+        actions.discard()
+        // Solo se puede recuperar lo que se guardó antes: no prometemos una copia que no existe.
+        return setNotice(state.saved
+          ? 'Descartada de este análisis. Sigue guardada en tus propiedades.'
+          : 'Descartada. No quedó guardada en tus propiedades.')
       default: return
     }
   }
@@ -153,6 +163,23 @@ export function ResultView({
             />
           </div>
 
+          {/* La prueba junto al veredicto: dónde cae el precio entre los avisos comparables y por qué esa confianza. */}
+          <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/60 p-4" data-testid="verdict-proof">
+            {price.comparableListingRange
+              ? <RangeBar analysis={analysis} />
+              : <p className="text-sm text-slate-700">Todavía no puedo opinar sobre el precio: no hay avisos comparables suficientes.</p>}
+            {price.confidenceReasons.length > 0 && (
+              <p className="mt-3 text-xs text-slate-600">
+                <span className="font-semibold text-slate-700">Por qué esta confianza: </span>
+                {price.confidenceReasons.slice(0, 2).join(' · ')}
+              </p>
+            )}
+            <button type="button" onClick={() => scrollTo('evidencia')}
+              className="mt-2 text-xs font-semibold text-brand-700 hover:underline">
+              Ver los avisos que usé
+            </button>
+          </div>
+
           <button type="button" onClick={() => act(nba.type)}
             className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3.5 text-base font-semibold text-white hover:bg-brand-800 sm:w-auto">
             {nba.label} <ArrowRight size={18} />
@@ -186,6 +213,7 @@ export function ResultView({
       {/* VARA con su avatar, a la vista apenas termina el análisis (solo si la IA está habilitada) */}
       <AskVara analysis={analysis} onAsk={() => actions.track('missing_data_action', { kind: 'ask_vara' })} />
 
+      <div id="evidencia" className="scroll-mt-6">
       <Section title="La evidencia" hint="Podés abrir cada aviso y discutir la conclusión.">
         <EvidenceSummary analysis={analysis} />
         <ComparableList
@@ -198,6 +226,7 @@ export function ResultView({
           <AddComparables highlight={lowEvidence} onAdd={actions.addComparable} />
         </div>
       </Section>
+      </div>
 
       <GoodSection analysis={analysis} />
       {userFit.state === 'NO_PROFILE' && !profileDismissed && (

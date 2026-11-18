@@ -103,7 +103,8 @@ function Step({ done, active, children }: { done: boolean; active: boolean; chil
 }
 
 /** Cada paso aparece cuando existe de verdad. Si no hay dato, no hay barra de progreso. */
-export function ProgressPanel({ state, onConfirm }: { state: BuyState; onConfirm?: (p: UserOverrides) => Promise<void> | void }) {
+export function ProgressPanel({ state, onConfirm, onPaste }: { state: BuyState; onConfirm?: (p: UserOverrides) => Promise<void> | void; onPaste?: (text: string) => void }) {
+  const [pasted, setPasted] = useState('')
   const s = state.subject
   const f = s?.fields
   const where = f ? [f.community?.value, f.neighborhood?.value, f.city?.value].filter(Boolean).join(' · ') : ''
@@ -145,6 +146,21 @@ export function ProgressPanel({ state, onConfirm }: { state: BuyState; onConfirm
         </Step>
         <Step done={state.phase === 'done'} active={!!state.evidence && state.phase !== 'done'}>Armando la conclusión</Step>
       </ul>
+
+      {/* Salida rápida: algunos portales bloquean la lectura. Se ofrece mientras se lee, sin esperar el error. */}
+      {!s && onPaste && (
+        <details className="mt-6 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+          <summary className="cursor-pointer font-medium">¿Tarda mucho? Pegá el texto del aviso</summary>
+          <p className="mt-2 text-slate-600">Abrí el aviso, seleccioná todo, copialo y pegalo acá. Lo leo igual.</p>
+          <textarea value={pasted} onChange={e => setPasted(e.target.value)} rows={5} aria-label="Texto del aviso"
+            className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          <button type="button" disabled={pasted.trim().length < 150} onClick={() => onPaste(pasted)}
+            className="mt-2 rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+            Analizar este texto
+          </button>
+          {pasted.trim().length < 150 && <p className="mt-1 text-xs text-slate-500">Pegá el aviso completo (al menos unas pocas líneas).</p>}
+        </details>
+      )}
     </div>
   )
 }
