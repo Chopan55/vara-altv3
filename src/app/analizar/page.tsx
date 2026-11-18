@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { AlertCircle } from 'lucide-react'
 import { useBrowserValue } from '@/hooks/useHydrated'
 import { isBuyWowV3Enabled } from '@/lib/analysis/access'
 import { useBuyAnalysis } from '@/components/buy-v3/useBuyAnalysis'
@@ -91,7 +92,9 @@ function Analizar() {
     body = (
       <>
         {state.phase === 'error' && state.message && (
-          <p role="alert" className="mt-8 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{state.message}</p>
+          <p role="alert" className="mt-8 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-800">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />{state.message}
+          </p>
         )}
         <EntryForm
           onSubmit={a.submit}

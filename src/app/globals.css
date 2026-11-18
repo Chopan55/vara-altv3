@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* Marca. 600 es el color de acción; 900 el navy de los titulares de marketing.
+  /* Marca. 700 es el relleno de las acciones (texto blanco, 6,8:1); 600 queda para foco, íconos y acentos; 900 el navy de los titulares de marketing.
      El violeta tiene que significar algo (acción, estado activo, un resaltado): no es el color de las superficies. */
   --color-brand-50: #f3f3fe;
   --color-brand-100: #e8e8fc;

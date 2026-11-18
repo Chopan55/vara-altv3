@@ -154,7 +154,7 @@ function ConfirmField({ field, label, country, onConfirm }: {
       )}
       {spec.unit && <span className="text-xs text-slate-500">{spec.unit}</span>}
       <button type="button" onClick={submit} disabled={!value}
-        className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40">
+        className="rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-40">
         Confirmar
       </button>
     </div>
@@ -206,7 +206,7 @@ export function MissingSection({
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button"
               onClick={async () => { if (await copyText(draftMessage)) { setCopied(true); onAction('copy'); setTimeout(() => setCopied(false), 2000) } }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white min-h-11">
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 min-h-11">
               <Copy size={14} /> {copied ? 'Copiado' : 'Copiar mensaje'}
             </button>
             <a href={`https://wa.me/?text=${encodeURIComponent(draftMessage)}`} target="_blank" rel="noopener noreferrer"
@@ -306,7 +306,7 @@ export function DetailSection({ analysis }: { analysis: PropertyAnalysis }) {
             </p>
             {analysis.extractionQuality.warnings.map(w => <p key={w} className="text-amber-700">{w}</p>)}
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500">
             Reconocí la propiedad en {sec(t.timeToPropertyMs)}, encontré comparables en {sec(t.timeToComparablesMs)} y
             armé la conclusión en {sec(t.timeToConclusionMs)}.
           </p>

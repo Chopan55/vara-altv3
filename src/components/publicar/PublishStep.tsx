@@ -16,7 +16,7 @@ export function PublishStep({ form, published, copiedPortal, blockedPortal, hand
       <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card p-4">
         <p className="text-xs font-semibold text-slate-500 mb-1">Tu aviso</p>
         <p className="font-bold text-slate-900">{form.title}</p>
-        <p className="text-sm text-slate-400">USD {Number(form.price).toLocaleString('es-AR')} · {form.city}</p>
+        <p className="text-sm text-slate-500">USD {Number(form.price).toLocaleString('es-AR')} · {form.city}</p>
       </div>
 
       <div className="space-y-3">
@@ -34,7 +34,7 @@ export function PublishStep({ form, published, copiedPortal, blockedPortal, hand
                   </div>
                   <div>
                     <p className="font-bold text-slate-900 text-sm">{portal.name}</p>
-                    <p className="text-xs text-slate-400">{portal.reach}</p>
+                    <p className="text-xs text-slate-500">{portal.reach}</p>
                   </div>
                 </div>
                 {!portal.free && (
@@ -78,7 +78,7 @@ export function PublishStep({ form, published, copiedPortal, blockedPortal, hand
                   )}
                 <button
                   onClick={() => handlePublish(portal)}
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                  className="w-full bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5"
                 >
                   <ExternalLink size={12} /> Ir a publicar en {portal.name}
                 </button>

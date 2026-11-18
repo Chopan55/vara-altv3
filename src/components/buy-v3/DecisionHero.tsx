@@ -194,7 +194,8 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
             <p className="mt-1 text-base font-semibold leading-snug text-slate-900">{firstQuestion.question}</p>
             <p className="mt-1 text-xs text-slate-600">{firstQuestion.why}</p>
             <button type="button" onClick={copyQuestion}
-              className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-brand-200 bg-white px-4 text-sm font-semibold text-brand-800 transition hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+              className={cn('mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-xl border bg-white px-4 text-sm font-semibold transition', copied === 'fail' ? 'border-rose-300 text-rose-800 hover:bg-rose-50' : 'border-brand-200 text-brand-800 hover:bg-brand-50',
+                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600')}>
               {copied === 'ok' ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
               {copied === 'ok' ? 'Copiada' : copied === 'fail' ? 'No pude copiarla: seleccionala' : 'Copiar la pregunta'}
             </button>
@@ -203,7 +204,7 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
 
         <div>
           <button type="button" onClick={() => onAct(nba.type)}
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-5 text-base font-semibold text-white shadow-sm transition hover:bg-brand-700 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-700 px-5 text-base font-semibold text-white shadow-sm transition hover:bg-brand-800 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
             {nba.label} <ArrowRight size={18} aria-hidden="true" />
           </button>
           <p className="mt-2 text-sm text-slate-600">{nba.reason}</p>

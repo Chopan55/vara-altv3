@@ -100,7 +100,7 @@ export function EntryForm({
               <p className="text-sm text-slate-700">Abrí el aviso, seleccioná todo, copialo y pegalo acá. Lo leo igual.</p>
               <textarea value={text} onChange={e => setText(e.target.value)} rows={6} aria-label="Texto de la publicación"
                 placeholder="Pegá acá todo el texto de la publicación…"
-                className="mt-3 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200" />
+                className="mt-3 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200" />
               <PastePreview text={text} mx={mx} />
               <button type="button" disabled={text.trim().length < MIN_PASTED_CHARS} onClick={() => onPasteText(text)}
                 className="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
@@ -306,7 +306,7 @@ export function ProgressPanel({
             <div className="mt-3">
               <p className="text-sm text-slate-700">Abrí el aviso, seleccioná todo, copialo y pegalo acá. Lo leo igual.</p>
               <textarea value={pasted} onChange={e => setPasted(e.target.value)} rows={5} aria-label="Texto del aviso"
-                className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200" />
+                className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200" />
               <button type="button" disabled={pasted.trim().length < MIN_PASTED_CHARS} onClick={() => onPaste(pasted)}
                 className="mt-2 inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
                 Analizar este texto
@@ -441,7 +441,7 @@ export function BlockedPaste({
         rows={6}
         aria-label="Texto de la publicación"
         placeholder="Pegá acá todo el texto de la publicación…"
-        className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+        className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200"
       />
       <PastePreview text={text} mx={mx} />
       <button type="button" disabled={text.trim().length < MIN_PASTED_CHARS} onClick={() => onSubmit(text)}
@@ -522,7 +522,7 @@ export function ProfilePrompt({
           {MUST_HAVES.map(m => (
             <button key={m.key} type="button" onClick={() => toggle(m.key)} aria-pressed={must.includes(m.key)}
               className={cn('min-h-11 rounded-full border px-4 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600',
-                must.includes(m.key) ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-300 bg-white text-slate-700')}>
+                must.includes(m.key) ? 'border-brand-700 bg-brand-700 text-white' : 'border-slate-300 bg-white text-slate-700')}>
               {(mx && MX_MUST_LABEL[m.key]) || m.label}
             </button>
           ))}
@@ -531,12 +531,12 @@ export function ProfilePrompt({
       <div className="mt-5 flex items-center gap-4">
         <button type="button" disabled={empty}
           onClick={() => onSubmit({ budget: num(budget), budgetCurrency: currency, location, bedrooms: num(bedrooms), mustHaves: must })}
-          className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40 min-h-11">
+          className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-40 min-h-11">
           Ver cómo encaja
         </button>
         <button type="button" onClick={onSkip} className="min-h-11 px-2 text-sm text-slate-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">Ahora no</button>
       </div>
-      <p className="mt-3 text-xs text-slate-500">Se guarda solo en este navegador y no se incluye cuando compartís un análisis.</p>
+      <p className="mt-3 text-xs text-slate-600">Se guarda solo en este navegador y no se incluye cuando compartís un análisis.</p>
     </div>
   )
 }
@@ -582,7 +582,7 @@ export function AddComparables({
       )}
       <div className="mt-3 flex items-center gap-4">
         <button type="button" disabled={busy || (asText ? text.trim().length < MIN_PASTED_CHARS : !url.trim())} onClick={submit}
-          className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40 min-h-11">
+          className="rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-40 min-h-11">
           {busy ? 'Leyendo…' : 'Sumar'}
         </button>
         <button type="button" onClick={() => setAsText(a => !a)} className="min-h-11 px-1 text-xs text-slate-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">

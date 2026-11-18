@@ -116,7 +116,7 @@ function ComparableCard({
         </div>
         <div className="shrink-0 text-right">
           <div className="text-sm font-semibold text-brand-700">{m.similarityScore}</div>
-          <div className="text-[11px] text-slate-400">de parecido</div>
+          <div className="text-[11px] text-slate-500">de parecido</div>
         </div>
         <ChevronDown size={16} className={cn('mt-1 shrink-0 text-slate-400 transition-transform', open && 'rotate-180')} />
       </button>

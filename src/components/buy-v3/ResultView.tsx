@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { readUserComparables } from '@/lib/analysis/providers'
 import { accountUrl } from '@/lib/auth/entryJourney'
@@ -32,7 +33,10 @@ export function ResultView({
   state, actions, onAnother,
 }: { state: BuyState; actions: ResultActions; onAnother: () => void }) {
   const router = useRouter()
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNoticeText] = useState<string | null>(null)
+  const [noticeIsError, setNoticeIsError] = useState(false)
+  /** Un aviso de error se ve y se anuncia distinto de uno informativo. */
+  const setNotice = (text: string, isError = false) => { setNoticeIsError(isError); setNoticeText(text) }
   const [profileDismissed, setProfileDismissed] = useState(false)
   const analysis = state.analysis
   if (!analysis) return null
@@ -55,7 +59,7 @@ export function ResultView({
   /** Guarda y avisa si no se pudo: nada avanza dando por hecho un guardado que falló. */
   const saveOrWarn = async (): Promise<boolean> => {
     const saved = await actions.save()
-    if (!saved) setNotice('No pudimos guardar la propiedad, así que no seguimos. Probá de nuevo en un momento.')
+    if (!saved) setNotice('No pudimos guardar la propiedad, así que no seguimos. Probá de nuevo en un momento.', true)
     return saved
   }
 
@@ -70,7 +74,7 @@ export function ResultView({
         const saved = await actions.save()
         return setNotice(saved
           ? 'Guardada. La encontrás en tus propiedades.'
-          : 'No pudimos guardarla. Probá de nuevo en un momento.')
+          : 'No pudimos guardarla. Probá de nuevo en un momento.', !saved)
       }
       case 'DISCARD':
         actions.discard()
@@ -106,8 +110,11 @@ export function ResultView({
       </div>
 
       {(notice || state.discarded || state.refreshing) && (
-        <p role="status" className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700 break-all min-h-11">
-          {state.refreshing ? 'Actualizando el análisis…' : notice ?? 'Descartada.'}
+        <p role={noticeIsError && !state.refreshing ? 'alert' : 'status'}
+          className={cn('mt-3 flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm min-h-11 break-words',
+            noticeIsError && !state.refreshing ? 'border border-rose-200 bg-rose-50 font-medium text-rose-800' : 'bg-slate-100 text-slate-700')}>
+          {noticeIsError && !state.refreshing && <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />}
+          <span>{state.refreshing ? 'Actualizando el análisis…' : notice ?? 'Descartada.'}</span>
         </p>
       )}
 

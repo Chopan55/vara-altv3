@@ -139,7 +139,7 @@ export default function PublicarPage() {
                 >
                   <span className={cn(
                     'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors',
-                    current ? 'bg-brand-600 text-white'
+                    current ? 'bg-brand-700 text-white'
                       : done ? 'bg-brand-100 text-brand-700'
                       : 'bg-slate-200 text-slate-500'
                   )}>

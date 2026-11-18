@@ -69,7 +69,7 @@ export function SellerQuestionsCard({
       <div className="mt-4 flex flex-wrap gap-2">
         <a href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noopener noreferrer"
           onClick={() => onAction('whatsapp_questions')}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 min-h-11">
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 min-h-11">
           <MessageCircle size={14} aria-hidden="true" /> Preguntar por WhatsApp
         </a>
         <button type="button"
@@ -124,12 +124,12 @@ export function ShareCard({
   }
 
   return (
-    <section aria-labelledby="share-title" className="mt-4 rounded-2xl bg-slate-900 p-5 text-white">
+    <section aria-labelledby="share-title" className="mt-4 rounded-2xl bg-brand-950 p-5 text-white">
       <h2 id="share-title" className="text-base font-semibold">¿Lo decidís con alguien más?</h2>
       <p className="mt-0.5 text-sm text-slate-300">Mandale este análisis. Ve el precio, los comparables y los costos; no ve tus preferencias.</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <button type="button" onClick={whatsapp}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 min-h-11">
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 min-h-11">
           <MessageCircle size={15} aria-hidden="true" /> Compartir por WhatsApp
         </button>
         <button type="button" onClick={copy}
