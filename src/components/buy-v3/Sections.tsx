@@ -7,6 +7,7 @@ import type { UserOverrides } from '@/lib/analysis/normalize'
 import type { PropertyAnalysis, PriorityRisk } from '@/lib/analysis/types'
 import { describeCostSource, formatAsOf } from '@/lib/analysis/costSource'
 import { localRequirements } from '@/lib/analysis/localRequirements'
+import { buildProfessionalQuery } from '@/lib/analysis/professionalQuery'
 import { CONDITION_TEXT, copyText, money } from './format'
 
 export function Section({
@@ -342,6 +343,38 @@ export function LocalRequirementsSection({ analysis }: { analysis: PropertyAnaly
           Pedile al vendedor la última boleta {isMX ? 'del predial y del agua' : 'de tasas municipales'} pagada: muestra el monto y si hay deuda.
           {!muni && chosen === '__otro' && ' Para este municipio todavía no tengo requisitos propios cargados: consultalos con tu escribano.'}
         </p>
+      </div>
+    </Section>
+  )
+}
+
+// ───────────────────────── Consulta para el escribano ─────────────────────────
+
+export function ProfessionalQuerySection({ analysis }: { analysis: PropertyAnalysis }) {
+  const [copied, setCopied] = useState(false)
+  const sp = analysis.subjectProperty
+  const isMX = (sp.country ?? '').toUpperCase() === 'MX'
+  const lr = localRequirements(analysis.estimatedTransactionCost.region, sp.country,
+    [sp.fields.city?.value as string | null | undefined, sp.fields.neighborhood?.value as string | null | undefined])
+  const msg = buildProfessionalQuery(analysis, lr?.detected?.name ?? null)
+  const pro = isMX ? 'notario' : 'escribano'
+
+  return (
+    <Section id="consulta" title={`Llegá a tu ${pro} con las preguntas claras`} hint={`El ${pro} es quien revisa los papeles y busca salidas a los problemas. Esta consulta junta lo que VARA ya detectó.`}>
+      <div className="rounded-xl bg-slate-50 p-4">
+        <pre className="whitespace-pre-wrap font-sans text-sm text-slate-800">{msg}</pre>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button"
+            onClick={async () => { if (await copyText(msg)) { setCopied(true); setTimeout(() => setCopied(false), 2000) } }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 min-h-11">
+            <Copy size={14} /> {copied ? 'Copiado' : 'Copiar consulta'}
+          </button>
+          <a href={`https://wa.me/?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white min-h-11">
+            <MessageCircle size={14} /> Abrir en WhatsApp
+          </a>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">VARA no envía nada: vos elegís a quién y cuándo.</p>
       </div>
     </Section>
   )
