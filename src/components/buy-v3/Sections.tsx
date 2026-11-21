@@ -251,10 +251,16 @@ function CostSourceNote({ basis }: { basis: string }) {
   )
 }
 
-export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
+export type CostRoute = '' | 'direct' | 'agency'
+
+export function CostSection({ analysis, route, setRoute, pctRaw, setPctRaw }: {
+  analysis: PropertyAnalysis
+  route: CostRoute
+  setRoute: (r: CostRoute) => void
+  pctRaw: string
+  setPctRaw: (v: string) => void
+}) {
   const c = analysis.estimatedTransactionCost
-  const [route, setRoute] = useState<'' | 'direct' | 'agency'>('')
-  const [pctRaw, setPctRaw] = useState('')
   const [rateRaw, setRateRaw] = useState('')
   if (c.lines.length === 0 && c.notIncluded.length === 0) return null
   const isMX = c.jurisdiction === 'MX'
@@ -302,7 +308,7 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
               <li>
                 Gastos de escritura: {usd(cc.feesUSD.min)}{cc.feesUSD.max !== cc.feesUSD.min ? ` – ${usd(cc.feesUSD.max).replace('USD ', '')}` : ''}. El escribano los liquida en pesos
                 {cc.feesARS
-                  ? <>: unos <strong>{money(cc.feesARS.min, 'ARS')}{cc.feesARS.max !== cc.feesARS.min ? ` – ${money(cc.feesARS.max, 'ARS').replace('ARS ', '')}` : ''}</strong> a la cotización que cargaste.</>
+                  ? <>: unos <strong>{money(cc.feesARS.min, 'ARS')}{cc.feesARS.max !== cc.feesARS.min ? ` – ${money(cc.feesARS.max, 'ARS').replace('ARS ', '')}` : ''}</strong> a {money(parseRate(rateRaw) ?? 0, 'ARS')} por dólar (la cotización que cargaste).</>
                   : '.'}
               </li>
             </ul>
@@ -331,8 +337,10 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
           <label className="mt-3 block">
             <span className="text-slate-600">{isMX ? '¿Qué comisión te cobra a ti, en %? (pregúntale a quién representa)' : '¿Qué comisión te cobra a vos, en %? (si no la sabés, preguntala antes de avanzar)'}</span>
             <input inputMode="decimal" value={pctRaw} onChange={e => setPctRaw(e.target.value)} placeholder="Ej.: 3"
-              className="mt-1.5 block w-32 rounded-lg border border-slate-300 px-3 py-2" aria-label="Comisión en porcentaje" />
-            {pctRaw.trim() !== '' && pct === null && <span className="mt-1 block text-xs text-rose-700">Poné un número entre 0 y 10.</span>}
+              className="mt-1.5 block w-32 rounded-lg border border-slate-300 px-3 py-2" aria-label="Comisión en porcentaje"
+              aria-invalid={pctRaw.trim() !== '' && pct === null} aria-describedby={pctRaw.trim() !== '' && pct === null ? 'pct-error' : undefined} />
+            {pctRaw.trim() !== '' && pct === null && <span id="pct-error" className="mt-1 block text-xs text-rose-700">{isMX ? 'Escribe un número mayor que 0 y hasta 10.' : 'Poné un número mayor que 0 y hasta 10.'}</span>}
+            {!c.lines.some(l => l.id === 'price' && l.min !== null) && <span className="mt-1 block text-xs text-slate-500">Sin el precio del aviso no puedo calcular la comisión.</span>}
           </label>
         )}
         {route === 'direct' && (
@@ -352,7 +360,7 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
         <div className="mt-3">
           <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><Minus size={12} /> No incluido en el total</p>
           <ul className="mt-1 list-disc pl-5 text-xs text-slate-500">
-            {c.notIncluded.filter(n => !(withCom.line && /comisi/i.test(n))).map(n => <li key={n}>{n}</li>)}
+            {c.notIncluded.filter(n => !(withCom.line && /^Comisión de la inmobiliaria|^Comisión del asesor inmobiliario/.test(n))).map(n => <li key={n}>{n}</li>)}
           </ul>
         </div>
       )}

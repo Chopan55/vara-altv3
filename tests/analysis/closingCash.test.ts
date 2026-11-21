@@ -31,3 +31,13 @@ describe('plata para el cierre', () => {
     expect(closingCash({ ...cost, jurisdiction: 'MX' }, 20)).toBeNull()
   })
 })
+
+describe('parseRate formatos', () => {
+  it('no infla 1200.50', () => {
+    expect(parseRate('1200.50')).toBe(1200.5)
+    expect(parseRate('1200,50')).toBe(1200.5)
+    expect(parseRate('1.200')).toBe(1200)
+    expect(parseRate('12.00.0')).toBeNull()
+    expect(parseRate('abc')).toBeNull()
+  })
+})

@@ -15,13 +15,12 @@ export function parseCommissionPct(raw: string): number | null {
 
 export function withCommission(cost: TransactionCost, pct: number | null): { line: CostLine | null; totalRange: TransactionCost['totalRange'] } {
   const price = cost.lines.find(l => l.id === 'price')
-  if (pct === null || !price || price.min === null || !cost.totalRange || price.currency !== cost.totalRange.currency) {
-    return { line: null, totalRange: cost.totalRange }
-  }
+  if (pct === null || !price || price.min === null) return { line: null, totalRange: cost.totalRange }
   const amount = Math.round(price.min * pct / 100)
   const line: CostLine = {
-    id: 'commission', label: `Comisión de la inmobiliaria (${String(pct).replace('.', ',')}%)`, kind: 'KNOWN',
+    id: 'commission', label: `${cost.jurisdiction === 'MX' ? 'Comisión del asesor inmobiliario' : 'Comisión de la inmobiliaria'} (${String(pct).replace('.', ',')}%)`, kind: 'KNOWN',
     min: amount, max: amount, currency: price.currency, basis: 'Dato que cargaste',
   }
-  return { line, totalRange: { ...cost.totalRange, min: cost.totalRange.min + amount, max: cost.totalRange.max + amount } }
+  const t = cost.totalRange
+  return { line, totalRange: t && t.currency === price.currency ? { ...t, min: t.min + amount, max: t.max + amount } : t }
 }

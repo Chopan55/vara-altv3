@@ -7,10 +7,20 @@
 
 import type { TransactionCost } from './types'
 
+/**
+ * Acepta «1200», «1.200» (miles), «1.200,50», «1200,50» y «1200.50».
+ * Cualquier otro formato devuelve null en vez de adivinar.
+ */
 export function parseRate(raw: string): number | null {
-  const n = Number(raw.replace(/\./g, '').replace(',', '.').trim())
-  if (!raw.trim() || !isFinite(n) || n <= 0) return null
-  return n
+  const t = raw.trim()
+  if (!t) return null
+  let norm: string | null = null
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) norm = t.replace(/\./g, '').replace(',', '.')
+  else if (/^\d+(,\d+)?$/.test(t)) norm = t.replace(',', '.')
+  else if (/^\d+\.\d{1,2}$/.test(t)) norm = t
+  if (norm === null) return null
+  const n = Number(norm)
+  return isFinite(n) && n > 0 ? n : null
 }
 
 export interface ClosingCash {

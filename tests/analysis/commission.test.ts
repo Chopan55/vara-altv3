@@ -26,3 +26,12 @@ describe('comisión', () => {
     expect(withCommission(cost, null)).toEqual({ line: null, totalRange: cost.totalRange })
   })
 })
+
+describe('comisión sin total estimable', () => {
+  it('igual muestra el rubro si hay precio', () => {
+    const ars = { ...cost, lines: [{ ...cost.lines[0], currency: 'ARS' as const }], totalRange: null }
+    const r = withCommission(ars, 3)
+    expect(r.line?.min).toBe(6000)
+    expect(r.totalRange).toBeNull()
+  })
+})

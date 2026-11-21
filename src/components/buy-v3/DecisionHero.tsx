@@ -1,5 +1,6 @@
 'use client'
 
+import { withCommission } from '@/lib/analysis/commission'
 /**
  * El primer pantallazo del resultado, pensado para el celular: responde "¿vale la pena avanzar?" sin scroll.
  * Arriba (oscuro): qué propiedad encontró VARA, el veredicto y las dos cifras que importan, cada una rotulada
@@ -34,6 +35,8 @@ function Source({ kind }: { kind: 'aviso' | 'estimado' }) {
 }
 
 export interface DecisionHeroProps {
+  /** Comisión que cargó el comprador; se suma al total del resumen. */
+  commissionPct?: number | null
   analysis: PropertyAnalysis
   photo?: string
   warnings?: SurfaceWarning[]
@@ -43,14 +46,14 @@ export interface DecisionHeroProps {
   onQuestionCopied: () => void
 }
 
-export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScroll, onQuestionCopied }: DecisionHeroProps) {
+export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScroll, onQuestionCopied, commissionPct = null }: DecisionHeroProps) {
   const [copied, setCopied] = useState<'ok' | 'fail' | null>(null)
   const { conclusion, nextBestAction: nba, pricePositioning: price, estimatedTransactionCost: cost } = analysis
   const f = analysis.subjectProperty.fields
   const mx = analysis.subjectProperty.country === 'MX'
   const style = VERDICT_STYLE[conclusion.verdict]
   const ask = price.subjectAskingPrice
-  const total = cost.totalRange
+  const total = withCommission(cost, commissionPct).totalRange
   const band = price.comparableListingRange
   const extra = ask && total ? { min: total.min - ask.amount, max: total.max - ask.amount } : null
   const where = [f.community?.value, f.neighborhood?.value, f.city?.value].filter(Boolean).join(' · ')

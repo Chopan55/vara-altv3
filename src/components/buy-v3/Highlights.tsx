@@ -147,8 +147,9 @@ export function ShareCard({
         <summary className="cursor-pointer text-slate-200">Qué ve quien abre el link</summary>
         <ul className="mt-2 list-disc space-y-0.5 pl-5">
           <li>Título y zona del aviso, precio publicado y la conclusión sobre el precio.</li>
-          <li>El rango de avisos comparables y hasta 5 de ellos, con enlace al portal.</li>
-          <li>Hasta 3 puntos a revisar, los datos que faltan y la pregunta sugerida.</li>
+          <li>El rango de avisos comparables y hasta 5 de ellos (con enlace al portal cuando lo hay).</li>
+          <li>Hasta 3 puntos a revisar, los datos que faltan y, si la hay, la pregunta sugerida.</li>
+          <li>Preguntas generales para el vendedor y los costos de compra estimados, calculados de nuevo sin la comisión.</li>
         </ul>
         <p className="mt-2">No ve tus preferencias, tu presupuesto, tus documentos, ni la comisión o la cotización que cargaste.</p>
       </details>
