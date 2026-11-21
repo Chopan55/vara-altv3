@@ -284,9 +284,9 @@ export function CostSection({ analysis, route, setRoute, pctRaw, setPctRaw }: {
             <div>
               <p className="text-slate-800">{l.label}</p>
               <span className={cn('mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium', KIND_BADGE[l.kind])}>
-                {KIND_TEXT[l.kind]}
+                {l.id === 'commission' ? (isMX ? 'Lo cargaste tú' : 'Lo cargaste vos') : KIND_TEXT[l.kind]}
               </span>
-              <CostSourceNote basis={l.basis} />
+              {l.id !== 'commission' && <CostSourceNote basis={l.basis} />}
             </div>
             <p className="text-right font-medium text-slate-900">
               {l.min !== null && l.max !== null
