@@ -16,6 +16,35 @@ import {
  * Home pública. Primero la promesa, después los resultados, después el producto real.
  * El estilo vive en los tokens de globals.css y en components/ui (no hay estilos propios de página).
  */
+const FEATURE_GROUPS: { title: string; items: { t: string; beta?: boolean }[] }[] = [
+  { title: 'Entendé', items: [{ t: 'Cada paso de la operación, hasta la escritura' }, { t: 'Qué preguntarle al escribano y al agrimensor' }, { t: 'Lectura de tus documentos con IA', beta: true }] },
+  { title: 'Compará', items: [{ t: 'Costo total con gastos y sus fuentes' }, { t: 'Precio frente a avisos parecidos' }, { t: 'Plata para el cierre, en dólares y pesos' }] },
+  { title: 'Negociá y publicá', items: [{ t: 'Ayuda para negociar directo con la otra parte', beta: true }, { t: 'Tu propio aviso, asesorado' }, { t: 'Asistente con IA que responde tus dudas', beta: true }] },
+  { title: 'Acompañamiento', items: [{ t: 'VARA Visit: alguien con experiencia te acompaña a visitar' }, { t: 'Tu escribano o uno que te recomendemos' }] },
+]
+
+function HeroFeatures() {
+  return (
+    <div className="mx-auto mt-8 max-w-3xl text-left">
+      <div className="grid gap-4 sm:grid-cols-2">
+        {FEATURE_GROUPS.map(g => (
+          <details key={g.title} className="group rounded-xl border border-line bg-surface p-4 open:shadow-sm sm:[&>summary]:pointer-events-none" open>
+            <summary className="cursor-pointer list-none text-sm font-bold text-brand-900">{g.title}</summary>
+            <ul className="mt-2 space-y-1 text-sm text-ink-soft">
+              {g.items.map(i => (
+                <li key={i.t} className="flex items-start gap-1.5">
+                  <span aria-hidden="true" className="mt-0.5 text-brand-700">✓</span>
+                  <span>{i.t}{i.beta && <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800">Beta · por invitación</span>}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-surface text-ink">
@@ -41,13 +70,13 @@ export default function LandingPage() {
         <div className="mx-auto max-w-3xl text-center">
           <Eyebrow>Argentina · México</Eyebrow>
           <h1 className="font-display mt-6 text-4xl font-extrabold leading-[1.06] text-brand-900 text-balance md:text-6xl">
-            Comprá o vendé tu propiedad <span className="text-brand-gradient">sin nervios</span> y sin pagar de más
+            Comprá o vendé tu propiedad <span className="text-brand-gradient">sin inmobiliaria</span> y sin pagar comisiones
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft md:text-xl">
-            Pegá el link del aviso: en segundos ves el costo total con gastos, cómo está el precio frente a avisos parecidos y qué preguntar
-            antes de dar plata. Después, VARA te acompaña paso a paso hasta la escritura, con tu escribano o uno que te recomendemos.
+            VARA te guía en cada paso, con tu escribano o uno que te recomendemos.
           </p>
           <HeroAnalyze />
+          <HeroFeatures />
         </div>
         <div className="mx-auto mt-14 max-w-6xl md:mt-20">
           <ProductFrame
