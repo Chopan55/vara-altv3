@@ -60,7 +60,7 @@ export function EvidenceSummary({ analysis }: { analysis: PropertyAnalysis }) {
       <ul className="mt-3 space-y-1 text-xs text-slate-500">
         {r.afterDedup > 0 && (
           <li>
-            Revisé {r.afterDedup} aviso{r.afterDedup === 1 ? '' : 's'} de la zona: usé {ev.strongMatches} y dejé afuera {Math.max(0, r.afterDedup - ev.strongMatches)} por no parecerse lo suficiente. Abajo ves cada uno con el motivo.
+            Revisé {r.afterDedup} aviso{r.afterDedup === 1 ? '' : 's'} de la zona: usé {ev.strongMatches} y dejé afuera {Math.max(0, r.afterDedup - ev.strongMatches)} por no parecerse lo suficiente. Abajo ves los que usé, en qué se parecen y en qué difieren.
           </li>
         )}
         <li>Precios de cierre (lo que realmente se pagó): sin datos disponibles todavía; por eso comparo precios pedidos.</li>
