@@ -169,8 +169,8 @@ export function ResultView({
         <h2 className="text-lg font-semibold text-slate-900">{analysis.subjectProperty.country === 'MX' ? 'Sigue tranquilo hasta la firma' : 'Seguí tranquilo hasta la firma'}</h2>
         <p className="mt-1 text-sm text-slate-700">
           {analysis.subjectProperty.country === 'MX'
-            ? 'VARA te arma el plan de compra: qué documentos pedir, cómo ofertar y cuánto vas a gastar, para no pagar de más. Con tu notario o uno que te recomendemos.'
-            : 'VARA te arma el plan de compra: qué papeles pedir, cómo ofertar y cuánto vas a gastar, para no pagar de más. Con tu escribano o uno que te recomendemos.'}
+            ? 'VARA te arma el plan de compra: qué documentos pedir, cómo ofertar y un estimado de los gastos, para no pagar de más. Con tu notario o uno que te recomendemos.'
+            : 'VARA te arma el plan de compra: qué papeles pedir, cómo ofertar y un estimado de los gastos, para no pagar de más. Con tu escribano o uno que te recomendemos.'}
         </p>
         <button type="button" onClick={follow}
           className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800">
