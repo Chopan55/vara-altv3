@@ -19,7 +19,7 @@ import {
 const FEATURE_GROUPS: { title: string; items: { t: string; beta?: boolean }[] }[] = [
   { title: 'Entendé', items: [{ t: 'Cada paso de la operación, hasta la escritura' }, { t: 'Qué preguntarle al escribano y al agrimensor' }, { t: 'Lectura de tus documentos con IA', beta: true }] },
   { title: 'Compará', items: [{ t: 'Costo total con gastos y sus fuentes' }, { t: 'Precio frente a avisos parecidos' }, { t: 'Plata para el cierre, en dólares y pesos' }] },
-  { title: 'Negociá y publicá', items: [{ t: 'Ayuda para negociar directo con la otra parte', beta: true }, { t: 'Tu propio aviso, asesorado' }, { t: 'Asistente con IA que responde tus dudas', beta: true }] },
+  { title: 'Negociá y publicá', items: [{ t: 'Ayuda para negociar directo con la otra parte', beta: true }, { t: 'Tu propio aviso: lo armás y elegís dónde publicarlo' }, { t: 'Asistente con IA que responde tus dudas', beta: true }] },
   { title: 'Acompañamiento', items: [{ t: 'VARA Visit: alguien con experiencia te acompaña a visitar' }, { t: 'Tu escribano o uno que te recomendemos' }] },
 ]
 
@@ -28,8 +28,8 @@ function HeroFeatures() {
     <div className="mx-auto mt-8 max-w-3xl text-left">
       <div className="grid gap-4 sm:grid-cols-2">
         {FEATURE_GROUPS.map(g => (
-          <details key={g.title} className="group rounded-xl border border-line bg-surface p-4 open:shadow-sm sm:[&>summary]:pointer-events-none" open>
-            <summary className="cursor-pointer list-none text-sm font-bold text-brand-900">{g.title}</summary>
+          <div key={g.title} className="rounded-xl border border-line bg-surface p-4">
+            <h2 className="text-sm font-bold text-brand-900">{g.title}</h2>
             <ul className="mt-2 space-y-1 text-sm text-ink-soft">
               {g.items.map(i => (
                 <li key={i.t} className="flex items-start gap-1.5">
@@ -38,7 +38,7 @@ function HeroFeatures() {
                 </li>
               ))}
             </ul>
-          </details>
+          </div>
         ))}
       </div>
     </div>
@@ -70,7 +70,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-3xl text-center">
           <Eyebrow>Argentina · México</Eyebrow>
           <h1 className="font-display mt-6 text-4xl font-extrabold leading-[1.06] text-brand-900 text-balance md:text-6xl">
-            Comprá o vendé tu propiedad <span className="text-brand-gradient">sin inmobiliaria</span> y sin pagar comisiones
+            Comprá o vendé tu propiedad <span className="text-brand-gradient">sin inmobiliaria</span> y sin pagar comisión inmobiliaria
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft md:text-xl">
             VARA te guía en cada paso, con tu escribano o uno que te recomendemos.
