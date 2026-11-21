@@ -13,7 +13,7 @@ import type { BuyState } from './useBuyAnalysis'
 import { AskVara } from './AskVara'
 import { AddComparables, ProfilePrompt, SurfaceWarningCard } from './Entry'
 import { ComparableList, EvidenceSummary } from './Evidence'
-import { CostSection, DetailSection, FitSection, GoodSection, MissingSection, RisksSection, Section } from './Sections'
+import { CostSection, DetailSection, FitSection, GoodSection, LocalRequirementsSection, MissingSection, RisksSection, Section } from './Sections'
 import { SellerQuestionsCard, ShareCard, type ShareChannel } from './Highlights'
 import { DecisionHero } from './DecisionHero'
 
@@ -161,6 +161,7 @@ export function ResultView({
         onAction={kind => actions.track('missing_data_action', { kind })}
       />
       <CostSection analysis={analysis} />
+      <LocalRequirementsSection analysis={analysis} />
       <DetailSection analysis={analysis} />
 
       <div className="mt-12 rounded-2xl bg-slate-50 p-5 text-center">

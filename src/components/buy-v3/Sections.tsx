@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import type { UserOverrides } from '@/lib/analysis/normalize'
 import type { PropertyAnalysis, PriorityRisk } from '@/lib/analysis/types'
 import { describeCostSource, formatAsOf } from '@/lib/analysis/costSource'
+import { localRequirements } from '@/lib/analysis/localRequirements'
 import { CONDITION_TEXT, copyText, money } from './format'
 
 export function Section({
@@ -296,6 +297,52 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
           {c.assumptions.map(a => <li key={a}>{a}</li>)}
         </ul>
       )}
+    </Section>
+  )
+}
+
+// ───────────────────────── Requisitos del municipio ─────────────────────────
+
+export function LocalRequirementsSection({ analysis }: { analysis: PropertyAnalysis }) {
+  const sp = analysis.subjectProperty
+  const lr = localRequirements(
+    analysis.estimatedTransactionCost.region,
+    sp.country,
+    [sp.fields.city?.value as string | null | undefined, sp.fields.neighborhood?.value as string | null | undefined],
+  )
+  const [chosen, setChosen] = useState<string>('')
+  if (!lr) return null
+  const muni = lr.detected ?? lr.municipalities.find(m => m.name === chosen) ?? null
+  const isMX = (sp.country ?? '').toUpperCase() === 'MX'
+
+  return (
+    <Section id="municipio" title={isMX ? 'Lo que pide el municipio' : 'Lo que pide el partido'} hint="Además de los papeles generales, cada municipio tiene los suyos.">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+        {lr.detected ? (
+          <p className="text-slate-600">Según el aviso, la propiedad está en <strong>{lr.detected.name}</strong>. Si no es así, avisale a tu {isMX ? 'notario' : 'escribano'}.</p>
+        ) : (
+          <label className="block">
+            <span className="text-slate-600">{isMX ? 'Confirmá el municipio o alcaldía' : 'Confirmá el partido'} donde está la propiedad:</span>
+            <select
+              value={chosen}
+              onChange={e => setChosen(e.target.value)}
+              className="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value="">Elegí…</option>
+              {lr.municipalities.map(m => <option key={m.name} value={m.name}>{m.name}</option>)}
+              <option value="__otro">Otro</option>
+            </select>
+          </label>
+        )}
+        <ul className="mt-3 list-disc space-y-1 pl-5">
+          <li>{lr.general}.</li>
+          {muni?.extraRequirements.map(r => <li key={r}>{r}.</li>)}
+        </ul>
+        <p className="mt-3 text-xs text-slate-500">
+          Pedile al vendedor la última boleta {isMX ? 'del predial y del agua' : 'de tasas municipales'} pagada: muestra el monto y si hay deuda.
+          {!muni && chosen === '__otro' && ' Para este municipio todavía no tengo requisitos propios cargados: consultalos con tu escribano.'}
+        </p>
+      </div>
     </Section>
   )
 }
