@@ -197,12 +197,14 @@ export default function ProfesionalesPage() {
               <Info size={16} className="text-slate-400" />
             </div>
             <div>
-              <p className="font-bold text-slate-900 text-sm mb-1">Todavía no tenemos red propia de profesionales</p>
+              <p className="font-bold text-slate-900 text-sm mb-1">Tu escribano, o uno que te recomendemos</p>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Preferimos no listar gente que no verificamos. Mientras armamos la red, VARA te dice
-                qué especialista necesita tu operación y te lleva a los registros oficiales donde
-                podés chequear matrícula.
+                Podés ir con el escribano que elijas vos o pedirle a VARA que te recomiende uno: te respondemos por mail.
+                En cualquier caso, VARA te dice qué especialista necesita tu operación y dónde verificar su matrícula.
               </p>
+              <Link href="/?tema=escribano#contacto" className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold text-brand-700 hover:underline">
+                Pedirle un escribano a VARA →
+              </Link>
             </div>
           </div>
         </div>

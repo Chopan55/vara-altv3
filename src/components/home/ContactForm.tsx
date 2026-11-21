@@ -1,11 +1,22 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+
+/** Mensajes precargados según el motivo que trae el link (?tema=…). */
+const TOPICS: Record<string, string> = {
+  escribano: 'Quiero que VARA me recomiende un escribano para mi operación. La propiedad está en: ',
+  notario: 'Quiero que VARA me recomiende un notario para mi operación. La propiedad está en: ',
+}
 
 type Status = 'idle' | 'sending' | 'sent' | 'error'
 
 export function ContactForm() {
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
+  const [prefill, setPrefill] = useState('')
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get('tema')
+    if (t && TOPICS[t]) setPrefill(TOPICS[t])
+  }, [])
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -43,7 +54,7 @@ export function ContactForm() {
     <form onSubmit={submit} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <input name="name" required maxLength={80} placeholder="Tu nombre" aria-label="Tu nombre" className={field} />
       <input name="email" type="email" required maxLength={120} placeholder="Tu mail" aria-label="Tu mail" className={field} />
-      <textarea name="message" required minLength={10} maxLength={1000} rows={4} placeholder="¿Qué querés hacer o qué te gustaría saber?" aria-label="Tu mensaje" className={field} />
+      <textarea key={prefill} name="message" required minLength={10} maxLength={1000} rows={4} defaultValue={prefill} placeholder="¿Qué querés hacer o qué te gustaría saber?" aria-label="Tu mensaje" className={field} />
       {/* Campo trampa: una persona no lo ve ni lo completa. */}
       <input name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
       {status === 'error' && <p className="text-sm text-red-600" role="alert">{error}</p>}
