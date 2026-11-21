@@ -9,6 +9,7 @@ import { describeCostSource, formatAsOf } from '@/lib/analysis/costSource'
 import { localRequirements } from '@/lib/analysis/localRequirements'
 import { buildProfessionalQuery } from '@/lib/analysis/professionalQuery'
 import { parseCommissionPct, withCommission } from '@/lib/analysis/commission'
+import { closingCash, parseRate } from '@/lib/analysis/closingCash'
 import { CONDITION_TEXT, copyText, money } from './format'
 
 export function Section({
@@ -254,6 +255,7 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
   const c = analysis.estimatedTransactionCost
   const [route, setRoute] = useState<'' | 'direct' | 'agency'>('')
   const [pctRaw, setPctRaw] = useState('')
+  const [rateRaw, setRateRaw] = useState('')
   if (c.lines.length === 0 && c.notIncluded.length === 0) return null
   const isMX = c.jurisdiction === 'MX'
   const pct = route === 'agency' ? parseCommissionPct(pctRaw) : null
@@ -288,6 +290,31 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
           </li>
         ))}
       </ul>
+      {(() => {
+        const cc = closingCash(c, parseRate(rateRaw))
+        if (!cc) return null
+        const usd = (n: number) => money(n, 'USD')
+        return (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm">
+            <p className="font-medium text-slate-900">Plata para el cierre</p>
+            <ul className="mt-2 space-y-1 text-slate-700">
+              <li>En dólares, para el precio: <strong>{usd(cc.priceUSD)}</strong>{withCom.line ? ` (más la comisión que cargaste)` : ''}.</li>
+              <li>
+                Gastos de escritura: {usd(cc.feesUSD.min)}{cc.feesUSD.max !== cc.feesUSD.min ? ` – ${usd(cc.feesUSD.max).replace('USD ', '')}` : ''}. El escribano los liquida en pesos
+                {cc.feesARS
+                  ? <>: unos <strong>{money(cc.feesARS.min, 'ARS')}{cc.feesARS.max !== cc.feesARS.min ? ` – ${money(cc.feesARS.max, 'ARS').replace('ARS ', '')}` : ''}</strong> a la cotización que cargaste.</>
+                  : '.'}
+              </li>
+            </ul>
+            <label className="mt-3 block print:hidden">
+              <span className="text-slate-600">Cotización del dólar que vas a usar (pesos por dólar):</span>
+              <input inputMode="decimal" value={rateRaw} onChange={e => setRateRaw(e.target.value)} placeholder="Ej.: 1.200"
+                className="mt-1.5 block w-36 rounded-lg border border-slate-300 px-3 py-2" aria-label="Cotización del dólar en pesos" />
+            </label>
+            <p className="mt-2 text-xs text-slate-500">Es una cuenta para planificar con la cotización que elegís vos; el monto final lo liquida el escribano el día de la firma.</p>
+          </div>
+        )
+      })()}
       <fieldset className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm print:hidden">
         <legend className="px-1 text-slate-700">¿Cómo vas a seguir con esta propiedad?</legend>
         <div className="mt-1 flex flex-wrap gap-2">
