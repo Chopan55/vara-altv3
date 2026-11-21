@@ -184,7 +184,7 @@ export default function ProfesionalesPage() {
               <ArrowLeft size={14} /> Volver al inicio
             </Link>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Profesionales</h1>
-          <p className="text-sm text-slate-500 mt-1">Qué especialista necesitás y dónde verificarlo</p>
+          <p className="text-sm text-slate-500 mt-1">{country === 'MX' ? 'Elige tu notario o pídele uno a VARA, y verifícalo en el colegio oficial.' : 'Elegí tu escribano o pedile uno a VARA, y verificá su matrícula en el colegio oficial.'}</p>
         </div>
       </header>
 
@@ -197,12 +197,15 @@ export default function ProfesionalesPage() {
               <Info size={16} className="text-slate-400" />
             </div>
             <div>
-              <p className="font-bold text-slate-900 text-sm mb-1">Todavía no tenemos red propia de profesionales</p>
+              <p className="font-bold text-slate-900 text-sm mb-1">{country === 'MX' ? 'Tu notario, o uno que te recomendemos' : 'Tu escribano, o uno que te recomendemos'}</p>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Preferimos no listar gente que no verificamos. Mientras armamos la red, VARA te dice
-                qué especialista necesita tu operación y te lleva a los registros oficiales donde
-                podés chequear matrícula.
+                {country === 'MX'
+                  ? 'Puedes ir con el notario que tú elijas o pedirle a VARA que te recomiende uno: te respondemos por mail. En cualquier caso, VARA te dice qué especialista necesita tu operación y dónde verificarlo.'
+                  : 'Podés ir con el escribano que elijas vos o pedirle a VARA que te recomiende uno: te respondemos por mail. En cualquier caso, VARA te dice qué especialista necesita tu operación y dónde verificar su matrícula.'}
               </p>
+              <Link href={country === 'MX' ? '/?tema=notario#contacto' : '/?tema=escribano#contacto'} className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold text-brand-700 hover:underline">
+                {country === 'MX' ? 'Pedirle un notario a VARA →' : 'Pedirle un escribano a VARA →'}
+              </Link>
             </div>
           </div>
         </div>

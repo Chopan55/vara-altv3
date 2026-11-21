@@ -449,6 +449,18 @@ export function ProfessionalQuerySection({ analysis }: { analysis: PropertyAnaly
         </div>
         <p className="mt-2 text-xs text-slate-500">{isMX ? 'Si abres WhatsApp, el texto pasa a WhatsApp y tú eliges si se lo mandas a alguien.' : 'Si abrís WhatsApp, el texto pasa a WhatsApp y vos elegís si se lo mandás a alguien.'}</p>
       </div>
+      <div className="mt-3 rounded-xl border border-slate-200 bg-white p-4 text-sm print:hidden">
+        <p className="font-medium text-slate-900">{isMX ? '¿No tienes notario?' : '¿No tenés escribano?'}</p>
+        <p className="mt-0.5 text-slate-600">
+          {isMX
+            ? 'Puedes ir con el que tú elijas o pedirle a VARA que te recomiende uno. Te respondemos por mail.'
+            : 'Podés ir con el que elijas vos o pedirle a VARA que te recomiende uno. Te respondemos por mail.'}
+        </p>
+        <a href={`/?tema=${isMX ? 'notario' : 'escribano'}#contacto`}
+          className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50">
+          {isMX ? 'Pedirle un notario a VARA' : 'Pedirle un escribano a VARA'}
+        </a>
+      </div>
     </Section>
   )
 }

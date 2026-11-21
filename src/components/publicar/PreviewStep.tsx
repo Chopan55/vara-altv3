@@ -92,7 +92,7 @@ export function PreviewStep({ form, photos, coverPhoto, setActiveTab }: {
         </button>
         <button onClick={() => setActiveTab('publicar')}
           className="flex-1 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 rounded-2xl py-3.5 text-sm font-bold text-slate-900 transition-colors">
-          <Send size={14} /> Publicar ahora
+          <Send size={14} /> Elegir portal
         </button>
       </div>
     </>

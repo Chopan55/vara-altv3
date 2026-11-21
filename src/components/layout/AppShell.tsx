@@ -65,7 +65,7 @@ function getBuyTools(operationId: string): NavItem[] {
     { href: '/visitas', icon: ClipboardCheck, label: 'Checklist de visita' },
     { href: '/mis-visitas', icon: CalendarCheck, label: 'Visitas agendadas' },
     { href: `${opHref}?tab=riesgos`, icon: ShieldAlert, label: 'Riesgos' },
-    { href: '/profesionales', icon: Users, label: 'Profesionales' },
+    { href: '/profesionales', icon: Users, label: 'Escribanos y profesionales' },
   ]
 }
 
@@ -82,7 +82,7 @@ function getSellTools(operationId: string): NavItem[] {
     { href: '/visitas-vendedor', icon: CalendarCheck, label: 'Visitas' },
     { href: '/preparar-venta', icon: FileText, label: 'Papeles de la venta' },
     { href: `${opHref}?tab=riesgos`, icon: ShieldAlert, label: 'Riesgos' },
-    { href: '/profesionales', icon: Users, label: 'Profesionales' },
+    { href: '/profesionales', icon: Users, label: 'Escribanos y profesionales' },
   ]
 }
 

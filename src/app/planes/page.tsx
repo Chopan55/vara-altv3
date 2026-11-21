@@ -11,14 +11,15 @@ export default function PlanesPage() {
       <header className="border-b border-slate-200/80">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5">
           <VaraLogo size={26} />
-          <Link href="/onboarding" className="text-sm font-bold text-brand-600 hover:underline">Empezar gratis</Link>
+          <Link href="/analizar" className="text-sm font-bold text-brand-600 hover:underline">Probar el análisis gratis</Link>
         </div>
       </header>
       <div className="mx-auto max-w-5xl px-5 py-14">
         <span className="inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-800">Beta privada</span>
-        <h1 className="mt-4 text-3xl font-black text-balance md:text-4xl">Pagá por lo que necesitás</h1>
+        <h1 className="mt-4 text-3xl font-black text-balance md:text-4xl">Qué podés probar en VARA</h1>
         <p className="mt-3 max-w-2xl text-slate-500">
-          Entender es gratis. Pagás cuando necesitás ayuda para avanzar. Estamos en beta privada: hoy podés usar VARA sin costo y los precios se definen junto con los primeros usuarios.
+          El análisis de avisos es gratis y sin cuenta. Estamos en beta privada: hoy podés usar VARA sin costo y los precios de los planes se definen junto con los primeros usuarios.
+          La idea es simple: que compres o vendas sin pagar de más y sin nervios, con tu escribano o uno que te recomendemos.
         </p>
         <div className="mt-10 grid gap-5 md:grid-cols-3">
           {PLANS.map(p => (
