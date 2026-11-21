@@ -251,7 +251,7 @@ export function ProductsSection() {
 const TRUST = [
   { icon: ShieldCheck, t: 'Cada dato con su fuente', d: 'Costos y regulaciones muestran jurisdicción y nivel de confianza: verificado, parcial o estimado.' },
   { icon: Hand, t: 'Vos decidís', d: 'VARA no decide por vos. La IA explica y prepara; no inventa hechos.' },
-  { icon: Eye, t: 'Qué hace y qué no hace', d: 'No es una inmobiliaria ni un estudio jurídico. No reemplaza al escribano; te ayuda a llegar mejor preparado.' },
+  { icon: Eye, t: 'Qué hace y qué no hace', d: 'No es una inmobiliaria ni un estudio jurídico. Vas con tu escribano o con uno que te recomendemos, y llegás con los papeles ordenados y las preguntas claras.' },
 ]
 
 export function TrustSection() {

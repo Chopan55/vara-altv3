@@ -3,7 +3,7 @@ import './globals.css'
 import { AppShell } from '@/components/layout/AppShell'
 import { FunnelBeacon } from '@/components/layout/FunnelBeacon'
 
-const description = 'Pegá el link de un aviso y en segundos ves cuánto sale de verdad: costo total, precio frente a avisos parecidos y qué preguntar antes de avanzar.'
+const description = 'Comprá o vendé tu propiedad sin nervios y sin pagar de más: costo total con gastos, precio frente a avisos parecidos, qué preguntar y cada paso hasta la escritura, con tu escribano o uno que te recomendemos.'
 
 export const metadata: Metadata = {
   title: { default: 'VARA — Comprá y vendé a tu manera', template: '%s · VARA' },

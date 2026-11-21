@@ -1,16 +1,30 @@
 'use client'
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
+
+/** Mensajes precargados según el motivo que trae el link (?tema=…). */
+const TOPICS: Record<string, { message: string; place: string }> = {
+  escribano: { message: 'Quiero que VARA me recomiende un escribano para mi operación.', place: 'Localidad y provincia de la propiedad' },
+  notario: { message: 'Quiero que VARA me recomiende un notario para mi operación.', place: 'Municipio o alcaldía y estado de la propiedad' },
+}
+
+/** El motivo se lee de la URL sin estado: en el servidor no hay motivo; en el navegador, el de ?tema=. */
+const noop = () => () => {}
+const readTopic = () => new URLSearchParams(window.location.search).get('tema')
+const serverTopic = () => null
 
 type Status = 'idle' | 'sending' | 'sent' | 'error'
 
 export function ContactForm() {
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
+  const t = useSyncExternalStore(noop, readTopic, serverTopic)
+  const topic = t && TOPICS[t] ? TOPICS[t] : null
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const form = e.currentTarget
     const data = Object.fromEntries(new FormData(form)) as Record<string, string>
+    if (data.place) { data.message = `${data.message}\nUbicación de la propiedad: ${data.place}`; delete data.place }
     setStatus('sending'); setError('')
     try {
       const res = await fetch('/api/contacto', {
@@ -43,7 +57,13 @@ export function ContactForm() {
     <form onSubmit={submit} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <input name="name" required maxLength={80} placeholder="Tu nombre" aria-label="Tu nombre" className={field} />
       <input name="email" type="email" required maxLength={120} placeholder="Tu mail" aria-label="Tu mail" className={field} />
-      <textarea name="message" required minLength={10} maxLength={1000} rows={4} placeholder="¿Qué querés hacer o qué te gustaría saber?" aria-label="Tu mensaje" className={field} />
+      {topic && (
+        <label className="block text-left text-sm text-slate-600">
+          {topic.place}
+          <input name="place" required minLength={3} maxLength={120} className={`${field} mt-1`} />
+        </label>
+      )}
+      <textarea key={topic?.message ?? ''} name="message" required minLength={10} maxLength={800} rows={4} defaultValue={topic?.message ?? ''} placeholder="¿Qué querés hacer o qué te gustaría saber?" aria-label="Tu mensaje" className={field} />
       {/* Campo trampa: una persona no lo ve ni lo completa. */}
       <input name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
       {status === 'error' && <p className="text-sm text-red-600" role="alert">{error}</p>}

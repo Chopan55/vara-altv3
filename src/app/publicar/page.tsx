@@ -122,7 +122,7 @@ export default function PublicarPage() {
 
         <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Preparar publicación</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Completá cada paso para publicar tu propiedad y llegar a más compradores.
+          Sos el dueño de tu aviso: cargá los datos, revisá cómo queda y publicalo en el portal que elijas, sin depender de una inmobiliaria.
         </p>
 
         {/* Pasos numerados */}
