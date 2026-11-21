@@ -200,6 +200,11 @@ function DocumentRow({ doc, onUpload, onDelete, uploading, categoryLabels }: {
                 {analyzing ? 'Analizando…' : 'Analizar con IA'}
               </button>
             )}
+            {uploaded && isPdf && !summary && (
+              <p className="basis-full text-[11px] text-slate-500">
+                Al analizar, el PDF se envía a OpenAI para leerlo y VARA pide que se borre de ahí apenas termina. Si preferís no enviarlo, podés seguir con la lista de papeles y consultarlo con tu escribano.
+              </p>
+            )}
 
             <button onClick={() => onDelete(doc.id)}
               className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-rose-500 ml-auto">

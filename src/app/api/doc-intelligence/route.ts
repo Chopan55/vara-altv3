@@ -152,11 +152,18 @@ Respondé SOLO con JSON válido: {"holders":[],"encumbrances":[],"restrictions":
     return NextResponse.json({ error: 'ai_unavailable' }, { status: 503 })
   } finally {
     // La escritura tiene DNI y domicilios: se borra de OpenAI siempre, también si el análisis falló.
+    // Se espera el borrado: en un entorno serverless, una promesa suelta puede cortarse al responder.
     if (fileId) {
-      fetch(`https://api.openai.com/v1/files/${fileId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${apiKey}` },
-      }).catch(() => {})
+      try {
+        const del = await fetch(`https://api.openai.com/v1/files/${fileId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${apiKey}` },
+          signal: AbortSignal.timeout(5000),
+        })
+        if (!del.ok) log.warn('doc.intelligence.delete_failed', `status ${del.status} file ${fileId}`)
+      } catch (e) {
+        log.warn('doc.intelligence.delete_failed', `${e instanceof Error ? e.message : 'error'} file ${fileId}`)
+      }
     }
   }
 }

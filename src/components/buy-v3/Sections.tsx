@@ -1,10 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, Check, Copy, MessageCircle, Minus, X } from 'lucide-react'
+import { AlertTriangle, Check, Copy, ExternalLink, MessageCircle, Minus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserOverrides } from '@/lib/analysis/normalize'
 import type { PropertyAnalysis, PriorityRisk } from '@/lib/analysis/types'
+import { describeCostSource, formatAsOf } from '@/lib/analysis/costSource'
+import { localRequirements } from '@/lib/analysis/localRequirements'
+import { buildProfessionalQuery } from '@/lib/analysis/professionalQuery'
 import { CONDITION_TEXT, copyText, money } from './format'
 
 export function Section({
@@ -231,6 +234,21 @@ const KIND_BADGE = {
 } as const
 const KIND_TEXT = { KNOWN: 'Dato del aviso', ESTIMATED: 'Estimado', NOT_INCLUDED: 'No incluido' } as const
 
+function CostSourceNote({ basis }: { basis: string }) {
+  const src = describeCostSource(basis)
+  if (src.kind === 'AVISO') return null
+  return (
+    <p className="mt-1 text-[11px] text-slate-500">
+      Fuente:{' '}
+      {src.url ? (
+        <a href={src.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 underline decoration-slate-300 underline-offset-2 hover:text-slate-700">
+          {src.label} <ExternalLink size={10} aria-hidden />
+        </a>
+      ) : src.label}
+    </p>
+  )
+}
+
 export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
   const c = analysis.estimatedTransactionCost
   if (c.lines.length === 0 && c.notIncluded.length === 0) return null
@@ -252,6 +270,7 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
               <span className={cn('mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium', KIND_BADGE[l.kind])}>
                 {KIND_TEXT[l.kind]}
               </span>
+              <CostSourceNote basis={l.basis} />
             </div>
             <p className="text-right font-medium text-slate-900">
               {l.min !== null && l.max !== null
@@ -261,6 +280,11 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
           </li>
         ))}
       </ul>
+      {formatAsOf(c.dataAsOf) && (
+        <p className="mt-2 text-xs text-slate-500">
+          Datos regulatorios revisados por VARA al {formatAsOf(c.dataAsOf)}. {c.jurisdiction === 'MX' ? 'Confirma los importes con tu notario antes de firmar.' : 'Confirmá los importes con tu escribano antes de firmar.'}
+        </p>
+      )}
       {c.notIncluded.length > 0 && (
         <div className="mt-3">
           <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><Minus size={12} /> No incluido en el total</p>
@@ -274,6 +298,86 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
           {c.assumptions.map(a => <li key={a}>{a}</li>)}
         </ul>
       )}
+    </Section>
+  )
+}
+
+// ───────────────────────── Requisitos del municipio ─────────────────────────
+
+export function LocalRequirementsSection({ analysis }: { analysis: PropertyAnalysis }) {
+  const sp = analysis.subjectProperty
+  const lr = localRequirements(
+    analysis.estimatedTransactionCost.region,
+    sp.country,
+    [sp.fields.city?.value as string | null | undefined, sp.fields.neighborhood?.value as string | null | undefined],
+  )
+  const [chosen, setChosen] = useState<string>('')
+  if (!lr) return null
+  const muni = lr.detected ?? lr.municipalities.find(m => m.name === chosen) ?? null
+  const isMX = (sp.country ?? '').toUpperCase() === 'MX'
+
+  return (
+    <Section id="municipio" title={isMX ? 'Lo que pide el municipio' : 'Lo que pide el partido'} hint="Además de los papeles generales, cada municipio tiene los suyos.">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+        {lr.detected ? (
+          <p className="text-slate-600">Según el aviso, la propiedad está en <strong>{lr.detected.name}</strong>. {isMX ? 'Si no es así, avísale a tu notario.' : 'Si no es así, avisale a tu escribano.'}</p>
+        ) : (
+          <label className="block">
+            <span className="text-slate-600">{isMX ? 'Confirma el municipio o alcaldía' : 'Confirmá el partido'} donde está la propiedad:</span>
+            <select
+              value={chosen}
+              onChange={e => setChosen(e.target.value)}
+              className="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value="">{isMX ? 'Elige…' : 'Elegí…'}</option>
+              {lr.municipalities.map(m => <option key={m.name} value={m.name}>{m.name}</option>)}
+              <option value="__otro">Otro</option>
+            </select>
+          </label>
+        )}
+        <ul className="mt-3 list-disc space-y-1 pl-5">
+          <li>{lr.general}.</li>
+          {muni?.extraRequirements.map(r => <li key={r}>{r}.</li>)}
+        </ul>
+        <p className="mt-3 text-xs text-slate-500">
+          {isMX
+            ? 'Pídele al vendedor la última boleta del predial y del agua para conocer el importe; la constancia de no adeudo vigente es la que confirma que no hay deuda.'
+            : 'Pedile al vendedor la última boleta de tasas municipales para conocer el importe; el libre deuda vigente es el que confirma que no hay deuda.'}
+          {!muni && chosen === '__otro' && (isMX ? ' Para este municipio todavía no tengo requisitos propios cargados: consúltalos con tu notario.' : ' Para este partido todavía no tengo requisitos propios cargados: consultalos con tu escribano.')}
+        </p>
+      </div>
+    </Section>
+  )
+}
+
+// ───────────────────────── Consulta para el escribano ─────────────────────────
+
+export function ProfessionalQuerySection({ analysis }: { analysis: PropertyAnalysis }) {
+  const [copied, setCopied] = useState(false)
+  const sp = analysis.subjectProperty
+  const isMX = (sp.country ?? '').toUpperCase() === 'MX'
+  const lr = localRequirements(analysis.estimatedTransactionCost.region, sp.country,
+    [sp.fields.city?.value as string | null | undefined, sp.fields.neighborhood?.value as string | null | undefined])
+  const msg = buildProfessionalQuery(analysis, lr?.detected?.name ?? null)
+  const pro = isMX ? 'notario' : 'escribano'
+
+  return (
+    <Section id="consulta" title={`Llegá a tu ${pro} con las preguntas claras`} hint={`El ${pro} es quien revisa los papeles y busca salidas a los problemas. Esta consulta junta lo que VARA ya detectó.`}>
+      <div className="rounded-xl bg-slate-50 p-4">
+        <pre className="whitespace-pre-wrap font-sans text-sm text-slate-800">{msg}</pre>
+        <div className="mt-3 flex flex-wrap gap-2 print:hidden">
+          <button type="button"
+            onClick={async () => { if (await copyText(msg)) { setCopied(true); setTimeout(() => setCopied(false), 2000) } }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 min-h-11">
+            <Copy size={14} /> {copied ? 'Copiado' : 'Copiar consulta'}
+          </button>
+          <a href={`https://wa.me/?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white min-h-11">
+            <MessageCircle size={14} /> Abrir en WhatsApp
+          </a>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">{isMX ? 'Si abres WhatsApp, el texto pasa a WhatsApp y tú eliges si se lo mandas a alguien.' : 'Si abrís WhatsApp, el texto pasa a WhatsApp y vos elegís si se lo mandás a alguien.'}</p>
+      </div>
     </Section>
   )
 }

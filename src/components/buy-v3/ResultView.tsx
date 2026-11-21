@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Printer } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { readUserComparables } from '@/lib/analysis/providers'
 import { accountUrl } from '@/lib/auth/entryJourney'
@@ -13,7 +13,7 @@ import type { BuyState } from './useBuyAnalysis'
 import { AskVara } from './AskVara'
 import { AddComparables, ProfilePrompt, SurfaceWarningCard } from './Entry'
 import { ComparableList, EvidenceSummary } from './Evidence'
-import { CostSection, DetailSection, FitSection, GoodSection, MissingSection, RisksSection, Section } from './Sections'
+import { CostSection, DetailSection, FitSection, GoodSection, LocalRequirementsSection, MissingSection, ProfessionalQuerySection, RisksSection, Section } from './Sections'
 import { SellerQuestionsCard, ShareCard, type ShareChannel } from './Highlights'
 import { DecisionHero } from './DecisionHero'
 
@@ -161,7 +161,23 @@ export function ResultView({
         onAction={kind => actions.track('missing_data_action', { kind })}
       />
       <CostSection analysis={analysis} />
+      <LocalRequirementsSection analysis={analysis} />
+      <ProfessionalQuerySection analysis={analysis} />
       <DetailSection analysis={analysis} />
+
+      <div className="mt-8 flex flex-wrap items-center gap-3 print:hidden">
+        <button type="button" onClick={() => window.print()}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 min-h-11">
+          <Printer size={14} aria-hidden /> Guardar análisis como PDF
+        </button>
+        <p className="text-xs text-slate-500">Incluye la fecha del análisis, las fuentes y los supuestos. Tus documentos no se incluyen.</p>
+      </div>
+      <p className="mt-6 hidden text-xs text-slate-500 print:block">
+        Análisis generado por VARA el {new Date(analysis.generatedAt).toLocaleString(analysis.subjectProperty.country === 'MX' ? 'es-MX' : 'es-AR', { dateStyle: 'long', timeStyle: 'short' })}.
+        Los precios de los comparables son precios pedidos en avisos, no precios de venta.{' '}
+        {analysis.subjectProperty.country === 'MX' ? 'Los costos son estimaciones: confírmalos con tu notario antes de firmar.' : 'Los costos son estimaciones: confirmalos con tu escribano antes de firmar.'}
+        {analysis.subjectProperty.url ? ` Aviso: ${analysis.subjectProperty.url}` : ''}
+      </p>
 
       <div className="mt-12 rounded-2xl bg-slate-50 p-5 text-center">
         <p className="font-medium text-slate-900">¿Viste otra propiedad?</p>
