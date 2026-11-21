@@ -173,8 +173,9 @@ export function ResultView({
         <p className="text-xs text-slate-500">Incluye la fecha del análisis, las fuentes y los supuestos. Tus documentos no se incluyen.</p>
       </div>
       <p className="mt-6 hidden text-xs text-slate-500 print:block">
-        Análisis generado por VARA el {new Date(analysis.generatedAt).toLocaleString('es-AR', { dateStyle: 'long', timeStyle: 'short' })}.
-        Los precios de los comparables son precios pedidos en avisos, no precios de venta. Los costos son estimaciones: confirmalos con tu escribano antes de firmar.
+        Análisis generado por VARA el {new Date(analysis.generatedAt).toLocaleString(analysis.subjectProperty.country === 'MX' ? 'es-MX' : 'es-AR', { dateStyle: 'long', timeStyle: 'short' })}.
+        Los precios de los comparables son precios pedidos en avisos, no precios de venta.{' '}
+        {analysis.subjectProperty.country === 'MX' ? 'Los costos son estimaciones: confírmalos con tu notario antes de firmar.' : 'Los costos son estimaciones: confirmalos con tu escribano antes de firmar.'}
         {analysis.subjectProperty.url ? ` Aviso: ${analysis.subjectProperty.url}` : ''}
       </p>
 

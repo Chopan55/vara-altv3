@@ -158,10 +158,11 @@ Respondé SOLO con JSON válido: {"holders":[],"encumbrances":[],"restrictions":
         const del = await fetch(`https://api.openai.com/v1/files/${fileId}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${apiKey}` },
+          signal: AbortSignal.timeout(5000),
         })
-        if (!del.ok) log.warn('doc.intelligence.delete_failed', `status ${del.status}`)
+        if (!del.ok) log.warn('doc.intelligence.delete_failed', `status ${del.status} file ${fileId}`)
       } catch (e) {
-        log.warn('doc.intelligence.delete_failed', e instanceof Error ? e.message : 'error')
+        log.warn('doc.intelligence.delete_failed', `${e instanceof Error ? e.message : 'error'} file ${fileId}`)
       }
     }
   }

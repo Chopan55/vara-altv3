@@ -26,8 +26,11 @@ export function localRequirements(
   country: string | null | undefined,
   places: (string | null | undefined)[],
 ): LocalRequirements | null {
+  // Sin jurisdicción conocida no se muestran municipios: podrían ser de otra provincia.
+  if (!regionCode) return null
   const isMX = (country ?? '').toUpperCase() === 'MX'
-  const reg = getRegulation(regionCode ?? (isMX ? 'CDMX' : 'BUENOS_AIRES'), isMX ? 'MX' : 'AR')
+  const reg = getRegulation(regionCode, isMX ? 'MX' : 'AR')
+  if (reg.code !== regionCode) return null
   const municipalities = reg.keyMunicipalities ?? []
   if (municipalities.length === 0) return null
   const wanted = new Set(places.filter((p): p is string => !!p && !!p.trim()).map(norm))

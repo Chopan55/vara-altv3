@@ -60,7 +60,7 @@ export function EvidenceSummary({ analysis }: { analysis: PropertyAnalysis }) {
       <ul className="mt-3 space-y-1 text-xs text-slate-500">
         {r.afterDedup > 0 && (
           <li>
-            Revisé {r.afterDedup} aviso{r.afterDedup === 1 ? '' : 's'} de la zona: usé {ev.strongMatches} y dejé afuera {Math.max(0, r.afterDedup - ev.strongMatches)} por no parecerse lo suficiente. Abajo ves los que usé, en qué se parecen y en qué difieren.
+            Encontré {r.afterDedup} aviso{r.afterDedup === 1 ? '' : 's'} candidato{r.afterDedup === 1 ? '' : 's'} (sin repetidos); {ev.strongMatches} se parece{ev.strongMatches === 1 ? '' : 'n'} lo suficiente para comparar.{ev.strongMatches > 0 ? ' Abajo ves cada uno, en qué se parece y en qué difiere.' : ''}
           </li>
         )}
         <li>Precios de cierre (lo que realmente se pagó): sin datos disponibles todavía; por eso comparo precios pedidos.</li>
@@ -81,8 +81,8 @@ export function EvidenceSummary({ analysis }: { analysis: PropertyAnalysis }) {
 }
 
 function ComparableCard({
-  m, onOpen, onRemove,
-}: { m: ScoredComparable; onOpen: (id: string) => void; onRemove?: (id: string) => void }) {
+  m, onOpen, onRemove, printOnly = false,
+}: { m: ScoredComparable; onOpen: (id: string) => void; onRemove?: (id: string) => void; printOnly?: boolean }) {
   const [open, setOpen] = useState(false)
   const l = m.listing
   const where = [l.community, l.neighborhood].filter(Boolean).join(' · ')
@@ -101,7 +101,7 @@ function ComparableCard({
   }
 
   return (
-    <li className="rounded-xl border border-slate-200 bg-white">
+    <li className={cn('rounded-xl border border-slate-200 bg-white', printOnly && 'hidden print:block')}>
       <button
         type="button"
         onClick={toggle}
@@ -127,8 +127,7 @@ function ComparableCard({
         <ChevronDown size={16} className={cn('mt-1 shrink-0 text-slate-400 transition-transform', open && 'rotate-180')} />
       </button>
 
-      {open && (
-        <div className="border-t border-slate-100 px-4 pb-4 pt-3 text-sm space-y-3">
+      <div className={cn('border-t border-slate-100 px-4 pb-4 pt-3 text-sm space-y-3', !open && 'hidden print:block')}>
           {m.similarityReasons.length > 0 && (
             <div>
               <p className="text-xs font-medium text-slate-500 mb-1">Por qué se parece</p>
@@ -176,7 +175,6 @@ function ComparableCard({
             )}
           </div>
         </div>
-      )}
     </li>
   )
 }
@@ -191,24 +189,24 @@ export function ComparableList({
 }) {
   const [all, setAll] = useState(false)
   const strong = matches.filter(m => m.similarityScore >= 60)
-  const visible = all ? strong : strong.slice(0, 3)
   if (strong.length === 0) return null
 
   return (
     <div className="mt-5">
       <ul className="space-y-2">
-        {visible.map(m => (
+        {strong.map((m, i) => (
           <ComparableCard
             key={m.listing.id}
             m={m}
             onOpen={onOpen}
             onRemove={removableIds.has(m.listing.id) ? onRemove : undefined}
+            printOnly={!all && i >= 3}
           />
         ))}
       </ul>
       {strong.length > 3 && (
         <button type="button" onClick={() => setAll(a => !a)}
-          className="mt-3 text-sm font-medium text-brand-700 hover:underline">
+          className="mt-3 text-sm font-medium text-brand-700 hover:underline print:hidden">
           {all ? 'Ver menos' : `Ver los ${strong.length} avisos`}
         </button>
       )}

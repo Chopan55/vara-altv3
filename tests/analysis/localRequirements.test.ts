@@ -16,3 +16,12 @@ describe('localRequirements', () => {
     expect(localRequirements('BUENOS_AIRES', 'AR', ['san isidro'])?.detected?.name).toBe('San Isidro')
   })
 })
+
+describe('localRequirements sin jurisdicción', () => {
+  it('no muestra municipios si no se conoce la provincia', () => {
+    expect(localRequirements(undefined, 'AR', ['Pilar'])).toBeNull()
+  })
+  it('no usa municipios de otra provincia', () => {
+    expect(localRequirements('CORDOBA', 'AR', ['Pilar'])?.detected ?? null).toBeNull()
+  })
+})

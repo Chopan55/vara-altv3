@@ -282,7 +282,7 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
       </ul>
       {formatAsOf(c.dataAsOf) && (
         <p className="mt-2 text-xs text-slate-500">
-          Datos regulatorios revisados por VARA al {formatAsOf(c.dataAsOf)}. Confirmá los importes con tu escribano antes de firmar.
+          Datos regulatorios revisados por VARA al {formatAsOf(c.dataAsOf)}. {c.jurisdiction === 'MX' ? 'Confirma los importes con tu notario antes de firmar.' : 'Confirmá los importes con tu escribano antes de firmar.'}
         </p>
       )}
       {c.notIncluded.length > 0 && (
@@ -320,16 +320,16 @@ export function LocalRequirementsSection({ analysis }: { analysis: PropertyAnaly
     <Section id="municipio" title={isMX ? 'Lo que pide el municipio' : 'Lo que pide el partido'} hint="Además de los papeles generales, cada municipio tiene los suyos.">
       <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
         {lr.detected ? (
-          <p className="text-slate-600">Según el aviso, la propiedad está en <strong>{lr.detected.name}</strong>. Si no es así, avisale a tu {isMX ? 'notario' : 'escribano'}.</p>
+          <p className="text-slate-600">Según el aviso, la propiedad está en <strong>{lr.detected.name}</strong>. {isMX ? 'Si no es así, avísale a tu notario.' : 'Si no es así, avisale a tu escribano.'}</p>
         ) : (
           <label className="block">
-            <span className="text-slate-600">{isMX ? 'Confirmá el municipio o alcaldía' : 'Confirmá el partido'} donde está la propiedad:</span>
+            <span className="text-slate-600">{isMX ? 'Confirma el municipio o alcaldía' : 'Confirmá el partido'} donde está la propiedad:</span>
             <select
               value={chosen}
               onChange={e => setChosen(e.target.value)}
               className="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
             >
-              <option value="">Elegí…</option>
+              <option value="">{isMX ? 'Elige…' : 'Elegí…'}</option>
               {lr.municipalities.map(m => <option key={m.name} value={m.name}>{m.name}</option>)}
               <option value="__otro">Otro</option>
             </select>
@@ -340,8 +340,10 @@ export function LocalRequirementsSection({ analysis }: { analysis: PropertyAnaly
           {muni?.extraRequirements.map(r => <li key={r}>{r}.</li>)}
         </ul>
         <p className="mt-3 text-xs text-slate-500">
-          Pedile al vendedor la última boleta {isMX ? 'del predial y del agua' : 'de tasas municipales'} pagada: muestra el monto y si hay deuda.
-          {!muni && chosen === '__otro' && ' Para este municipio todavía no tengo requisitos propios cargados: consultalos con tu escribano.'}
+          {isMX
+            ? 'Pídele al vendedor la última boleta del predial y del agua para conocer el importe; la constancia de no adeudo vigente es la que confirma que no hay deuda.'
+            : 'Pedile al vendedor la última boleta de tasas municipales para conocer el importe; el libre deuda vigente es el que confirma que no hay deuda.'}
+          {!muni && chosen === '__otro' && (isMX ? ' Para este municipio todavía no tengo requisitos propios cargados: consúltalos con tu notario.' : ' Para este partido todavía no tengo requisitos propios cargados: consultalos con tu escribano.')}
         </p>
       </div>
     </Section>
@@ -363,7 +365,7 @@ export function ProfessionalQuerySection({ analysis }: { analysis: PropertyAnaly
     <Section id="consulta" title={`Llegá a tu ${pro} con las preguntas claras`} hint={`El ${pro} es quien revisa los papeles y busca salidas a los problemas. Esta consulta junta lo que VARA ya detectó.`}>
       <div className="rounded-xl bg-slate-50 p-4">
         <pre className="whitespace-pre-wrap font-sans text-sm text-slate-800">{msg}</pre>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2 print:hidden">
           <button type="button"
             onClick={async () => { if (await copyText(msg)) { setCopied(true); setTimeout(() => setCopied(false), 2000) } }}
             className="inline-flex items-center gap-1.5 rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 min-h-11">
@@ -374,7 +376,7 @@ export function ProfessionalQuerySection({ analysis }: { analysis: PropertyAnaly
             <MessageCircle size={14} /> Abrir en WhatsApp
           </a>
         </div>
-        <p className="mt-2 text-xs text-slate-500">VARA no envía nada: vos elegís a quién y cuándo.</p>
+        <p className="mt-2 text-xs text-slate-500">{isMX ? 'Si abres WhatsApp, el texto pasa a WhatsApp y tú eliges si se lo mandas a alguien.' : 'Si abrís WhatsApp, el texto pasa a WhatsApp y vos elegís si se lo mandás a alguien.'}</p>
       </div>
     </Section>
   )

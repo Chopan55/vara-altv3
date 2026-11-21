@@ -202,7 +202,7 @@ function DocumentRow({ doc, onUpload, onDelete, uploading, categoryLabels }: {
             )}
             {uploaded && isPdf && !summary && (
               <p className="basis-full text-[11px] text-slate-500">
-                Al analizar, el PDF se envía a OpenAI para leerlo y después se borra de ahí. Si preferís no enviarlo, podés seguir con la lista de papeles y consultarlo con tu escribano.
+                Al analizar, el PDF se envía a OpenAI para leerlo y VARA pide que se borre de ahí apenas termina. Si preferís no enviarlo, podés seguir con la lista de papeles y consultarlo con tu escribano.
               </p>
             )}
 

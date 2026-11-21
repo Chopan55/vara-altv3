@@ -120,6 +120,6 @@ function Analizar() {
 
   // Modo de prueba: tapa el menú de la app para que no haya nada que explicar.
   return testMode
-    ? <div className="fixed inset-0 z-50 overflow-auto bg-[var(--background,#fff)]">{content}</div>
+    ? <div className="fixed inset-0 z-50 overflow-auto bg-[var(--background,#fff)] print:static print:overflow-visible">{content}</div>
     : content
 }
