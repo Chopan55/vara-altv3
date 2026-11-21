@@ -44,8 +44,9 @@ export default function LandingPage() {
             ¿Cuánto te sale <span className="text-brand-gradient">de verdad</span> esa propiedad?
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft md:text-xl">
-            Pegá el link del aviso. En segundos ves el costo total con gastos, cómo está el precio frente a
-            avisos parecidos y qué preguntarle al vendedor antes de dar plata.
+            Comprá o vendé sin nervios y sin pagar de más. Pegá el link del aviso: en segundos ves el costo total
+            con gastos, cómo está el precio frente a avisos parecidos y qué preguntar antes de dar plata.
+            Con tu escribano o uno que te recomendemos.
           </p>
           <HeroAnalyze />
         </div>

@@ -184,7 +184,7 @@ export default function ProfesionalesPage() {
               <ArrowLeft size={14} /> Volver al inicio
             </Link>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Profesionales</h1>
-          <p className="text-sm text-slate-500 mt-1">Qué especialista necesitás y dónde verificarlo</p>
+          <p className="text-sm text-slate-500 mt-1">Elegí tu escribano o pedile uno a VARA, y verificá su matrícula en el colegio oficial.</p>
         </div>
       </header>
 

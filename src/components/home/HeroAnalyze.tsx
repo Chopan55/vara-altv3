@@ -72,6 +72,7 @@ export function HeroAnalyze() {
       {/* Para seguir una operación (compra o venta) se entra con la cuenta: el único acceso de clientes es Entrar. */}
       <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium">
         <Link href="/login" className="text-brand-700 hover:underline">Entrar</Link>
+        <Link href="/analizar" className="text-brand-700 hover:underline">No tengo el link</Link>
         <Link href="#como-funciona" className="text-ink-soft hover:text-ink">Ver cómo funciona</Link>
       </div>
     </div>

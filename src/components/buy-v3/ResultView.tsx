@@ -165,6 +165,19 @@ export function ResultView({
         onConfirm={actions.confirmField}
         onAction={kind => actions.track('missing_data_action', { kind })}
       />
+      <section className="mt-10 rounded-2xl border border-brand-100 bg-brand-50 p-5 print:hidden">
+        <h2 className="text-lg font-semibold text-slate-900">{analysis.subjectProperty.country === 'MX' ? 'Sigue tranquilo hasta la firma' : 'Seguí tranquilo hasta la firma'}</h2>
+        <p className="mt-1 text-sm text-slate-700">
+          {analysis.subjectProperty.country === 'MX'
+            ? 'VARA te arma el plan de compra: qué documentos pedir, cómo ofertar y cuánto vas a gastar, para no pagar de más. Con tu notario o uno que te recomendemos.'
+            : 'VARA te arma el plan de compra: qué papeles pedir, cómo ofertar y cuánto vas a gastar, para no pagar de más. Con tu escribano o uno que te recomendemos.'}
+        </p>
+        <button type="button" onClick={follow}
+          className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800">
+          Preparar mi compra
+        </button>
+        <p className="mt-2 text-xs text-slate-500">{analysis.subjectProperty.country === 'MX' ? 'Si todavía no tienes cuenta, la creas en el siguiente paso.' : 'Si todavía no tenés cuenta, la creás en el próximo paso.'}</p>
+      </section>
       <CostSection analysis={analysis} route={costRoute} setRoute={setCostRoute} pctRaw={pctRaw} setPctRaw={setPctRaw} />
       <LocalRequirementsSection analysis={analysis} />
       <ProfessionalQuerySection analysis={analysis} />
