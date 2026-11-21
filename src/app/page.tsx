@@ -41,12 +41,11 @@ export default function LandingPage() {
         <div className="mx-auto max-w-3xl text-center">
           <Eyebrow>Argentina · México</Eyebrow>
           <h1 className="font-display mt-6 text-4xl font-extrabold leading-[1.06] text-brand-900 text-balance md:text-6xl">
-            ¿Cuánto te sale <span className="text-brand-gradient">de verdad</span> esa propiedad?
+            Comprá o vendé tu propiedad <span className="text-brand-gradient">sin nervios</span> y sin pagar de más
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft md:text-xl">
-            Comprá o vendé sin nervios y sin pagar de más. Pegá el link del aviso: en segundos ves el costo total
-            con gastos, cómo está el precio frente a avisos parecidos y qué preguntar antes de dar plata.
-            Con tu escribano o uno que te recomendemos.
+            Pegá el link del aviso: en segundos ves el costo total con gastos, cómo está el precio frente a avisos parecidos y qué preguntar
+            antes de dar plata. Después, VARA te acompaña paso a paso hasta la escritura, con tu escribano o uno que te recomendemos.
           </p>
           <HeroAnalyze />
         </div>

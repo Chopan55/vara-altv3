@@ -8,8 +8,8 @@ const description = 'Comprá o vendé tu propiedad sin nervios y sin pagar de m�
 export const metadata: Metadata = {
   title: { default: 'VARA — Comprá y vendé a tu manera', template: '%s · VARA' },
   description,
-  openGraph: { siteName: 'VARA', title: '¿Cuánto te sale de verdad esa propiedad?', description, type: 'website', locale: 'es_AR' },
-  twitter: { card: 'summary_large_image', title: '¿Cuánto te sale de verdad esa propiedad?', description },
+  openGraph: { siteName: 'VARA', title: 'Comprá o vendé tu propiedad sin nervios y sin pagar de más', description, type: 'website', locale: 'es_AR' },
+  twitter: { card: 'summary_large_image', title: 'Comprá o vendé tu propiedad sin nervios y sin pagar de más', description },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
