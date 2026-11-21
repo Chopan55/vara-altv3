@@ -16,6 +16,8 @@ import { ComparableList, EvidenceSummary } from './Evidence'
 import { CostSection, DetailSection, FitSection, GoodSection, LocalRequirementsSection, MissingSection, ProfessionalQuerySection, RisksSection, Section } from './Sections'
 import { SellerQuestionsCard, ShareCard, type ShareChannel } from './Highlights'
 import { DecisionHero } from './DecisionHero'
+import { parseCommissionPct } from '@/lib/analysis/commission'
+import type { CostRoute } from './Sections'
 
 export interface ResultActions {
   confirmField: (p: UserOverrides) => Promise<void>
@@ -38,6 +40,8 @@ export function ResultView({
   /** Un aviso de error se ve y se anuncia distinto de uno informativo. */
   const setNotice = (text: string, isError = false) => { setNoticeIsError(isError); setNoticeText(text) }
   const [profileDismissed, setProfileDismissed] = useState(false)
+  const [costRoute, setCostRoute] = useState<CostRoute>('')
+  const [pctRaw, setPctRaw] = useState('')
   const analysis = state.analysis
   if (!analysis) return null
 
@@ -96,6 +100,7 @@ export function ResultView({
     <article className="pb-24">
       <DecisionHero
         analysis={analysis}
+        commissionPct={costRoute === 'agency' ? parseCommissionPct(pctRaw) : null}
         photo={photo}
         warnings={state.warnings}
         onAct={act}
@@ -160,7 +165,7 @@ export function ResultView({
         onConfirm={actions.confirmField}
         onAction={kind => actions.track('missing_data_action', { kind })}
       />
-      <CostSection analysis={analysis} />
+      <CostSection analysis={analysis} route={costRoute} setRoute={setCostRoute} pctRaw={pctRaw} setPctRaw={setPctRaw} />
       <LocalRequirementsSection analysis={analysis} />
       <ProfessionalQuerySection analysis={analysis} />
       <DetailSection analysis={analysis} />

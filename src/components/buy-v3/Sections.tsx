@@ -8,6 +8,8 @@ import type { PropertyAnalysis, PriorityRisk } from '@/lib/analysis/types'
 import { describeCostSource, formatAsOf } from '@/lib/analysis/costSource'
 import { localRequirements } from '@/lib/analysis/localRequirements'
 import { buildProfessionalQuery } from '@/lib/analysis/professionalQuery'
+import { parseCommissionPct, withCommission } from '@/lib/analysis/commission'
+import { closingCash, parseRate } from '@/lib/analysis/closingCash'
 import { CONDITION_TEXT, copyText, money } from './format'
 
 export function Section({
@@ -249,21 +251,35 @@ function CostSourceNote({ basis }: { basis: string }) {
   )
 }
 
-export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
+export type CostRoute = '' | 'direct' | 'agency'
+
+export function CostSection({ analysis, route, setRoute, pctRaw, setPctRaw }: {
+  analysis: PropertyAnalysis
+  route: CostRoute
+  setRoute: (r: CostRoute) => void
+  pctRaw: string
+  setPctRaw: (v: string) => void
+}) {
   const c = analysis.estimatedTransactionCost
+  const [rateRaw, setRateRaw] = useState('')
   if (c.lines.length === 0 && c.notIncluded.length === 0) return null
+  const isMX = c.jurisdiction === 'MX'
+  const pct = route === 'agency' ? parseCommissionPct(pctRaw) : null
+  const withCom = withCommission(c, pct)
+  const lines = withCom.line ? [...c.lines, withCom.line] : c.lines
+  const total = withCom.totalRange
 
   return (
     <Section id="costos" title="¿Cuánta plata podrías necesitar?" hint="Precio más costos de la operación. Los costos son un rango estimado.">
-      {c.totalRange ? (
+      {total ? (
         <p className="text-2xl font-semibold text-slate-900">
-          {money(c.totalRange.min, c.totalRange.currency)} – {money(c.totalRange.max, c.totalRange.currency).replace(`${c.totalRange.currency} `, '')}
+          {money(total.min, total.currency)} – {money(total.max, total.currency).replace(`${total.currency} `, '')}
         </p>
       ) : (
         <p className="text-sm text-slate-600">No puedo estimar el total con los datos disponibles.</p>
       )}
       <ul className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
-        {c.lines.map(l => (
+        {lines.map(l => (
           <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
             <div>
               <p className="text-slate-800">{l.label}</p>
@@ -280,6 +296,61 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
           </li>
         ))}
       </ul>
+      {(() => {
+        const cc = closingCash(c, parseRate(rateRaw))
+        if (!cc) return null
+        const usd = (n: number) => money(n, 'USD')
+        return (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm">
+            <p className="font-medium text-slate-900">Plata para el cierre</p>
+            <ul className="mt-2 space-y-1 text-slate-700">
+              <li>En dólares, para el precio: <strong>{usd(cc.priceUSD)}</strong>{withCom.line ? ` (más la comisión que cargaste)` : ''}.</li>
+              <li>
+                Gastos de escritura: {usd(cc.feesUSD.min)}{cc.feesUSD.max !== cc.feesUSD.min ? ` – ${usd(cc.feesUSD.max).replace('USD ', '')}` : ''}. El escribano los liquida en pesos
+                {cc.feesARS
+                  ? <>: unos <strong>{money(cc.feesARS.min, 'ARS')}{cc.feesARS.max !== cc.feesARS.min ? ` – ${money(cc.feesARS.max, 'ARS').replace('ARS ', '')}` : ''}</strong> a {money(parseRate(rateRaw) ?? 0, 'ARS')} por dólar (la cotización que cargaste).</>
+                  : '.'}
+              </li>
+            </ul>
+            <label className="mt-3 block print:hidden">
+              <span className="text-slate-600">Cotización del dólar que vas a usar (pesos por dólar):</span>
+              <input inputMode="decimal" value={rateRaw} onChange={e => setRateRaw(e.target.value)} placeholder="Ej.: 1.200"
+                className="mt-1.5 block w-36 rounded-lg border border-slate-300 px-3 py-2" aria-label="Cotización del dólar en pesos" />
+            </label>
+            <p className="mt-2 text-xs text-slate-500">Es una cuenta para planificar con la cotización que elegís vos; el monto final lo liquida el escribano el día de la firma.</p>
+          </div>
+        )
+      })()}
+      <fieldset className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm print:hidden">
+        <legend className="px-1 text-slate-700">¿Cómo vas a seguir con esta propiedad?</legend>
+        <div className="mt-1 flex flex-wrap gap-2">
+          <button type="button" aria-pressed={route === 'direct'} onClick={() => setRoute('direct')}
+            className={cn('min-h-11 rounded-lg border px-3 py-2', route === 'direct' ? 'border-brand-700 bg-brand-50 text-brand-800' : 'border-slate-300 text-slate-700')}>
+            Directo con el dueño
+          </button>
+          <button type="button" aria-pressed={route === 'agency'} onClick={() => setRoute('agency')}
+            className={cn('min-h-11 rounded-lg border px-3 py-2', route === 'agency' ? 'border-brand-700 bg-brand-50 text-brand-800' : 'border-slate-300 text-slate-700')}>
+            {isMX ? 'Con un asesor inmobiliario' : 'Con una inmobiliaria'}
+          </button>
+        </div>
+        {route === 'agency' && (
+          <label className="mt-3 block">
+            <span className="text-slate-600">{isMX ? '¿Qué comisión te cobra a ti, en %? (pregúntale a quién representa)' : '¿Qué comisión te cobra a vos, en %? (si no la sabés, preguntala antes de avanzar)'}</span>
+            <input inputMode="decimal" value={pctRaw} onChange={e => setPctRaw(e.target.value)} placeholder="Ej.: 3"
+              className="mt-1.5 block w-32 rounded-lg border border-slate-300 px-3 py-2" aria-label="Comisión en porcentaje"
+              aria-invalid={pctRaw.trim() !== '' && pct === null} aria-describedby={pctRaw.trim() !== '' && pct === null ? 'pct-error' : undefined} />
+            {pctRaw.trim() !== '' && pct === null && <span id="pct-error" className="mt-1 block text-xs text-rose-700">{isMX ? 'Escribe un número mayor que 0 y hasta 10.' : 'Poné un número mayor que 0 y hasta 10.'}</span>}
+            {!c.lines.some(l => l.id === 'price' && l.min !== null) && <span className="mt-1 block text-xs text-slate-500">Sin el precio del aviso no puedo calcular la comisión.</span>}
+          </label>
+        )}
+        {route === 'direct' && (
+          <p className="mt-3 text-slate-600">
+            {isMX
+              ? 'Sin comisión. Igual vas a necesitar notario, avalúo y certificados: VARA te guía en cada paso y en la negociación.'
+              : 'Sin comisión. Igual vas a necesitar escribano y los mismos papeles: VARA te guía en cada paso y en la negociación.'}
+          </p>
+        )}
+      </fieldset>
       {formatAsOf(c.dataAsOf) && (
         <p className="mt-2 text-xs text-slate-500">
           Datos regulatorios revisados por VARA al {formatAsOf(c.dataAsOf)}. {c.jurisdiction === 'MX' ? 'Confirma los importes con tu notario antes de firmar.' : 'Confirmá los importes con tu escribano antes de firmar.'}
@@ -289,7 +360,7 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
         <div className="mt-3">
           <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><Minus size={12} /> No incluido en el total</p>
           <ul className="mt-1 list-disc pl-5 text-xs text-slate-500">
-            {c.notIncluded.map(n => <li key={n}>{n}</li>)}
+            {c.notIncluded.filter(n => !(withCom.line && /^Comisión de la inmobiliaria|^Comisión del asesor inmobiliario/.test(n))).map(n => <li key={n}>{n}</li>)}
           </ul>
         </div>
       )}
