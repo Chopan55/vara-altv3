@@ -83,7 +83,7 @@ export const MX_COST_PROVIDER: CostProvider = {
     return {
       jurisdiction: 'MX', region: input.provinceCode && MX_CODES.has(input.provinceCode) ? input.provinceCode : undefined, lines,
       totalRange: { min: Math.round(min), max: Math.round(max), currency: cur },
-      notIncluded, assumptions,
+      notIncluded, assumptions, dataAsOf: checklist.lastUpdated,
     }
   },
 }

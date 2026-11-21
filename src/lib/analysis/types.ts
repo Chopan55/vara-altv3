@@ -289,6 +289,8 @@ export interface TransactionCost {
   totalRange: { min: number; max: number; currency: ListingCurrency } | null
   notIncluded: string[]
   assumptions: string[]
+  /** Fecha de la última revisión de los datos regulatorios usados (AAAA-MM-DD), si se conoce. */
+  dataAsOf?: string
 }
 
 // ───────────────────────── Conclusión y acción ─────────────────────────

@@ -107,6 +107,8 @@ export interface RegulatoryChecklist {
   costs: CostBreakdown
   warnings: string[]
   dataConfidence: DataConfidence
+  /** Fecha de la última revisión de los datos regulatorios de la jurisdicción (AAAA-MM-DD). */
+  lastUpdated?: string
 }
 
 export interface ChecklistStage {

@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, Check, Copy, MessageCircle, Minus, X } from 'lucide-react'
+import { AlertTriangle, Check, Copy, ExternalLink, MessageCircle, Minus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserOverrides } from '@/lib/analysis/normalize'
 import type { PropertyAnalysis, PriorityRisk } from '@/lib/analysis/types'
+import { describeCostSource, formatAsOf } from '@/lib/analysis/costSource'
 import { CONDITION_TEXT, copyText, money } from './format'
 
 export function Section({
@@ -231,6 +232,21 @@ const KIND_BADGE = {
 } as const
 const KIND_TEXT = { KNOWN: 'Dato del aviso', ESTIMATED: 'Estimado', NOT_INCLUDED: 'No incluido' } as const
 
+function CostSourceNote({ basis }: { basis: string }) {
+  const src = describeCostSource(basis)
+  if (src.kind === 'AVISO') return null
+  return (
+    <p className="mt-1 text-[11px] text-slate-500">
+      Fuente:{' '}
+      {src.url ? (
+        <a href={src.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 underline decoration-slate-300 underline-offset-2 hover:text-slate-700">
+          {src.label} <ExternalLink size={10} aria-hidden />
+        </a>
+      ) : src.label}
+    </p>
+  )
+}
+
 export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
   const c = analysis.estimatedTransactionCost
   if (c.lines.length === 0 && c.notIncluded.length === 0) return null
@@ -252,6 +268,7 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
               <span className={cn('mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium', KIND_BADGE[l.kind])}>
                 {KIND_TEXT[l.kind]}
               </span>
+              <CostSourceNote basis={l.basis} />
             </div>
             <p className="text-right font-medium text-slate-900">
               {l.min !== null && l.max !== null
@@ -261,6 +278,11 @@ export function CostSection({ analysis }: { analysis: PropertyAnalysis }) {
           </li>
         ))}
       </ul>
+      {formatAsOf(c.dataAsOf) && (
+        <p className="mt-2 text-xs text-slate-500">
+          Datos regulatorios revisados por VARA al {formatAsOf(c.dataAsOf)}. Confirmá los importes con tu escribano antes de firmar.
+        </p>
+      )}
       {c.notIncluded.length > 0 && (
         <div className="mt-3">
           <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500"><Minus size={12} /> No incluido en el total</p>

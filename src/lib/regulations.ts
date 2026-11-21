@@ -287,7 +287,7 @@ export function generateChecklist(
     ...reg.stampTax.exemptions.map(e => `Posible exención: ${e.description} — ${e.condition}`),
   ]
 
-  return { province: reg.code, provinceName: reg.name, operationType, stages, costs, warnings, dataConfidence: reg.dataConfidence }
+  return { province: reg.code, provinceName: reg.name, operationType, stages, costs, warnings, dataConfidence: reg.dataConfidence, lastUpdated: reg.lastUpdated }
 }
 
 export function getProvinceList() {
