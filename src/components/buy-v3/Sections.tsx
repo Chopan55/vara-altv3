@@ -9,6 +9,7 @@ import { describeCostSource, formatAsOf } from '@/lib/analysis/costSource'
 import { localRequirements } from '@/lib/analysis/localRequirements'
 import { buildProfessionalQuery } from '@/lib/analysis/professionalQuery'
 import { buildEvidenceSummary } from '@/lib/analysis/evidenceSummary'
+import { buildNextSteps } from '@/lib/analysis/nextSteps'
 import { parseCommissionPct, withCommission } from '@/lib/analysis/commission'
 import { closingCash, parseRate } from '@/lib/analysis/closingCash'
 import { CONDITION_TEXT, copyText, money } from './format'
@@ -91,7 +92,7 @@ export function RisksSection({ risks }: { risks: PriorityRisk[] }) {
   if (risks.length === 0) return null
   const visible = all ? risks : risks.slice(0, 3)
   return (
-    <Section title="Qué miraría antes de avanzar">
+    <Section id="riesgos" title="Qué miraría antes de avanzar">
       <ul className="space-y-2">{visible.map(r => <RiskItem key={r.id} r={r} />)}</ul>
       {risks.length > 3 && (
         <button type="button" onClick={() => setAll(a => !a)}
@@ -527,6 +528,32 @@ export function DetailSection({ analysis }: { analysis: PropertyAnalysis }) {
           </p>
         </div>
       </details>
+    </Section>
+  )
+}
+
+// ───────────────────────── Tu plan para esta propiedad ─────────────────────────
+
+export function NextStepsSection({ analysis }: { analysis: PropertyAnalysis }) {
+  const steps = buildNextSteps(analysis)
+  const isMX = (analysis.subjectProperty.country ?? '').toUpperCase() === 'MX'
+  return (
+    <Section id="plan" title="Tu plan para esta propiedad" hint={isMX ? 'En este orden. Cada paso te lleva a lo que necesitas.' : 'En este orden. Cada paso te lleva a lo que necesitás.'}>
+      <ol className="space-y-2">
+        {steps.map((s, i) => (
+          <li key={s.id} className="flex gap-3 rounded-xl border border-slate-200 bg-white p-4">
+            <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-semibold text-white">{i + 1}</span>
+            <div className="min-w-0">
+              <p className="font-medium text-slate-900">{s.title}</p>
+              <p className="mt-0.5 text-sm text-slate-600">{s.detail}</p>
+              <a href={s.href}
+                className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 print:hidden">
+                {s.cta}
+              </a>
+            </div>
+          </li>
+        ))}
+      </ol>
     </Section>
   )
 }

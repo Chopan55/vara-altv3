@@ -13,7 +13,7 @@ import type { BuyState } from './useBuyAnalysis'
 import { AskVara } from './AskVara'
 import { AddComparables, ProfilePrompt, SurfaceWarningCard } from './Entry'
 import { ComparableList, EvidenceSummary } from './Evidence'
-import { CostSection, DetailSection, FitSection, GoodSection, EvidenceLightsSection, LocalRequirementsSection, MissingSection, ProfessionalQuerySection, RisksSection, Section } from './Sections'
+import { CostSection, DetailSection, FitSection, GoodSection, EvidenceLightsSection, LocalRequirementsSection, MissingSection, NextStepsSection, ProfessionalQuerySection, RisksSection, Section } from './Sections'
 import { SellerQuestionsCard, ShareCard, type ShareChannel } from './Highlights'
 import { DecisionHero } from './DecisionHero'
 import { parseCommissionPct } from '@/lib/analysis/commission'
@@ -122,6 +122,8 @@ export function ResultView({
           <span>{state.refreshing ? 'Actualizando el análisis…' : notice ?? 'Descartada.'}</span>
         </p>
       )}
+
+      <NextStepsSection analysis={analysis} />
 
       {/* Lo que más importa para decidir, a la vista: preguntas al vendedor y compartir (el total va arriba). */}
       <SellerQuestionsCard analysis={analysis} onAction={kind => actions.track('missing_data_action', { kind })} />

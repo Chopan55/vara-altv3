@@ -1,0 +1,70 @@
+/**
+ * «Tu plan para esta propiedad»: los próximos pasos, en orden, armados solo con
+ * lo que el análisis ya detectó (riesgos, faltantes, país). No agrega datos ni
+ * promete servicios: el escribano/notario y VARA Visit se ofrecen como opción.
+ */
+
+import type { PropertyAnalysis } from './types'
+
+export interface NextStep {
+  id: 'resolve' | 'ask' | 'professional' | 'visit'
+  title: string
+  detail: string
+  /** Ancla dentro del análisis o ruta de la app. */
+  href: string
+  cta: string
+}
+
+const IMPACT_ORDER = { HIGH: 0, MEDIUM: 1, LOW: 2 } as const
+
+export function buildNextSteps(a: PropertyAnalysis): NextStep[] {
+  const isMX = (a.subjectProperty.country ?? '').toUpperCase() === 'MX'
+  const steps: NextStep[] = []
+
+  const risks = [...a.prioritizedRisks].sort((x, y) => IMPACT_ORDER[x.impact] - IMPACT_ORDER[y.impact])
+  const missing = [...a.missingInformation.items].sort((x, y) => IMPACT_ORDER[x.impact] - IMPACT_ORDER[y.impact])
+  const topRisk = risks[0]
+
+  if (topRisk) {
+    steps.push({
+      id: 'resolve',
+      title: `${isMX ? 'Resuelve' : 'Resolvé'} primero: ${topRisk.title}`,
+      detail: topRisk.nextAction ?? topRisk.reason,
+      href: '#riesgos',
+      cta: 'Ver el riesgo',
+    })
+  }
+
+  const asks = missing.slice(0, 2).map(m => m.label.toLowerCase())
+  if (asks.length) {
+    steps.push({
+      id: 'ask',
+      title: isMX ? 'Pregúntale al vendedor' : 'Preguntale al vendedor',
+      detail: `${isMX ? 'Pídele' : 'Pedile'}: ${asks.join(' y ')}. Sin esos datos la comparación queda floja.`,
+      href: '#faltantes',
+      cta: 'Ver qué falta',
+    })
+  }
+
+  steps.push({
+    id: 'professional',
+    title: isMX ? 'Antes de apartar, consulta al notario' : 'Antes de señar, consultá al escribano',
+    detail: isMX
+      ? 'Llévale la consulta que armó VARA. Puede ser tu notario o uno que te recomendemos.'
+      : 'Llevale la consulta que armó VARA. Puede ser tu escribano o uno que te recomendemos.',
+    href: '#consulta',
+    cta: 'Ver la consulta',
+  })
+
+  steps.push({
+    id: 'visit',
+    title: isMX ? 'En la visita, ve con alguien que sepa' : 'En la visita, andá con alguien que sepa',
+    detail: isMX
+      ? 'Con VARA Visit contratas a alguien con experiencia por visita. Ves el precio antes de confirmar.'
+      : 'Con VARA Visit contratás a alguien con experiencia por visita. Ves el precio antes de confirmar.',
+    href: '/vara-visit',
+    cta: 'Conocer VARA Visit',
+  })
+
+  return steps
+}
