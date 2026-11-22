@@ -18,11 +18,11 @@ export function buildEvidenceSummary(a: PropertyAnalysis): EvidenceSummary {
   const ask = a.pricePositioning.subjectAskingPrice
   if (ask) known.push(`Precio publicado: ${ask.currency} ${ask.amount.toLocaleString(isMX ? 'es-MX' : 'es-AR')}`)
   const present = a.extractionQuality.present.filter(p => p !== 'precio' && p !== 'price')
-  if (present.length) known.push(`Datos del aviso: ${present.slice(0, 6).join(', ')}`)
+  if (present.length) known.push(`Datos disponibles: ${present.slice(0, 6).join(', ')}`)
 
   const estimated: string[] = []
   const c = a.estimatedTransactionCost
-  if (c.lines.some(l => l.kind === 'ESTIMATED')) estimated.push('Gastos de escritura e impuestos, con su fuente')
+  if (c.lines.some(l => l.kind === 'ESTIMATED')) estimated.push('Gastos de escritura e impuestos (la fuente de cada uno está en «¿Cuánta plata podrías necesitar?»)')
   const band = a.pricePositioning.comparableListingRange
   if (band) estimated.push(`Rango de avisos parecidos (${band.sampleSize} aviso${band.sampleSize === 1 ? '' : 's'}; precios pedidos, no de cierre)`)
   else estimated.push('Rango de precio: faltan avisos parecidos para estimarlo')

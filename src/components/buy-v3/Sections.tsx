@@ -472,12 +472,12 @@ export function EvidenceLightsSection({ analysis }: { analysis: PropertyAnalysis
   const e = buildEvidenceSummary(analysis)
   const isMX = (analysis.subjectProperty.country ?? '').toUpperCase() === 'MX'
   const cols = [
-    { t: 'Lo que sabemos', d: 'Sale del aviso.', items: e.known, dot: 'bg-emerald-500' },
-    { t: 'Lo que estimamos', d: 'Cálculo de VARA, con su fuente.', items: e.estimated, dot: 'bg-amber-500' },
+    { t: 'Lo que sabemos', d: isMX ? 'Del anuncio o de lo que confirmaste tú.' : 'Del aviso o de lo que confirmaste vos.', items: e.known, dot: 'bg-emerald-500' },
+    { t: 'Lo que estimamos', d: 'Cálculo de VARA: no es un dato confirmado.', items: e.estimated, dot: 'bg-amber-500' },
     { t: 'Lo que falta confirmar', d: isMX ? 'Pregúntalo antes de dar dinero; lo cierra tu notario.' : 'Preguntalo antes de dar plata; lo cierra tu escribano.', items: e.toConfirm, dot: 'bg-rose-500' },
   ]
   return (
-    <Section id="evidencia" title="De dónde sale cada cosa" hint="Para que sepas qué es dato, qué es estimado y qué falta confirmar.">
+    <Section id="semaforo-evidencia" title="De dónde sale cada cosa" hint="Para que sepas qué es dato, qué es estimado y qué falta confirmar.">
       <div className="grid gap-3 sm:grid-cols-3">
         {cols.map(c => (
           <div key={c.t} className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
