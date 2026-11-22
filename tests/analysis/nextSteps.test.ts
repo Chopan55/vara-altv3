@@ -25,6 +25,7 @@ describe('tu plan para esta propiedad', () => {
     expect(s.map(x => x.id)).toEqual(['professional', 'visit'])
     expect(s[0].title).toContain('notario')
     expect(s[0].title).toContain('apartar')
-    expect(s[1].detail).toContain('contratas')
+    expect(s[1].detail).toContain('puedes pedir')
+    expect(s[1].detail).toContain('cobertura')
   })
 })

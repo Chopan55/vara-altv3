@@ -534,7 +534,7 @@ export function DetailSection({ analysis }: { analysis: PropertyAnalysis }) {
 
 // ───────────────────────── Tu plan para esta propiedad ─────────────────────────
 
-export function NextStepsSection({ analysis }: { analysis: PropertyAnalysis }) {
+export function NextStepsSection({ analysis, onJump }: { analysis: PropertyAnalysis; onJump: (id: string) => void }) {
   const steps = buildNextSteps(analysis)
   const isMX = (analysis.subjectProperty.country ?? '').toUpperCase() === 'MX'
   return (
@@ -547,6 +547,7 @@ export function NextStepsSection({ analysis }: { analysis: PropertyAnalysis }) {
               <p className="font-medium text-slate-900">{s.title}</p>
               <p className="mt-0.5 text-sm text-slate-600">{s.detail}</p>
               <a href={s.href}
+                onClick={s.href.startsWith('#') ? e => { e.preventDefault(); onJump(s.href.slice(1)) } : undefined}
                 className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 print:hidden">
                 {s.cta}
               </a>

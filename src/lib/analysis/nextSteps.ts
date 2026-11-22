@@ -29,7 +29,7 @@ export function buildNextSteps(a: PropertyAnalysis): NextStep[] {
     steps.push({
       id: 'resolve',
       title: `${isMX ? 'Resuelve' : 'Resolvé'} primero: ${topRisk.title}`,
-      detail: topRisk.nextAction ?? topRisk.reason,
+      detail: topRisk.nextAction ?? `${topRisk.reason} ${isMX ? 'Acláralo antes de avanzar.' : 'Aclaralo antes de avanzar.'}`,
       href: '#riesgos',
       cta: 'Ver el riesgo',
     })
@@ -58,10 +58,10 @@ export function buildNextSteps(a: PropertyAnalysis): NextStep[] {
 
   steps.push({
     id: 'visit',
-    title: isMX ? 'En la visita, ve con alguien que sepa' : 'En la visita, andá con alguien que sepa',
+    title: isMX ? 'Si quieres, ve a la visita acompañado' : 'Si querés, andá a la visita acompañado',
     detail: isMX
-      ? 'Con VARA Visit contratas a alguien con experiencia por visita. Ves el precio antes de confirmar.'
-      : 'Con VARA Visit contratás a alguien con experiencia por visita. Ves el precio antes de confirmar.',
+      ? 'Con VARA Visit puedes pedir que alguien con experiencia te acompañe. Primero ves si hay cobertura en tu zona y el precio antes de confirmar.'
+      : 'Con VARA Visit podés pedir que alguien con experiencia te acompañe. Primero ves si hay cobertura en tu zona y el precio antes de confirmar.',
     href: '/vara-visit',
     cta: 'Conocer VARA Visit',
   })

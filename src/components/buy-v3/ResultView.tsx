@@ -123,7 +123,7 @@ export function ResultView({
         </p>
       )}
 
-      <NextStepsSection analysis={analysis} />
+      <NextStepsSection analysis={analysis} onJump={scrollTo} />
 
       {/* Lo que más importa para decidir, a la vista: preguntas al vendedor y compartir (el total va arriba). */}
       <SellerQuestionsCard analysis={analysis} onAction={kind => actions.track('missing_data_action', { kind })} />
