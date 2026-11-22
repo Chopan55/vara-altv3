@@ -13,7 +13,7 @@ import type { BuyState } from './useBuyAnalysis'
 import { AskVara } from './AskVara'
 import { AddComparables, ProfilePrompt, SurfaceWarningCard } from './Entry'
 import { ComparableList, EvidenceSummary } from './Evidence'
-import { CostSection, DetailSection, FitSection, GoodSection, LocalRequirementsSection, MissingSection, ProfessionalQuerySection, RisksSection, Section } from './Sections'
+import { CostSection, DetailSection, FitSection, GoodSection, EvidenceLightsSection, LocalRequirementsSection, MissingSection, ProfessionalQuerySection, RisksSection, Section } from './Sections'
 import { SellerQuestionsCard, ShareCard, type ShareChannel } from './Highlights'
 import { DecisionHero } from './DecisionHero'
 import { parseCommissionPct } from '@/lib/analysis/commission'
@@ -147,6 +147,7 @@ export function ResultView({
       </Section>
       </div>
 
+      <EvidenceLightsSection analysis={analysis} />
       <GoodSection analysis={analysis} />
       {userFit.state === 'NO_PROFILE' && !profileDismissed && (
         <div className="mt-8">

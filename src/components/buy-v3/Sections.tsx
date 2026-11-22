@@ -8,6 +8,7 @@ import type { PropertyAnalysis, PriorityRisk } from '@/lib/analysis/types'
 import { describeCostSource, formatAsOf } from '@/lib/analysis/costSource'
 import { localRequirements } from '@/lib/analysis/localRequirements'
 import { buildProfessionalQuery } from '@/lib/analysis/professionalQuery'
+import { buildEvidenceSummary } from '@/lib/analysis/evidenceSummary'
 import { parseCommissionPct, withCommission } from '@/lib/analysis/commission'
 import { closingCash, parseRate } from '@/lib/analysis/closingCash'
 import { CONDITION_TEXT, copyText, money } from './format'
@@ -460,6 +461,33 @@ export function ProfessionalQuerySection({ analysis }: { analysis: PropertyAnaly
           className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50">
           {isMX ? 'Pedirle un notario a VARA' : 'Pedirle un escribano a VARA'}
         </a>
+      </div>
+    </Section>
+  )
+}
+
+// ───────────────────────── Semáforo de evidencia ─────────────────────────
+
+export function EvidenceLightsSection({ analysis }: { analysis: PropertyAnalysis }) {
+  const e = buildEvidenceSummary(analysis)
+  const isMX = (analysis.subjectProperty.country ?? '').toUpperCase() === 'MX'
+  const cols = [
+    { t: 'Lo que sabemos', d: 'Sale del aviso.', items: e.known, dot: 'bg-emerald-500' },
+    { t: 'Lo que estimamos', d: 'Cálculo de VARA, con su fuente.', items: e.estimated, dot: 'bg-amber-500' },
+    { t: 'Lo que falta confirmar', d: isMX ? 'Pregúntalo antes de dar dinero; lo cierra tu notario.' : 'Preguntalo antes de dar plata; lo cierra tu escribano.', items: e.toConfirm, dot: 'bg-rose-500' },
+  ]
+  return (
+    <Section id="evidencia" title="De dónde sale cada cosa" hint="Para que sepas qué es dato, qué es estimado y qué falta confirmar.">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {cols.map(c => (
+          <div key={c.t} className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+            <p className="flex items-center gap-2 font-semibold text-slate-900"><span aria-hidden="true" className={cn('h-2.5 w-2.5 rounded-full', c.dot)} />{c.t}</p>
+            <p className="mt-0.5 text-xs text-slate-500">{c.d}</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-700">
+              {c.items.map(i => <li key={i}>{i}</li>)}
+            </ul>
+          </div>
+        ))}
       </div>
     </Section>
   )
