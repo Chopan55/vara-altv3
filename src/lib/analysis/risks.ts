@@ -71,7 +71,7 @@ export function deriveRisks(input: RiskInput): PriorityRisk[] {
       reason: critical.map(i => i.label.toLowerCase()).join(', '),
       evidence: critical.map(i => `${i.label}: ${i.why}`),
       impact: 'HIGH',
-      nextAction: 'Pedíselos a la inmobiliaria antes de coordinar la visita.',
+      nextAction: 'Pedíselos a quien publica antes de coordinar la visita.',
     })
   }
 

@@ -23,7 +23,8 @@ export function buildNextSteps(a: PropertyAnalysis): NextStep[] {
 
   const risks = [...a.prioritizedRisks].sort((x, y) => IMPACT_ORDER[x.impact] - IMPACT_ORDER[y.impact])
   const missing = [...a.missingInformation.items].sort((x, y) => IMPACT_ORDER[x.impact] - IMPACT_ORDER[y.impact])
-  const topRisk = risks[0]
+  // Los datos que faltan ya tienen su propio paso: el primero pasa a ser el riesgo siguiente.
+  const topRisk = risks.find(r => !(r.id === 'missing-critical' && missing.length > 0))
 
   if (topRisk) {
     steps.push({
