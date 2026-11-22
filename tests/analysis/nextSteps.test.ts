@@ -20,6 +20,13 @@ describe('tu plan para esta propiedad', () => {
     expect(s[2].title).toContain('escribano')
     expect(s[3].href).toBe('/vara-visit')
   })
+  it('no repite los datos que faltan como riesgo y como pregunta', () => {
+    const s = buildNextSteps(a('AR',
+      [{ id: 'missing-critical', title: 'Falta un dato clave', reason: 'antigüedad', impact: 'HIGH' }, { id: 'x', title: 'Expensas sin informar', reason: 'r', impact: 'MEDIUM' }],
+      [{ label: 'Antigüedad', impact: 'HIGH' }]))
+    expect(s[0].title).toContain('Expensas sin informar')
+    expect(s.filter(x => x.title.includes('Falta un dato'))).toHaveLength(0)
+  })
   it('sin riesgos ni faltantes quedan escribano y visita; en México habla de notario y de tú', () => {
     const s = buildNextSteps(a('MX', [], []))
     expect(s.map(x => x.id)).toEqual(['professional', 'visit'])
