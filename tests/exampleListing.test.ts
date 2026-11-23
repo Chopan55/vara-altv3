@@ -8,9 +8,17 @@ describe('ejemplo de la portada', () => {
     expect(EXAMPLE_LISTING.copiedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     expect(formatCopiedAt(EXAMPLE_LISTING.copiedAt)).toBe('22/11/2026')
     expect(EXAMPLE_LISTING.text).toContain('USD')
+    expect(EXAMPLE_LISTING.text.trim().length).toBeGreaterThan(150)
+    expect(EXAMPLE_LISTING.comparables.length).toBeGreaterThanOrEqual(3)
+    for (const c of EXAMPLE_LISTING.comparables) {
+      expect(c.url).toMatch(/^https:\/\/www\.zonaprop\.com\.ar\/propiedades\/clasificado\//)
+      expect(c.text).toContain('USD')
+      // La API usa el texto (y no intenta leer el portal) solo si tiene más de 150 caracteres.
+      expect(c.text.trim().length).toBeGreaterThan(150)
+    }
   })
   it('la portada lo ofrece y la página de análisis lo rotula como ejemplo', () => {
     expect(readFileSync('src/components/home/HeroAnalyze.tsx', 'utf8')).toContain('/analizar?ejemplo=1')
-    expect(readFileSync('src/app/analizar/page.tsx', 'utf8')).toContain('Ejemplo con un aviso real')
+    expect(readFileSync('src/app/analizar/page.tsx', 'utf8')).toContain('Ejemplo con avisos reales')
   })
 })

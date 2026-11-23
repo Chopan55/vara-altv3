@@ -48,7 +48,7 @@ function Analizar() {
     if (!enabled || autoRan.current) return
     if (isExample) {
       autoRan.current = true
-      void submit(EXAMPLE_LISTING.url, EXAMPLE_LISTING.text, { example: true })
+      void submit(EXAMPLE_LISTING.url, EXAMPLE_LISTING.text, { example: true, comparables: EXAMPLE_LISTING.comparables })
     } else if (initialUrl) {
       autoRan.current = true
       void submit(initialUrl)
@@ -117,7 +117,7 @@ function Analizar() {
     <main className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
       {isExample && enabled && (
         <p role="note" className="mb-4 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-slate-700">
-          <strong>Ejemplo con un aviso real</strong> de {EXAMPLE_LISTING.portal}, copiado el {formatCopiedAt(EXAMPLE_LISTING.copiedAt)}. Puede que ya no esté publicado. Para analizar el tuyo, pegá su link en la portada.
+          <strong>Ejemplo con avisos reales</strong> de {EXAMPLE_LISTING.portal} (el departamento y {EXAMPLE_LISTING.comparables.length} parecidos de la zona), copiados el {formatCopiedAt(EXAMPLE_LISTING.copiedAt)}. Puede que ya no estén publicados. Para analizar el tuyo, pegá su link en la portada.
         </p>
       )}
       {testMode && enabled && state.phase === 'idle' && (

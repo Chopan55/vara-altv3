@@ -1,18 +1,34 @@
 /**
- * Ejemplo de la portada: un aviso REAL y público, no datos inventados.
- * Se guardan solo los datos del aviso (no su descripción) y la fecha en que se copiaron.
- * Cuando el aviso se vence, se reemplaza por otro real y se actualiza `copiedAt`.
+ * Ejemplo de la portada: avisos REALES y públicos, no datos inventados.
+ * Se guardan solo los datos de cada aviso (no su descripción) y la fecha en que se copiaron.
+ * Los comparables son avisos reales de la misma zona: VARA no busca comparables solo,
+ * así que el ejemplo los trae para mostrar la comparación de precio.
+ * Cuando un aviso se vence, se reemplaza por otro real y se actualiza `copiedAt`.
  */
 export const EXAMPLE_LISTING = {
-  url: 'https://www.zonaprop.com.ar/propiedades/clasificado/veclcain-casa-en-venta-en-tortugas-country-club-60571500.html',
+  url: 'https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-departamento-en-venta-en-palermo-capital-federal-59759132.html',
   portal: 'Zonaprop',
   copiedAt: '2026-11-22',
   text: [
-    'Casa en Venta en Tortugas Country Club, Manuel Alberti, Pilar, GBA Norte',
-    'Venta. Casa. USD 1.400.000',
-    'Superficie cubierta 470 m². Superficie total 1.602 m².',
-    '7 ambientes. 4 dormitorios. 4 baños. Antigüedad 6 años.',
+    'Departamento en venta en Palermo, Capital Federal. Jerónimo Salguero al 1900.',
+    'Venta. Departamento. USD 149.000. Expensas $ 200.000.',
+    '48 m² totales. 2 ambientes. 1 dormitorio. 1 baño. Antigüedad 50 años.',
+    'Datos copiados del aviso publicado en Zonaprop.',
   ].join('\n'),
+  comparables: [
+    {
+      url: 'https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-venta-departamento-palermo-con-pileta-y-parrilla-60621016.html',
+      text: 'Departamento en venta en Palermo, Capital Federal. Darregueyra al 2400.\nVenta. Departamento. USD 115.000. Expensas $ 190.000.\n38 m² totales. 2 ambientes. 1 dormitorio. 1 baño. Antigüedad 25 años.\nDatos copiados del aviso publicado en Zonaprop.',
+    },
+    {
+      url: 'https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-excelente-2-ambientes-con-patio.-apto-profesional-60729846.html',
+      text: 'Departamento en venta en Las Cañitas, Palermo, Capital Federal. Maure al 1600.\nVenta. Departamento. USD 120.000. Expensas $ 200.000.\n66 m² totales. 2 ambientes. 1 dormitorio. 1 baño.\nDatos copiados del aviso publicado en Zonaprop.',
+    },
+    {
+      url: 'https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-venta-departamento-2-ambientes.-palermo.-amenities-59108295.html',
+      text: 'Departamento en venta en Palermo, Capital Federal. Arévalo al 2300.\nVenta. Departamento. USD 230.000.\n42 m² totales. 2 ambientes. 1 dormitorio. 1 baño.\nDatos copiados del aviso publicado en Zonaprop.',
+    },
+  ],
 } as const
 
 export function formatCopiedAt(iso: string): string {
