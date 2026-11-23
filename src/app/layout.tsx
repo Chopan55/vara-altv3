@@ -3,13 +3,13 @@ import './globals.css'
 import { AppShell } from '@/components/layout/AppShell'
 import { FunnelBeacon } from '@/components/layout/FunnelBeacon'
 
-const description = 'Comprá o vendé tu propiedad sin inmobiliaria y sin pagar comisión inmobiliaria: costo total con gastos, precio frente a avisos parecidos, qué preguntar y cada paso hasta la escritura, con tu escribano o uno que te recomendemos.'
+const description = 'Comprá o vendé tu propiedad sin inmobiliaria y sin pagar comisión: costo total con gastos, precio frente a avisos parecidos, qué preguntar y cada paso hasta la escritura, con tu escribano o uno que te recomendemos.'
 
 export const metadata: Metadata = {
   title: { default: 'VARA — Comprá y vendé a tu manera', template: '%s · VARA' },
   description,
-  openGraph: { siteName: 'VARA', title: 'Comprá o vendé tu propiedad sin inmobiliaria y sin pagar comisión inmobiliaria', description, type: 'website', locale: 'es_AR' },
-  twitter: { card: 'summary_large_image', title: 'Comprá o vendé tu propiedad sin inmobiliaria y sin pagar comisión inmobiliaria', description },
+  openGraph: { siteName: 'VARA', title: 'Comprá o vendé tu propiedad sin inmobiliaria y sin pagar comisión', description, type: 'website', locale: 'es_AR' },
+  twitter: { card: 'summary_large_image', title: 'Comprá o vendé tu propiedad sin inmobiliaria y sin pagar comisión', description },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
