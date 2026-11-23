@@ -15,6 +15,7 @@ import { analyzeProperty } from '@/lib/analysis/run'
 import { track, type EventName } from '@/lib/analysis/events'
 import { trackFunnel } from '@/lib/funnel/track'
 import { listingFromScrape, type UserOverrides } from '@/lib/analysis/normalize'
+import type { ListingFacts } from '@/lib/analysis/types'
 import { withSubjectLocation } from '@/lib/scrape/locationFromTitle'
 import {
   addUserComparable, candidatesProvider, readUserComparables, removeUserComparable,
@@ -67,6 +68,8 @@ export function useBuyAnalysis() {
   const scrapeRef = useRef<ScrapeResult | null>(null)
   const overridesRef = useRef<UserOverrides>({})
   const submittedRef = useRef<Set<string>>(new Set())
+  /** Comparables del ejemplo de la portada: entran al análisis pero no se guardan en «Avisos que sumaste». */
+  const exampleComparablesRef = useRef<ListingFacts[]>([])
   const startedAt = useRef(0)
   /** Número de la última lectura pedida: si la persona pega el texto mientras se lee el link, gana la más nueva. */
   const seqRef = useRef(0)
@@ -92,6 +95,7 @@ export function useBuyAnalysis() {
         providers: [
           candidatesProvider(candidates),
           userListingsProvider(readUserComparables()),
+          ...(exampleComparablesRef.current.length ? [{ name: 'Avisos del ejemplo', fetch: async () => exampleComparablesRef.current }] : []),
           marketProvider(),
         ],
         preferences: readPreferences(),
@@ -140,9 +144,13 @@ export function useBuyAnalysis() {
   }, [ev])
 
   /** Lee el aviso (por link o por texto pegado) y arranca el análisis. */
-  const submit = useCallback(async (url: string, pastedText?: string, opts?: { example?: boolean }) => {
+  const submit = useCallback(async (
+    url: string, pastedText?: string,
+    opts?: { example?: boolean; comparables?: ReadonlyArray<{ url: string; text: string }> },
+  ) => {
     const clean = url.trim()
     if (!clean) return
+    exampleComparablesRef.current = []
     // El ejemplo de la portada no es una propiedad de la persona: no cuenta en las métricas.
     if (!opts?.example) {
       ev('listing_submitted', { listingKey: clean })
@@ -174,6 +182,22 @@ export function useBuyAnalysis() {
         return
       }
       if (scrape.warnings?.length) setState(s => ({ ...s, warnings: scrape.warnings }))
+      if (opts?.example && opts.comparables?.length) {
+        const read = await Promise.all(opts.comparables.map(async c => {
+          try {
+            const r = await fetch('/api/scrape-property', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: c.url, text: c.text }),
+            })
+            const cs = (await r.json()) as ScrapeResult
+            cs.data = withSubjectLocation(cs.data, scrape.data)
+            const l = listingFromScrape(cs)
+            return l.price ? l : null
+          } catch { return null }
+        }))
+        if (seq !== seqRef.current) return
+        exampleComparablesRef.current = read.filter((l): l is ListingFacts => l !== null)
+      }
       await run(scrape, false, seq)
     } catch {
       if (seq !== seqRef.current) return
@@ -187,6 +211,7 @@ export function useBuyAnalysis() {
 
   /** Datos cargados a mano cuando el portal no deja leer el aviso. */
   const submitManual = useCallback(async (url: string, m: ManualListing) => {
+    exampleComparablesRef.current = []
     ev('listing_submitted', { listingKey: url, manual: true })
     trackFunnel('analyze_start', { manual: true })
     const seq = ++seqRef.current
