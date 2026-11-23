@@ -1,53 +1,72 @@
 /**
- * Única fuente de los planes. BORRADOR: los precios todavía no están definidos
- * (price = null se muestra como "A definir"). Cuando existan, se cargan acá y
- * en ningún otro lado. Los límites son los que hay que fijar con los costos reales.
+ * Única fuente de los planes para personas (2026-11-23, precios definidos por Pancho).
+ * El análisis de un aviso sigue siendo gratis y sin cuenta. Los planes son mensuales.
+ * MXN: equivalente al tipo de cambio de referencia del 22/11/2026 (1 ARS ≈ 0,0121 MXN), redondeado.
+ * Durante la beta privada no se cobra: no hay medio de pago conectado.
+ * VARA Visit se contrata aparte, por visita.
  */
-export type Limit = { label: string; value: string }
-
 export type Plan = {
-  id: 'explorer' | 'etapa' | 'visit'
+  id: 'esencial' | 'operacion' | 'full'
   name: string
   tagline: string
-  price: number | null
-  priceNote: string
+  priceARS: number
+  priceMXN: number
   includes: string[]
-  limits: Limit[]
+  /** Funciones con IA: hoy en beta por invitación. */
+  beta?: string[]
+  highlight?: boolean
 }
+
+export const RATE_NOTE = 'Equivalente en pesos mexicanos al tipo de cambio del 22/11/2026.'
 
 export const PLANS: Plan[] = [
   {
-    id: 'explorer',
-    name: 'Explorer',
-    tagline: 'Para entender antes de decidir.',
-    price: 0,
-    priceNote: 'Gratis',
-    includes: ['Costos por provincia con fuente', 'Riesgos y documentos explicados', 'Comparador con tus prioridades', 'Próximo paso de tu operación'],
-    limits: [
-      { label: 'Propiedades activas', value: 'A definir' },
-      { label: 'Análisis con IA', value: 'A definir' },
+    id: 'esencial',
+    name: 'Esencial',
+    tagline: 'Para entender bien cada propiedad antes de decidir.',
+    priceARS: 30000,
+    priceMXN: 360,
+    includes: [
+      'Análisis de avisos sin límite',
+      'Costo total con gastos y la fuente de cada uno',
+      'Comparación con avisos parecidos',
+      'Qué sabemos, qué estimamos y qué falta confirmar',
+      'Tu plan para cada propiedad y preguntas para el vendedor',
+      'Consulta lista para tu escribano o notario',
+      'Checklist de visita y análisis en PDF',
     ],
   },
   {
-    id: 'etapa',
-    name: 'Por etapa',
-    tagline: 'Pagás por la etapa que necesitás: preparar, ofertar o cerrar.',
-    price: null,
-    priceNote: 'A definir',
-    includes: ['Todo lo de Explorer', 'Preparación de oferta y negociación asistida', 'Property Pack y descripción de publicación', 'Visualización de mejoras (imagen generada)'],
-    limits: [
-      { label: 'Negociaciones asistidas', value: 'A definir' },
-      { label: 'Generaciones de imagen', value: 'A definir' },
-      { label: 'Documentos analizados', value: 'A definir' },
+    id: 'operacion',
+    name: 'Operación',
+    tagline: 'Para llevar tu compra o venta hasta la escritura.',
+    priceARS: 80000,
+    priceMXN: 970,
+    highlight: true,
+    includes: [
+      'Todo lo de Esencial',
+      'Tu operación paso a paso hasta la escritura',
+      'Documentos ordenados: qué falta y qué pedir',
+      'Plata que necesitás para el cierre',
+      'Preparación de la oferta',
+      'Si vendés: tu aviso armado para publicar donde elijas',
     ],
   },
   {
-    id: 'visit',
-    name: 'VARA Visit',
-    tagline: 'Presencia física cuando la necesitás. Se contrata por visita.',
-    price: null,
-    priceNote: 'A definir por visita',
-    includes: ['Visit Partner verificado', 'PIN para empezar la visita', 'Checklist y reporte'],
-    limits: [{ label: 'Visitas', value: 'Por visita contratada' }],
+    id: 'full',
+    name: 'Full',
+    tagline: 'Todo VARA, con ayuda de IA en cada paso.',
+    priceARS: 100000,
+    priceMXN: 1210,
+    includes: ['Todo lo de Operación'],
+    beta: [
+      'Lectura de documentos con IA',
+      'Ayuda para negociar con IA',
+      'Asistente VARA AI sobre tu operación',
+      'Visualización de mejoras de la propiedad',
+    ],
   },
 ]
+
+export const formatARS = (n: number) => `$${n.toLocaleString('es-AR')}`
+export const formatMXN = (n: number) => `MXN ${n.toLocaleString('es-MX')}`
