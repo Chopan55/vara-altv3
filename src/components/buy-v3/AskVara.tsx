@@ -118,7 +118,7 @@ export function AskVara({ analysis, onAsk }: { analysis: PropertyAnalysis; onAsk
         : false
       if (!started) setRevealed(reducedMotion() ? null : 0)
     } catch {
-      setMessages(m => [...m, { role: 'assistant', content: 'No pude conectarme. Probá de nuevo.' }])
+      setMessages(m => [...m, { role: 'assistant', content: analysis.subjectProperty.country === 'MX' ? 'No pude conectarme. Prueba de nuevo.' : 'No pude conectarme. Probá de nuevo.' }])
       setRevealed(null)
     } finally {
       setLoading(false)
@@ -181,7 +181,7 @@ export function AskVara({ analysis, onAsk }: { analysis: PropertyAnalysis; onAsk
 
       <form className="mt-3 flex gap-2" onSubmit={e => { e.preventDefault(); void ask(input) }}>
         <input value={input} onChange={e => setInput(e.target.value)} maxLength={600}
-          placeholder="Preguntá algo sobre esta propiedad…" aria-label="Pregunta sobre esta propiedad"
+          placeholder={analysis.subjectProperty.country === 'MX' ? 'Pregunta algo sobre esta propiedad…' : 'Preguntá algo sobre esta propiedad…'} aria-label="Pregunta sobre esta propiedad"
           className="min-w-0 flex-1 rounded-xl border border-slate-500 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-600" />
         <button type="submit" disabled={!input.trim() || loading} aria-label="Enviar pregunta"
           className="rounded-xl bg-brand-700 px-3 text-white hover:bg-brand-800 disabled:opacity-40">

@@ -53,7 +53,7 @@ export function SellerQuestionsCard({
 
   return (
     <section aria-labelledby="questions-title" className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
-      <h2 id="questions-title" className="text-base font-semibold text-slate-900">Preguntale esto al vendedor sí o sí</h2>
+      <h2 id="questions-title" className="text-base font-semibold text-slate-900">{analysis.subjectProperty.country === 'MX' ? 'Pregúntale esto al vendedor sí o sí' : 'Preguntale esto al vendedor sí o sí'}</h2>
       <p className="mt-0.5 text-sm text-slate-500">Antes de dar plata. Sale de los trámites que te van a pedir para firmar.</p>
       <ol className="mt-3 space-y-3">
         {questions.map((q, i) => (
@@ -90,7 +90,7 @@ export function shareMessage(analysis: PropertyAnalysis, url: string): string {
   const title = f.title?.value?.slice(0, 90) ?? 'esta propiedad'
   const total = analysis.estimatedTransactionCost.totalRange
   const parts = [
-    `Mirá lo que encontré con VARA sobre "${title}".`,
+    `${analysis.subjectProperty.country === 'MX' ? 'Mira' : 'Mirá'} lo que encontré con VARA sobre "${title}".`,
     total ? `Con los gastos de compra sale ${rangeText(total.min, total.max, total.currency)}.` : null,
     url,
   ]

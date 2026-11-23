@@ -37,7 +37,7 @@ export function FitSection({ analysis }: { analysis: PropertyAnalysis }) {
     UNKNOWN: <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-600" />,
   }
   return (
-    <Section title="Encaje con vos" hint={fit.scoreExplanation}>
+    <Section title="Qué tan bien encaja" hint={fit.scoreExplanation}>
       <ul className="space-y-2">
         {fit.items.map(i => (
           <li key={i.key} className="flex gap-2 text-sm text-slate-700">
@@ -435,7 +435,7 @@ export function ProfessionalQuerySection({ analysis }: { analysis: PropertyAnaly
   const pro = isMX ? 'notario' : 'escribano'
 
   return (
-    <Section id="consulta" title={`Llegá a tu ${pro} con las preguntas claras`} hint={`El ${pro} es quien revisa los papeles y busca salidas a los problemas. Esta consulta junta lo que VARA ya detectó.`}>
+    <Section id="consulta" title={`${isMX ? 'Llega' : 'Llegá'} a tu ${pro} con las preguntas claras`} hint={`El ${pro} es quien revisa los papeles y busca salidas a los problemas. Esta consulta junta lo que VARA ya detectó.`}>
       <div className="rounded-xl bg-slate-50 p-4">
         <pre className="whitespace-pre-wrap font-sans text-sm text-slate-800">{msg}</pre>
         <div className="mt-3 flex flex-wrap gap-2 print:hidden">

@@ -44,7 +44,7 @@ export function deriveRisks(input: RiskInput): PriorityRisk[] {
       reason: `El precio publicado está ${Math.abs(price.differencePct)}% por encima de la mediana de los avisos comparables.`,
       evidence: [price.interpretation],
       impact: price.differencePct > 15 ? 'HIGH' : 'MEDIUM',
-      nextAction: 'Preguntá qué justifica la diferencia (estado, terreno, terminaciones) antes de ofertar.',
+      nextAction: facts.country === 'MX' ? 'Pregunta qué justifica la diferencia (estado, terreno, acabados) antes de ofertar.' : 'Preguntá qué justifica la diferencia (estado, terreno, terminaciones) antes de ofertar.',
     })
   }
 
@@ -95,7 +95,7 @@ export function deriveRisks(input: RiskInput): PriorityRisk[] {
       reason: 'El aviso muestra un precio sin aclarar si es en dólares o pesos.',
       evidence: input.completenessWarnings,
       impact: 'MEDIUM',
-      nextAction: 'Confirmá la moneda con la inmobiliaria.',
+      nextAction: facts.country === 'MX' ? 'Confirma la moneda con quien publica.' : 'Confirmá la moneda con quien publica.',
     })
   }
 

@@ -106,11 +106,11 @@ export function buildConclusion(ctx: DecisionContext, nba: NextBestAction): Conc
   } else if (hasHighMissing(missing) || (price.position === 'ABOVE' && priceReliable(price))) {
     verdict = 'CAUTION'
     headline = fit.state === 'EVALUATED' && (fit.score ?? 0) >= 60
-      ? 'Parece una buena candidata para vos, pero todavía no avanzaría con una oferta.'
+      ? 'Parece una buena opción para lo que estás buscando, pero todavía no avanzaría con una oferta.'
       : 'Hay cosas para aclarar antes de avanzar con esta propiedad.'
   } else if (fit.state === 'EVALUATED' && (fit.score ?? 0) >= 70) {
     verdict = 'PROMISING'
-    headline = 'Es una buena candidata para vos y no aparecen alertas con lo que sabemos.'
+    headline = 'Es una buena opción para lo que estás buscando y no aparecen alertas con lo que sabemos.'
   } else if (fit.state === 'NO_PROFILE' && priceReliable(price) && price.position !== 'ABOVE') {
     verdict = 'PROMISING'
     headline = 'El precio publicado está en línea con los avisos comparables. Falta saber si encaja con lo que estás buscando.'
