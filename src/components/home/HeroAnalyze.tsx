@@ -73,6 +73,7 @@ export function HeroAnalyze() {
       <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium">
         <Link href="/login" className="text-brand-700 hover:underline">Entrar</Link>
         <Link href="/analizar" className="text-brand-700 hover:underline">No tengo el link</Link>
+        <Link href="/analizar?ejemplo=1" className="text-brand-700 hover:underline">Ver un ejemplo real</Link>
         <Link href="#como-funciona" className="text-ink-soft hover:text-ink">Ver cómo funciona</Link>
       </div>
     </div>

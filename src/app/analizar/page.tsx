@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { EXAMPLE_LISTING, formatCopiedAt } from '@/data/exampleListing'
 import { AlertCircle } from 'lucide-react'
 import { useBrowserValue } from '@/hooks/useHydrated'
 import { isBuyWowV3Enabled } from '@/lib/analysis/access'
@@ -34,20 +35,25 @@ function Analizar() {
   const params = useSearchParams()
   const search = params.toString()
   const testMode = params.get('test') === '1'
-  const initialUrl = params.get('url') ?? ''
+  const isExample = params.get('ejemplo') === '1'
+  const initialUrl = isExample ? '' : (params.get('url') ?? '')
   // El acceso de prueba (?v3=1) se recuerda en el navegador: se lee recién al hidratar (null = cargando).
   const enabled = useBrowserValue<boolean | null>(() => isBuyWowV3Enabled(search ? `?${search}` : ''), null, search)
   const a = useBuyAnalysis()
   const { submit } = a
   const autoRan = useRef(false)
 
-  // ?url=... analiza el aviso apenas se abre la página, una sola vez.
+  // ?url=... analiza el aviso apenas se abre la página, una sola vez. ?ejemplo=1 analiza el aviso real de ejemplo.
   useEffect(() => {
-    if (enabled && initialUrl && !autoRan.current) {
+    if (!enabled || autoRan.current) return
+    if (isExample) {
+      autoRan.current = true
+      void submit(EXAMPLE_LISTING.url, EXAMPLE_LISTING.text, { example: true })
+    } else if (initialUrl) {
       autoRan.current = true
       void submit(initialUrl)
     }
-  }, [enabled, initialUrl, submit])
+  }, [enabled, initialUrl, isExample, submit])
 
   const { state } = a
   const busy = state.phase === 'reading' || state.phase === 'analyzing'
@@ -109,6 +115,11 @@ function Analizar() {
 
   const content = (
     <main className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
+      {isExample && enabled && (
+        <p role="note" className="mb-4 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-slate-700">
+          <strong>Ejemplo con un aviso real</strong> de {EXAMPLE_LISTING.portal}, copiado el {formatCopiedAt(EXAMPLE_LISTING.copiedAt)}. Puede que ya no esté publicado. Para analizar el tuyo, pegá su link en la portada.
+        </p>
+      )}
       {testMode && enabled && state.phase === 'idle' && (
         <p className="mb-2 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">
           Estás evaluando esta propiedad. Usá VARA para decidir qué harías.
