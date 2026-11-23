@@ -50,7 +50,7 @@ export const PLANS: Plan[] = [
       'Documentos ordenados: qué falta y qué pedir',
       'Plata que necesitás para el cierre',
       'Preparación de la oferta',
-      'Si vendés: tu aviso armado para publicar donde elijas',
+      'Si vendés: tu aviso armado para publicar en Zonaprop, Argenprop o MercadoLibre',
     ],
   },
   {

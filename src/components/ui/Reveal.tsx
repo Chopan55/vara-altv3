@@ -22,7 +22,7 @@ export function Reveal({ children, delay = 0, className = '' }: { children: Reac
     return () => io.disconnect()
   }, [])
   return (
-    <div ref={ref} style={{ transitionDelay: `${delay}ms` }}
+    <div ref={ref} style={{ transitionDelay: `${delay}ms` }} aria-hidden={state === 'hidden' || undefined} inert={state === 'hidden' || undefined}
       className={`${state === 'hidden' ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'} transition duration-700 ease-out ${className}`}>
       {children}
     </div>

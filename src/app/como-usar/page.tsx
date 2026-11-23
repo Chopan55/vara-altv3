@@ -31,7 +31,7 @@ const GUIDES: Guide[] = [
       { title: 'Pegalo en la portada', body: <>En la portada de VARA, pegalo donde dice <B>Pegá el link del aviso</B> y tocá <B>Ver cuánto sale</B>.</> },
       { title: 'Si el portal no deja leerlo', body: <>Tocá <B>Pegar el texto</B> y pegá todo el texto del aviso, o <B>Cargar a mano</B> con el precio y los metros. No hace falta el link.</> },
       { title: 'Leé el resultado de arriba hacia abajo', body: <>Arriba ves el precio, el <strong>total con gastos</strong> y dónde cae el precio frente a avisos parecidos. Abajo: <strong>Tu plan para esta propiedad</strong>, qué preguntarle al vendedor y qué sabemos, qué estimamos y qué falta confirmar.</> },
-      { title: 'Mejorá la comparación', body: <>Si viste otros avisos parecidos, sumalos en <B>Sumar un aviso parecido</B>. Con 3 o más, VARA te dice si el precio está alto o bajo.</> },
+      { title: 'Mejorá la comparación', body: <>Si viste otros avisos parecidos, sumalos en <B>Sumar un aviso parecido</B>. Con 3 o más, VARA arma un rango para ver dónde cae el precio; cuantos más avisos, más confiable.</> },
       { title: 'Compartilo o guardalo', body: <>Con <B>Compartir por WhatsApp</B> se lo mandás a quien decide con vos (no ve tus preferencias). Con <B>Guardar análisis como PDF</B> te lo llevás.</> },
     ],
     cta: { href: '/analizar?ejemplo=1', label: 'Ver un análisis real de ejemplo' },
@@ -54,11 +54,11 @@ const GUIDES: Guide[] = [
     id: 'vender',
     icon: KeyRound,
     title: 'Vender tu propiedad sin inmobiliaria',
-    intro: 'Preparás los papeles y armás tu aviso. Lo publicás vos, donde elijas.',
+    intro: 'Preparás los papeles y armás tu aviso. Lo publicás vos, en el portal que elijas.',
     steps: [
       { title: 'Prepará la venta', body: <>Entrá a VARA y elegí <B>Quiero vender</B>. En <strong>Preparar venta</strong> marcás los papeles que ya tenés.</> },
       { title: 'Armá tu aviso', body: <>En <strong>Publicar</strong> seguís tres pasos: <B>Preparación</B> (datos, fotos y descripción), <B>Revisión</B> y <B>Publicación</B>.</> },
-      { title: 'Publicalo donde quieras', body: <>VARA te copia el texto y abre el portal que elegiste. La publicación la hacés vos: el aviso es tuyo.</> },
+      { title: 'Publicalo en el portal que elijas', body: <>Elegís Zonaprop, Argenprop o MercadoLibre: VARA te copia el texto y abre el portal. La publicación la hacés vos: el aviso es tuyo.</> },
     ],
   },
   {
