@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { EXAMPLE_LISTING, formatCopiedAt } from '@/data/exampleListing'
+import { exampleById, formatCopiedAt } from '@/data/exampleListing'
 import { AlertCircle } from 'lucide-react'
 import { useBrowserValue } from '@/hooks/useHydrated'
 import { isBuyWowV3Enabled } from '@/lib/analysis/access'
@@ -35,25 +35,25 @@ function Analizar() {
   const params = useSearchParams()
   const search = params.toString()
   const testMode = params.get('test') === '1'
-  const isExample = params.get('ejemplo') === '1'
+  const example = exampleById(params.get('ejemplo'))
+  const isExample = example !== null
   const initialUrl = isExample ? '' : (params.get('url') ?? '')
   // El acceso de prueba (?v3=1) se recuerda en el navegador: se lee recién al hidratar (null = cargando).
   const enabled = useBrowserValue<boolean | null>(() => isBuyWowV3Enabled(search ? `?${search}` : ''), null, search)
   const a = useBuyAnalysis()
   const { submit } = a
-  const autoRan = useRef(false)
+  /** Qué se analizó solo al abrir: si cambia el ejemplo o el link sin salir de la página, se analiza el nuevo. */
+  const autoRan = useRef<string | null>(null)
 
   // ?url=... analiza el aviso apenas se abre la página, una sola vez. ?ejemplo=1 analiza el aviso real de ejemplo.
   useEffect(() => {
-    if (!enabled || autoRan.current) return
-    if (isExample) {
-      autoRan.current = true
-      void submit(EXAMPLE_LISTING.url, EXAMPLE_LISTING.text, { example: true, comparables: EXAMPLE_LISTING.comparables })
-    } else if (initialUrl) {
-      autoRan.current = true
-      void submit(initialUrl)
-    }
-  }, [enabled, initialUrl, isExample, submit])
+    if (!enabled) return
+    const key = example ? `ejemplo:${example.id}` : initialUrl ? `url:${initialUrl}` : null
+    if (!key || autoRan.current === key) return
+    autoRan.current = key
+    if (example) void submit(example.url, example.text, { example: true, comparables: example.comparables })
+    else void submit(initialUrl)
+  }, [enabled, initialUrl, example, submit])
 
   const { state } = a
   const busy = state.phase === 'reading' || state.phase === 'analyzing'
@@ -115,9 +115,9 @@ function Analizar() {
 
   const content = (
     <main className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
-      {isExample && enabled && (
+      {example && enabled && (
         <p role="note" className="mb-4 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-slate-700">
-          <strong>Ejemplo con avisos reales</strong> de {EXAMPLE_LISTING.portal} (el departamento y {EXAMPLE_LISTING.comparables.length} parecidos de la zona), copiados el {formatCopiedAt(EXAMPLE_LISTING.copiedAt)}. Puede que ya no estén publicados. Para analizar el tuyo, pegá su link en la portada.
+          <strong>Ejemplo con avisos reales</strong> de {example.portal} (la propiedad y {example.comparables.length} parecidas de la zona), copiados el {formatCopiedAt(example.copiedAt)}. Puede que ya no estén publicados. Para analizar el tuyo, pegá su link en la portada.
         </p>
       )}
       {testMode && enabled && state.phase === 'idle' && (
