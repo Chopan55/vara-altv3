@@ -140,15 +140,18 @@ export function useBuyAnalysis() {
   }, [ev])
 
   /** Lee el aviso (por link o por texto pegado) y arranca el análisis. */
-  const submit = useCallback(async (url: string, pastedText?: string) => {
+  const submit = useCallback(async (url: string, pastedText?: string, opts?: { example?: boolean }) => {
     const clean = url.trim()
     if (!clean) return
-    ev('listing_submitted', { listingKey: clean })
-    trackFunnel('analyze_start')
-    if (submittedRef.current.size > 0 && !submittedRef.current.has(clean)) {
-      ev('second_property_added', { listingKey: clean })
+    // El ejemplo de la portada no es una propiedad de la persona: no cuenta en las métricas.
+    if (!opts?.example) {
+      ev('listing_submitted', { listingKey: clean })
+      trackFunnel('analyze_start')
+      if (submittedRef.current.size > 0 && !submittedRef.current.has(clean)) {
+        ev('second_property_added', { listingKey: clean })
+      }
+      submittedRef.current.add(clean)
     }
-    submittedRef.current.add(clean)
     overridesRef.current = {}
     startedAt.current = Date.now()
     const seq = ++seqRef.current

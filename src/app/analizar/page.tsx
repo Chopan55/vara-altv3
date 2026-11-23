@@ -48,7 +48,7 @@ function Analizar() {
     if (!enabled || autoRan.current) return
     if (isExample) {
       autoRan.current = true
-      void submit(EXAMPLE_LISTING.url, EXAMPLE_LISTING.text)
+      void submit(EXAMPLE_LISTING.url, EXAMPLE_LISTING.text, { example: true })
     } else if (initialUrl) {
       autoRan.current = true
       void submit(initialUrl)
