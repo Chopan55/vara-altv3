@@ -28,7 +28,7 @@ export const FAQS: Faq[] = [
   { q: '¿En qué países funciona?', keys: ['pais', 'paises', 'argentina', 'mexico', 'donde funciona'],
     a: 'En Argentina y México. Los costos de escritura e impuestos se calculan según la provincia o el estado.' },
   { q: '¿Cómo empiezo?', keys: ['empiezo', 'empezar', 'comenzar', 'registro', 'cuenta'],
-    a: 'Pegá el link del aviso en la portada, o tocá «Ver un ejemplo real» para ver cómo es un análisis. No hace falta cuenta. Para seguir una operación, tocá «Entrar».' },
+    a: 'Pegá el link del aviso en la portada, o tocá «Ver un ejemplo real» para ver cómo es un análisis. No hace falta cuenta. Para seguir una operación, tocá «Entrar». La guía paso a paso está en «Cómo usar VARA», al pie de la portada.' },
 ]
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')

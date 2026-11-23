@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Reveal } from '@/components/ui/Reveal'
 import { ArrowRight, Check, KeyRound, ShieldCheck, FileText, Eye, Hand, Users } from 'lucide-react'
 import { Section } from '@/components/ui/Section'
 import { Eyebrow } from '@/components/ui/Eyebrow'
@@ -195,12 +196,12 @@ export function JourneySection() {
       <ol className="relative mt-16 grid gap-y-10 sm:grid-cols-2 lg:grid-cols-5 lg:gap-x-6">
         <span aria-hidden="true" className="absolute left-0 right-0 top-[14px] hidden h-px bg-line lg:block" />
         {STAGES.map((s, i) => (
-          <li key={s.t} className="relative">
+          <li key={s.t} className="relative"><Reveal delay={i * 120}>
             <span className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">{i + 1}</span>
             <p className="font-display mt-3 font-bold text-brand-900">{s.t}</p>
             <p className="mt-1 text-sm text-ink-soft">{s.vara}</p>
             {s.pro && <p className="mt-1 text-sm font-medium text-brand-800">{s.pro}</p>}
-          </li>
+          </Reveal></li>
         ))}
       </ol>
     </Section>

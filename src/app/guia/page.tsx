@@ -96,6 +96,9 @@ export default function GuiaPage() {
           <p className="text-sm text-slate-500 mt-1">
             Qué significa cada paso de {audience === 'SELL' ? 'la venta' : 'la compra'}, en castellano
           </p>
+          <Link href="/como-usar" className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 hover:bg-brand-100">
+            <BookOpen size={15} aria-hidden="true" /> ¿Primera vez? Mirá cómo usar VARA, paso a paso
+          </Link>
         </div>
       </header>
 
