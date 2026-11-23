@@ -6,6 +6,8 @@
  * Cuando un aviso se vence, se reemplaza por otro real y se actualiza `copiedAt`.
  */
 export const EXAMPLE_LISTING = {
+  id: 'palermo',
+  label: 'Departamento en Palermo, CABA',
   url: 'https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-departamento-en-venta-en-palermo-capital-federal-59759132.html',
   portal: 'Zonaprop',
   copiedAt: '2026-11-22',
@@ -42,6 +44,78 @@ export const EXAMPLE_LISTING = {
     },
   ],
 } as const
+
+export const EXAMPLE_VICENTE_LOPEZ = {
+  id: 'vicente-lopez',
+  label: 'Departamento en Florida, Vicente López (GBA Norte)',
+  url: 'https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-venta-departamento-en-florida-vicente-lopez-2-60101100.html',
+  portal: 'Zonaprop',
+  copiedAt: '2026-11-23',
+  text: 'Departamento en venta en Florida, Vicente López, GBA Norte. Hipólito Yrigoyen al 1800.\nVenta. Departamento. USD 150.000.\n56 m² totales, 56 m² cubiertos. 2 ambientes. 1 dormitorio. 1 baño.\nDatos copiados del aviso publicado en Zonaprop.',
+  comparables: [
+    {
+      url: 'https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-departamento-2-ambientes-a-estrenar-puerto-de-olivos-57324818.html',
+      text: 'Departamento en venta en Olivos, Vicente López, GBA Norte. Juan Carlos Cruz al 2200.\nVenta. Departamento. USD 190.000.\n55 m² totales, 50 m² cubiertos. 2 ambientes. 1 dormitorio. 1 baño. A estrenar.\nDatos copiados del aviso publicado en Zonaprop.',
+    },
+    {
+      url: 'https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-simpatico-departamento-dos-ambientes-en-duplex-con-60147165.html',
+      text: 'Departamento en venta en Olivos, Vicente López, GBA Norte. Córdoba 2681.\nVenta. Departamento. USD 198.000. Expensas $ 320.000.\n63 m² totales, 49 m² cubiertos. 2 ambientes. 1 dormitorio. 1 baño.\nDatos copiados del aviso publicado en Zonaprop.',
+    },
+    {
+      url: 'https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-depadepartamento-2-ambientes-con-cochera-en-venta-a-58673642.html',
+      text: 'Departamento en venta en Olivos, Vicente López, GBA Norte. Maipú al 3100.\nVenta. Departamento. USD 154.000.\n48 m² totales. 2 ambientes. 1 dormitorio. 1 baño. A estrenar, con cochera.\nDatos copiados del aviso publicado en Zonaprop.',
+    },
+    {
+      url: 'https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-departamento-en-venta-en-olivos-eco-zona-norte-2-60401880.html',
+      text: 'Departamento en venta en Olivos, Vicente López, GBA Norte. Olivos Eco.\nVenta. Departamento. USD 185.000. Expensas $ 500.000.\n64 m² totales, 58 m² cubiertos. 2 ambientes. 1 dormitorio. 1 baño.\nDatos copiados del aviso publicado en Zonaprop.',
+    },
+    {
+      url: 'https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-departamento-en-venta-de-2-ambientes-en-vicente-lopez-59050801.html',
+      text: 'Departamento en venta en Olivos, Vicente López, GBA Norte. Gobernador Valentín Vergara al 700.\nVenta. Departamento. USD 105.000. Expensas $ 118.000.\n50 m² totales, 50 m² cubiertos. 2 ambientes. 1 dormitorio. 1 baño. Antigüedad 90 años.\nDatos copiados del aviso publicado en Zonaprop.',
+    },
+    {
+      url: 'https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-venta-departamento-2-ambientes-cochera-piscina-60149190.html',
+      text: 'Departamento en venta en Vicente López, GBA Norte. San Martín al 800, piso 13.\nVenta. Departamento. USD 208.000. Expensas $ 290.000.\n50 m² totales. 2 ambientes. 1 dormitorio. 1 baño. Con cochera y pileta.\nDatos copiados del aviso publicado en Zonaprop.',
+    },
+  ],
+} as const
+
+export const EXAMPLE_CDMX = {
+  id: 'cdmx',
+  label: 'Departamento en Américas Unidas, Benito Juárez (CDMX)',
+  url: 'https://www.inmuebles24.com/propiedades/clasificado/veclapin-departamento-en-venta-en-americas-unidas-150874175.html',
+  portal: 'Inmuebles24',
+  copiedAt: '2026-11-23',
+  text: 'Departamento en venta en Américas Unidas, Benito Juárez, Ciudad de México. Ramos Millán 49.\nVenta. Departamento. MXN 3,390,000. Mantenimiento MXN 1,800.\n62 m² construidos. 2 recámaras. 2 baños.\nDatos copiados del aviso publicado en Inmuebles24.',
+  comparables: [
+    {
+      url: 'https://www.inmuebles24.com/propiedades/clasificado/veclapin-departamento-para-remodelar-en-la-colonia-del-valle-150341189.html',
+      text: 'Departamento en venta en Del Valle Centro, Benito Juárez, Ciudad de México. Providencia.\nVenta. Departamento. MXN 4,000,000. Mantenimiento MXN 1,500.\n90 m² construidos. 2 recámaras. 2 baños.\nDatos copiados del aviso publicado en Inmuebles24.',
+    },
+    {
+      url: 'https://www.inmuebles24.com/propiedades/clasificado/veclapin-departamento-en-independencia-151534512.html',
+      text: 'Departamento en venta en Independencia, Benito Juárez, Ciudad de México. Independencia.\nVenta. Departamento. MXN 4,730,014.\n73 m² construidos. 2 recámaras. 2 baños.\nDatos copiados del aviso publicado en Inmuebles24.',
+    },
+    {
+      url: 'https://www.inmuebles24.com/propiedades/clasificado/veclapin-departamento-en-venta-en-del-valle-centro-2-151649006.html',
+      text: 'Departamento en venta en Del Valle Centro, Benito Juárez, Ciudad de México. Avenida Eugenia.\nVenta. Departamento. MXN 4,720,000. Mantenimiento MXN 5,000.\n62 m² construidos. 2 recámaras. 2 baños.\nDatos copiados del aviso publicado en Inmuebles24.',
+    },
+    {
+      url: 'https://www.inmuebles24.com/propiedades/clasificado/veclapin-life-eugenia:-departamento-en-venta-en-narvarte-151593850.html',
+      text: 'Departamento en venta en Narvarte Oriente, Benito Juárez, Ciudad de México. Avenida Eugenia 1600.\nVenta. Departamento. MXN 5,227,000.\n76 m² construidos. 3 recámaras. 2 baños.\nDatos copiados del aviso publicado en Inmuebles24.',
+    },
+  ],
+} as const
+
+/** Casos reales de la portada. `?ejemplo=1` sigue abriendo Palermo. */
+export const EXAMPLES = [EXAMPLE_LISTING, EXAMPLE_VICENTE_LOPEZ, EXAMPLE_CDMX] as const
+export type Example = (typeof EXAMPLES)[number]
+
+export function exampleById(id: string | null): Example | null {
+  if (!id) return null
+  if (id === '1') return EXAMPLE_LISTING
+  return EXAMPLES.find(e => e.id === id) ?? null
+}
 
 export function formatCopiedAt(iso: string): string {
   const [y, m, d] = iso.split('-')

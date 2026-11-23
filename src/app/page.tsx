@@ -10,6 +10,7 @@ import { FaqAssistant } from '@/components/home/FaqAssistant'
 import { HeroAnalyze } from '@/components/home/HeroAnalyze'
 import { FaqList } from '@/components/home/FaqList'
 import { StickyCta } from '@/components/home/StickyCta'
+import { RealCases } from '@/components/home/RealCases'
 import {
   ParadigmSection, BenefitsSection, AnalyzeSection, CompareSection, OperationSection,
   NegotiateSection, VisitSection, JourneySection, AiSection, ProductsSection, TrustSection,
@@ -95,6 +96,8 @@ export default function LandingPage() {
           </Link>
         </div>
       </Section>
+
+      <RealCases />
 
       {/* 2 · Cambio de paradigma → 3 · Tres ideas. */}
       <ParadigmSection />
