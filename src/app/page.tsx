@@ -74,12 +74,17 @@ export default function LandingPage() {
       <Section space="md" width="wide" className="pt-6 md:pt-10">
         <div className="mx-auto max-w-3xl text-center">
           <Eyebrow>Argentina · México</Eyebrow>
-          <h1 className="font-display mt-6 text-4xl font-extrabold leading-[1.06] text-brand-900 text-balance md:text-6xl">
+          <h1 className="font-display mt-6 text-5xl font-black leading-[1.02] tracking-tight text-brand-900 text-balance md:text-7xl">
             Comprá o vendé tu propiedad <span className="text-brand-gradient">sin inmobiliaria</span> y sin pagar comisión
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft md:text-xl">
             VARA te guía en cada paso, con tu escribano o uno que te recomendemos.
           </p>
+          {/* Dos caminos: llevan a lo que VARA hace en cada caso (no a crear cuenta: el único acceso es Entrar). */}
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <Link href="#comprar" className="inline-flex min-h-11 items-center rounded-full border border-brand-200 bg-white px-5 text-sm font-semibold text-brand-800 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-400">Quiero comprar</Link>
+            <Link href="#vender" className="inline-flex min-h-11 items-center rounded-full border border-brand-200 bg-white px-5 text-sm font-semibold text-brand-800 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-400">Quiero vender</Link>
+          </div>
           <HeroAnalyze />
           <HeroFeatures />
         </div>
@@ -151,6 +156,7 @@ export default function LandingPage() {
           <VaraLogo size={22} />
           <p className="text-xs text-ink-soft">© 2026 VARA · Plataforma inmobiliaria</p>
           <nav aria-label="Pie" className="flex flex-wrap items-center justify-center gap-5 text-xs text-ink-soft">
+            <Link href="/como-usar" className="hover:text-ink">Cómo usar VARA</Link>
             <Link href="/costos" className="hover:text-ink">Costos</Link>
             <Link href="/labs" className="hover:text-ink">Labs</Link>
             <Link href="/vara-visit" className="hover:text-ink">VARA Visit</Link>
