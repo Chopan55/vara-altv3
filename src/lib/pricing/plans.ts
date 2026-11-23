@@ -27,13 +27,14 @@ export const PLANS: Plan[] = [
     priceARS: 30000,
     priceMXN: 360,
     includes: [
-      'Análisis de avisos sin límite',
+      'Análisis de avisos',
       'Costo total con gastos y la fuente de cada uno',
       'Comparación con avisos parecidos',
       'Qué sabemos, qué estimamos y qué falta confirmar',
       'Tu plan para cada propiedad y preguntas para el vendedor',
       'Consulta lista para tu escribano o notario',
-      'Checklist de visita y análisis en PDF',
+      'Checklist de visita',
+      'Análisis en PDF',
     ],
   },
   {
@@ -55,7 +56,7 @@ export const PLANS: Plan[] = [
   {
     id: 'full',
     name: 'Full',
-    tagline: 'Todo VARA, con ayuda de IA en cada paso.',
+    tagline: 'Todo VARA, más las herramientas con IA.',
     priceARS: 100000,
     priceMXN: 1210,
     includes: ['Todo lo de Operación'],
