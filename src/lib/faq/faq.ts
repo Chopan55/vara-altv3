@@ -22,9 +22,13 @@ export const FAQS: Faq[] = [
   { q: '¿Puedo analizar una propiedad que ya encontré?', keys: ['analizar', 'link', 'aviso', 'encontre'],
     a: 'Sí. Podés cargar los datos o pegar el link del aviso y VARA te muestra costos, riesgos y qué falta.' },
   { q: '¿VARA reemplaza al escribano o al abogado?', keys: ['escribano', 'abogado', 'reemplaza', 'profesional'],
-    a: 'No. VARA te explica documentos y riesgos en lenguaje claro y te dice qué pedirle a cada profesional, pero no los reemplaza.' },
+    a: 'No. VARA te explica documentos y riesgos en lenguaje claro y te arma la consulta para el escribano, pero no lo reemplaza. Podés ir con el tuyo o pedirle a VARA que te recomiende uno.' },
+  { q: '¿Qué pasa si la operación se cae?', keys: ['se cae', 'cancela', 'seña', 'reserva', 'garantia', 'pierdo'],
+    a: 'VARA no toca la plata de la operación: la seña o reserva se acuerda entre las partes, por escrito y con el escribano. VARA te ayuda a saber qué pedir y qué revisar antes de dar plata, para que no se caiga por algo que se podía ver antes.' },
+  { q: '¿En qué países funciona?', keys: ['pais', 'paises', 'argentina', 'mexico', 'donde funciona'],
+    a: 'En Argentina y México. Los costos de escritura e impuestos se calculan según la provincia o el estado.' },
   { q: '¿Cómo empiezo?', keys: ['empiezo', 'empezar', 'comenzar', 'registro', 'cuenta'],
-    a: 'Tocá “Empezar gratis”. Podés usar VARA sin cuenta (tus datos quedan en tu navegador) o crear una para guardar todo.' },
+    a: 'Pegá el link del aviso en la portada, o tocá «Ver un ejemplo real» para ver cómo es un análisis. No hace falta cuenta. Para seguir una operación, tocá «Entrar».' },
 ]
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')

@@ -180,18 +180,26 @@ export function VisitSection() {
   )
 }
 
-const STAGES = ['Propiedades', 'Visitas', 'Documentos', 'Costos', 'Riesgos', 'Ofertas', 'Cierre']
+const STAGES: { t: string; vara: string; pro?: string }[] = [
+  { t: 'Buscar', vara: 'Pegás el aviso y ves el costo total y cómo está el precio.' },
+  { t: 'Visitar', vara: 'Checklist de visita; si querés, VARA Visit te acompaña.' },
+  { t: 'Revisar papeles', vara: 'Te dice qué pedir y te arma la consulta.', pro: 'El escribano revisa título y deudas.' },
+  { t: 'Ofertar', vara: 'Te ayuda a armar la oferta con argumentos.' },
+  { t: 'Escriturar', vara: 'Sabés cuánta plata llevar al cierre.', pro: 'El escribano firma e inscribe.' },
+]
 
 export function JourneySection() {
   return (
     <Section>
-      <Heading eyebrow="El recorrido" title="Una operación, de la primera visita a la escritura." />
-      <ol className="relative mt-16 grid grid-cols-2 gap-y-10 sm:grid-cols-4 lg:grid-cols-7">
+      <Heading eyebrow="El recorrido" title="Una operación, de la primera visita a la escritura." body="Qué hace VARA en cada paso y dónde entra tu escribano (el tuyo o uno que te recomendemos)." />
+      <ol className="relative mt-16 grid gap-y-10 sm:grid-cols-2 lg:grid-cols-5 lg:gap-x-6">
         <span aria-hidden="true" className="absolute left-0 right-0 top-[14px] hidden h-px bg-line lg:block" />
         {STAGES.map((s, i) => (
-          <li key={s} className="relative">
+          <li key={s.t} className="relative">
             <span className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">{i + 1}</span>
-            <p className="font-display mt-3 font-bold text-brand-900">{s}</p>
+            <p className="font-display mt-3 font-bold text-brand-900">{s.t}</p>
+            <p className="mt-1 text-sm text-ink-soft">{s.vara}</p>
+            {s.pro && <p className="mt-1 text-sm font-medium text-brand-800">{s.pro}</p>}
           </li>
         ))}
       </ol>

@@ -7,6 +7,8 @@ import { ProductFrame } from '@/components/ui/ProductFrame'
 import { ContactForm } from '@/components/home/ContactForm'
 import { FaqAssistant } from '@/components/home/FaqAssistant'
 import { HeroAnalyze } from '@/components/home/HeroAnalyze'
+import { FaqList } from '@/components/home/FaqList'
+import { StickyCta } from '@/components/home/StickyCta'
 import {
   ParadigmSection, BenefitsSection, AnalyzeSection, CompareSection, OperationSection,
   NegotiateSection, VisitSection, JourneySection, AiSection, ProductsSection, TrustSection,
@@ -70,7 +72,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-3xl text-center">
           <Eyebrow>Argentina · México</Eyebrow>
           <h1 className="font-display mt-6 text-4xl font-extrabold leading-[1.06] text-brand-900 text-balance md:text-6xl">
-            Comprá o vendé tu propiedad <span className="text-brand-gradient">sin inmobiliaria</span> y sin pagar comisión inmobiliaria
+            Comprá o vendé tu propiedad <span className="text-brand-gradient">sin inmobiliaria</span> y sin pagar comisión
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft md:text-xl">
             VARA te guía en cada paso, con tu escribano o uno que te recomendemos.
@@ -113,6 +115,7 @@ export default function LandingPage() {
         <h2 className="font-display text-center text-3xl font-extrabold text-brand-900 text-balance md:text-4xl">¿Todavía tenés dudas?</h2>
         <p className="mb-8 mt-3 text-center text-ink-soft">Preguntale a VARA. Si no sabe la respuesta, te lo dice.</p>
         <FaqAssistant />
+        <FaqList />
       </Section>
 
       {/* CTA final: el único acceso para clientes es entrar con su cuenta. */}
@@ -131,6 +134,7 @@ export default function LandingPage() {
         <ContactForm />
       </Section>
 
+      <StickyCta />
       <footer className="border-t border-line bg-surface px-5 py-10 md:px-8">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 md:flex-row">
           <VaraLogo size={22} />
