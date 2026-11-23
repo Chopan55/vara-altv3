@@ -42,18 +42,17 @@ function Analizar() {
   const enabled = useBrowserValue<boolean | null>(() => isBuyWowV3Enabled(search ? `?${search}` : ''), null, search)
   const a = useBuyAnalysis()
   const { submit } = a
-  const autoRan = useRef(false)
+  /** Qué se analizó solo al abrir: si cambia el ejemplo o el link sin salir de la página, se analiza el nuevo. */
+  const autoRan = useRef<string | null>(null)
 
   // ?url=... analiza el aviso apenas se abre la página, una sola vez. ?ejemplo=1 analiza el aviso real de ejemplo.
   useEffect(() => {
-    if (!enabled || autoRan.current) return
-    if (example) {
-      autoRan.current = true
-      void submit(example.url, example.text, { example: true, comparables: example.comparables })
-    } else if (initialUrl) {
-      autoRan.current = true
-      void submit(initialUrl)
-    }
+    if (!enabled) return
+    const key = example ? `ejemplo:${example.id}` : initialUrl ? `url:${initialUrl}` : null
+    if (!key || autoRan.current === key) return
+    autoRan.current = key
+    if (example) void submit(example.url, example.text, { example: true, comparables: example.comparables })
+    else void submit(initialUrl)
   }, [enabled, initialUrl, example, submit])
 
   const { state } = a
