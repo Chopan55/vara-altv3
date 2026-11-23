@@ -104,6 +104,22 @@ export const EXAMPLE_CDMX = {
       url: 'https://www.inmuebles24.com/propiedades/clasificado/veclapin-life-eugenia:-departamento-en-venta-en-narvarte-151593850.html',
       text: 'Departamento en venta en Narvarte Oriente, Benito Juárez, Ciudad de México. Avenida Eugenia 1600.\nVenta. Departamento. MXN 5,227,000.\n76 m² construidos. 3 recámaras. 2 baños.\nDatos copiados del aviso publicado en Inmuebles24.',
     },
+    {
+      url: 'https://www.inmuebles24.com/propiedades/clasificado/veclapin-departamento-en-venta-en-narvarte-oriente-benito-151627667.html',
+      text: 'Departamento en venta en Narvarte Oriente, Benito Juárez, Ciudad de México. Cumbres de Maltrata 423.\nVenta. Departamento. MXN 3,890,000. Mantenimiento MXN 3,700.\n67 m² construidos. 2 recámaras. 2 baños.\nDatos copiados del aviso publicado en Inmuebles24.',
+    },
+    {
+      url: 'https://www.inmuebles24.com/propiedades/clasificado/veclapin-departamento-en-venta-en-calzada-de-tlalpan-nativitas-151375193.html',
+      text: 'Departamento en venta en Nativitas, Benito Juárez, Ciudad de México. Calzada de Tlalpan.\nVenta. Departamento. MXN 3,480,000. Mantenimiento MXN 1,700.\n65 m² construidos. 2 recámaras. 2 baños.\nDatos copiados del aviso publicado en Inmuebles24.',
+    },
+    {
+      url: 'https://www.inmuebles24.com/propiedades/clasificado/veclapin-departamento-en-narvarte-vive-sin-coche!-con-balcon-y-148070690.html',
+      text: 'Departamento en venta en Narvarte Poniente, Benito Juárez, Ciudad de México. Avenida Cuauhtémoc.\nVenta. Departamento. MXN 4,945,000. Mantenimiento MXN 2,500.\n75 m² construidos. 2 recámaras. 2 baños.\nDatos copiados del aviso publicado en Inmuebles24.',
+    },
+    {
+      url: 'https://www.inmuebles24.com/propiedades/clasificado/veclapin-venta-departamento-napoles-78-m-sup2-151529661.html',
+      text: 'Departamento en venta en Nápoles, Benito Juárez, Ciudad de México. Indianápolis 89.\nVenta. Departamento. MXN 5,550,000.\n78 m² construidos. 2 recámaras. 2 baños.\nDatos copiados del aviso publicado en Inmuebles24.',
+    },
   ],
 } as const
 
