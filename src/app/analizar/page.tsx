@@ -117,7 +117,7 @@ function Analizar() {
     <main className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
       {example && enabled && (
         <p role="note" className="mb-4 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-slate-700">
-          <strong>Ejemplo con avisos reales</strong> de {example.portal} (la propiedad y {example.comparables.length} parecidas de la zona), copiados el {formatCopiedAt(example.copiedAt)}. Puede que ya no estén publicados. Para analizar el tuyo, pegá su link en la portada.
+          <strong>Ejemplo con avisos reales</strong> de {example.portal} (la propiedad y {example.comparables.length} parecidas de la zona), copiados el {formatCopiedAt(example.copiedAt)}. Puede que ya no estén publicados. {example.id === 'cdmx' ? 'Para analizar el tuyo, pega su link en la portada.' : 'Para analizar el tuyo, pegá su link en la portada.'}
         </p>
       )}
       {testMode && enabled && state.phase === 'idle' && (

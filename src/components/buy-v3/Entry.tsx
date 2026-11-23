@@ -506,7 +506,7 @@ export function ProfilePrompt({
     <div className="rounded-2xl border border-brand-200 bg-brand-50/50 p-5">
       <p className="font-semibold text-slate-900">Ya pude analizar la propiedad.</p>
       <p className="mt-1 text-sm text-slate-600">
-        Si me contás cuatro cosas sobre lo que buscás, también puedo decirte qué tan bien encaja con vos.
+        {mx ? 'Si me cuentas cuatro cosas sobre lo que buscas, también puedo decirte qué tan bien encaja contigo.' : 'Si me contás cuatro cosas sobre lo que buscás, también puedo decirte qué tan bien encaja con vos.'}
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <label className="text-sm text-slate-600">Presupuesto máximo ({currency})
@@ -542,7 +542,7 @@ export function ProfilePrompt({
         </button>
         <button type="button" onClick={onSkip} className="min-h-11 px-2 text-sm text-slate-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">Ahora no</button>
       </div>
-      <p className="mt-3 text-xs text-slate-600">Se guarda solo en este navegador y no se incluye cuando compartís un análisis.</p>
+      <p className="mt-3 text-xs text-slate-600">Se guarda solo en este navegador y no se incluye cuando {mx ? 'compartes' : 'compartís'} un análisis.</p>
     </div>
   )
 }

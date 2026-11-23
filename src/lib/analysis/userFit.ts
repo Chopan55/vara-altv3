@@ -66,7 +66,7 @@ function evaluate(l: ListingFacts, rule: PreferenceRule, currency?: ListingCurre
       const haystack = norm([l.community, l.microzone, l.neighborhood, l.city, l.address].filter(Boolean).join(' '))
       if (!haystack) return unknown('El aviso no informa ubicación')
       return haystack.includes(want)
-        ? { status: 'MATCH', detail: `Está en la zona que buscás (${rule.target})` }
+        ? { status: 'MATCH', detail: `Está en la zona que estás buscando (${rule.target})` }
         : { status: 'MISMATCH', detail: `No figura en ${rule.target}` }
     }
     case 'bedrooms': return atLeast(l.bedrooms, num(rule.target), 'dormitorios')
@@ -96,8 +96,8 @@ function evaluate(l: ListingFacts, rule: PreferenceRule, currency?: ListingCurre
     case 'kind': {
       if (!l.kind) return unknown('Tipo de propiedad sin confirmar')
       return l.kind === rule.target
-        ? { status: 'MATCH', detail: 'Es el tipo de propiedad que buscás' }
-        : { status: 'MISMATCH', detail: 'No es el tipo de propiedad que buscás' }
+        ? { status: 'MATCH', detail: 'Es el tipo de propiedad que estás buscando' }
+        : { status: 'MISMATCH', detail: 'No es el tipo de propiedad que estás buscando' }
     }
   }
 }
@@ -107,7 +107,7 @@ export function evaluateFit(listing: ListingFacts, prefs: UserPreferences | null
   if (!prefs || rules.length === 0) {
     return {
       state: 'NO_PROFILE', items: [], score: null, dealBreakerHit: false, dealBreakers: [],
-      scoreExplanation: 'Todavía no sé qué buscás, así que no puedo decirte cuánto encaja con vos.',
+      scoreExplanation: 'Todavía no sé qué estás buscando, así que no puedo decirte cuánto te conviene.',
     }
   }
 

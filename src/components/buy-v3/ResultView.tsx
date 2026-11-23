@@ -135,7 +135,7 @@ export function ResultView({
       <AskVara analysis={analysis} onAsk={() => actions.track('missing_data_action', { kind: 'ask_vara' })} />
 
       <div id="evidencia" className="scroll-mt-6">
-      <Section title="La evidencia" hint="Podés abrir cada aviso y discutir la conclusión.">
+      <Section title="La evidencia" hint={analysis.subjectProperty.country === 'MX' ? 'Puedes abrir cada anuncio y discutir la conclusión.' : 'Podés abrir cada aviso y discutir la conclusión.'}>
         <EvidenceSummary analysis={analysis} />
         <ComparableList
           matches={analysis.comparableEvidence.matches}
@@ -202,7 +202,7 @@ export function ResultView({
 
       <div className="mt-12 rounded-2xl bg-slate-50 p-5 text-center">
         <p className="font-medium text-slate-900">¿Viste otra propiedad?</p>
-        <p className="mt-1 text-sm text-slate-500">Pasame el link y la comparo con esta.</p>
+        <p className="mt-1 text-sm text-slate-500">{analysis.subjectProperty.country === 'MX' ? 'Pásame el link y la comparo con esta.' : 'Pasame el link y la comparo con esta.'}</p>
         <button type="button" onClick={onAnother}
           className="mt-3 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-100 min-h-11">
           Analizar otra propiedad

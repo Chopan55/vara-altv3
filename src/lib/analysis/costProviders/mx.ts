@@ -18,8 +18,8 @@ import type { CostLine, ListingCurrency, TransactionCost } from '../types'
 const DEFAULT_STATE = 'CDMX'
 
 const NOT_INCLUDED = [
-  'Comisión del asesor inmobiliario, si corresponde: consultala antes de avanzar',
-  'Gastos del crédito (avalúo bancario, comisión por apertura), si pedís uno',
+  'Comisión del asesor inmobiliario, si corresponde: consúltala antes de avanzar',
+  'Gastos del crédito (avalúo bancario, comisión por apertura), si pides uno',
   'Cuota de mantenimiento, predial y agua de la propiedad',
   'Mudanza, remodelación y amueblado',
 ]
@@ -63,7 +63,7 @@ export const MX_COST_PROVIDER: CostProvider = {
     ]
     const notIncluded = [...NOT_INCLUDED]
     if (cur === 'USD') lines.push(est('certificates', 'Avalúo, certificados y gestiones', c.certificates))
-    else notIncluded.unshift('Avalúo y certificados: pedile el presupuesto al notario')
+    else notIncluded.unshift('Avalúo y certificados: pídele el presupuesto al notario')
 
     const extras = lines.filter(l => l.kind === 'ESTIMATED')
     const min = price + extras.reduce((s, l) => s + (l.min ?? 0), 0)
@@ -75,7 +75,7 @@ export const MX_COST_PROVIDER: CostProvider = {
         : `No identifiqué el estado en el aviso: usé las reglas de ${checklist.provinceName}.`,
       checklist.dataConfidence === 'VERIFIED'
         ? 'Datos verificados con fuentes oficiales.'
-        : 'Rangos de referencia, todavía no validados por un notario: confirmalos con el notario antes de ofertar.',
+        : 'Rangos de referencia, todavía no validados por un notario: confírmalos con el notario antes de ofertar.',
       'El ISAI se calcula sobre el valor más alto entre el precio, el avalúo y el valor catastral: puede salir más.',
       'Sobre el precio publicado; el precio final puede cambiar al negociar.',
     ]
