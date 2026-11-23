@@ -14,7 +14,7 @@ export const FAQS: Faq[] = [
   { q: '¿Puedo usar VARA si ya trabajo con una inmobiliaria?', keys: ['ya trabajo', 'con inmobiliaria', 'convivir'],
     a: 'Sí. VARA no necesita reemplazarla para ayudarte a entender costos, riesgos y documentos.' },
   { q: '¿Cuánto cuesta?', keys: ['cuanto', 'cuesta', 'precio', 'plan', 'gratis', 'pagar'],
-    a: 'Entender es gratis. Los planes pagos todavía se están definiendo; podés ver el borrador en la página de Planes. Pagás por lo que necesitás.' },
+    a: 'Analizar un aviso es gratis. Para seguir tu operación hay tres planes mensuales: Esencial $30.000, Operación $80.000 y Full $100.000 (en México, el equivalente en pesos mexicanos). No cobramos comisión. Durante la beta privada no se cobra.' },
   { q: '¿Me ayudan a publicar mi propiedad?', keys: ['publicar', 'publicacion', 'aviso', 'portal'],
     a: 'Te ayudamos a preparar el material (descripción y datos). VARA no publica automáticamente en los portales: eso lo hacés vos o quien elijas.' },
   { q: '¿Qué es VARA Visit?', keys: ['visit', 'visita', 'acompañ', 'partner'],
