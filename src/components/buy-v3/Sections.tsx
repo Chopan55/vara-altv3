@@ -185,7 +185,7 @@ export function MissingSection({
   const title = count === 1 ? 'Me falta un dato' : `Necesito ${count === 2 ? 'dos' : count === 3 ? 'tres' : count} datos`
 
   return (
-    <Section id="faltantes" title={title} hint="Con esto mejoro la evaluación. Si ya lo sabés, confirmalo; si no, preguntalo.">
+    <Section id="faltantes" title={title} hint={country === 'MX' ? 'Con esto mejoro la evaluación. Si ya lo sabes, confírmalo; si no, pregúntalo.' : 'Con esto mejoro la evaluación. Si ya lo sabés, confirmalo; si no, preguntalo.'}>
       <ul className="space-y-2">
         {items.map(i => (
           <li key={i.field} className="rounded-xl border border-slate-200 bg-white p-4">
@@ -222,7 +222,7 @@ export function MissingSection({
               <MessageCircle size={14} /> Abrir en WhatsApp
             </a>
           </div>
-          <p className="mt-2 text-xs text-slate-500">VARA no envía nada: vos elegís a quién y cuándo.</p>
+          <p className="mt-2 text-xs text-slate-500">{country === 'MX' ? 'VARA no envía nada: tú eliges a quién y cuándo.' : 'VARA no envía nada: vos elegís a quién y cuándo.'}</p>
         </div>
       )}
     </Section>

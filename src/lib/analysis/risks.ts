@@ -59,7 +59,7 @@ export function deriveRisks(input: RiskInput): PriorityRisk[] {
       reason: weak[0] ?? 'Pocos avisos realmente comparables.',
       evidence: weak.length ? weak : price.confidenceReasons,
       impact: 'MEDIUM',
-      nextAction: 'Sumá 2 o 3 avisos parecidos que hayas visto para mejorar la referencia.',
+      nextAction: facts.country === 'MX' ? 'Suma 2 o 3 anuncios parecidos que hayas visto para mejorar la referencia.' : 'Sumá 2 o 3 avisos parecidos que hayas visto para mejorar la referencia.',
     })
   }
 
@@ -71,7 +71,7 @@ export function deriveRisks(input: RiskInput): PriorityRisk[] {
       reason: critical.map(i => i.label.toLowerCase()).join(', '),
       evidence: critical.map(i => `${i.label}: ${i.why}`),
       impact: 'HIGH',
-      nextAction: 'Pedíselos a quien publica antes de coordinar la visita.',
+      nextAction: facts.country === 'MX' ? 'Pídeselos a quien publica antes de coordinar la visita.' : 'Pedíselos a quien publica antes de coordinar la visita.',
     })
   }
 
@@ -84,7 +84,7 @@ export function deriveRisks(input: RiskInput): PriorityRisk[] {
         : 'El aviso no informa las expensas y la propiedad está en una comunidad o edificio.',
       evidence: [facts.country === 'MX' ? 'Cuota de mantenimiento sin confirmar' : 'Expensas sin confirmar'],
       impact: 'MEDIUM',
-      nextAction: facts.country === 'MX' ? 'Pedí el monto actual de la cuota de mantenimiento.' : 'Pedí el monto actual de expensas.',
+      nextAction: facts.country === 'MX' ? 'Pide el monto actual de la cuota de mantenimiento.' : 'Pedí el monto actual de expensas.',
     })
   }
 

@@ -28,7 +28,7 @@ export function sellerQuestions(ctx: QuestionContext): SellerQuestion[] {
         question: ctx.hasCommonCharges
           ? '¿El predial, el agua y las cuotas de mantenimiento están al corriente?'
           : '¿El predial y el agua están al corriente?',
-        why: 'El notario pide las constancias de no adeudo para firmar. Pedilas antes de dar el apartado.',
+        why: 'El notario pide las constancias de no adeudo para firmar. Pídelas antes de dar el apartado.',
       },
       {
         id: 'mx-gravamen',

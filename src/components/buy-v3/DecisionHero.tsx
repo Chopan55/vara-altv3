@@ -144,7 +144,7 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
         </div>
         {firstQuestion && (
           <p aria-hidden="true" className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-sm leading-snug ring-1 ring-white/10">
-            <span className="block text-[11px] font-semibold uppercase tracking-wide text-brand-200">Preguntá primero</span>
+            <span className="block text-[11px] font-semibold uppercase tracking-wide text-brand-200">{mx ? 'Pregunta primero' : 'Preguntá primero'}</span>
             <span className="font-semibold">{firstQuestion.question}</span>
           </p>
         )}
@@ -180,7 +180,7 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
               <p className="mt-1 text-sm text-slate-600">Sin esa referencia no puedo decirte si el precio es alto o bajo.</p>
               <button type="button" onClick={() => onScroll('sumar')}
                 className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
-                Sumá 2 o 3 avisos parecidos <ArrowRight size={15} aria-hidden="true" />
+                {mx ? 'Suma 2 o 3 anuncios parecidos' : 'Sumá 2 o 3 avisos parecidos'} <ArrowRight size={15} aria-hidden="true" />
               </button>
             </div>
           )}

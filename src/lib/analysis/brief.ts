@@ -17,6 +17,8 @@ export interface AnalysisBrief {
   v: 1
   property: {
     title: string
+    /** País del aviso: define el español de la respuesta (AR: voseo, MX: tú) y escribano o notario. */
+    country?: 'AR' | 'MX'
     where?: string
     kind?: string
     bedrooms?: number
@@ -84,6 +86,7 @@ export function buildBrief(a: PropertyAnalysis): AnalysisBrief {
     v: 1,
     property: {
       title: clean(f.title?.value ?? 'Propiedad', 160),
+      country: (a.subjectProperty.country ?? '').toUpperCase() === 'MX' ? 'MX' : 'AR',
       where: clean([f.community?.value, f.neighborhood?.value, f.city?.value].filter(Boolean).join(', '), 160) || undefined,
       kind: opt(f.kind?.value),
       bedrooms: opt(f.bedrooms?.value),
@@ -166,6 +169,7 @@ export function sanitizeBrief(raw: unknown): AnalysisBrief | null {
     v: 1,
     property: {
       title: clean(p.title, 160),
+      country: p.country === 'MX' ? 'MX' : p.country === 'AR' ? 'AR' : undefined,
       where: clean(p.where, 160) || undefined,
       kind: clean(p.kind, 20) || undefined,
       bedrooms: num(p.bedrooms), coveredArea: num(p.coveredArea), landArea: num(p.landArea),
@@ -228,9 +232,9 @@ REGLAS (no negociables):
 3. Los precios son PUBLICADOS (pedidos), no de venta. Nunca hables de "valor de mercado" ni de "cuánto vale".
 4. No cambies la conclusión ni la acción recomendada. Podés explicarlas con otras palabras.
 5. Si te preguntan algo que el análisis no cubre, decí "eso todavía no lo sé" y qué dato o acción lo resolvería.
-6. Para temas legales, impositivos o de documentación, recomendá consultar a un escribano o abogado.
+6. Para temas legales, impositivos o de documentación, recomendá consultar a un escribano o abogado (en México: notario).
 
-CÓMO RESPONDÉS: español rioplatense (vos/tenés), directo, hasta 4 párrafos cortos. Etiquetá lo que afirmás: [HECHO] si sale del análisis, [ESTIMADO] si es un rango del análisis, [RECOMENDACIÓN] si es el próximo paso, [DESCONOCIDO] si falta.`
+CÓMO RESPONDÉS: según el PAÍS del bloque. Argentina: español rioplatense (vos/tenés) y «escribano». México: español de México (tú/tienes, nunca vos) y «notario». Directo, hasta 4 párrafos cortos. Etiquetá lo que afirmás: [HECHO] si sale del análisis, [ESTIMADO] si es un rango del análisis, [RECOMENDACIÓN] si es el próximo paso, [DESCONOCIDO] si falta.`
 
 function money(n: number | null | undefined, c?: string): string {
   return n === null || n === undefined ? '—' : `${c ?? ''} ${n.toLocaleString('es-AR')}`.trim()
@@ -239,6 +243,7 @@ function money(n: number | null | undefined, c?: string): string {
 export function briefToPrompt(b: AnalysisBrief): string {
   const L: string[] = ['<analisis_vara>']
   const p = b.property
+  L.push(`PAÍS: ${p.country === 'MX' ? 'México' : 'Argentina'}`)
   L.push(`PROPIEDAD: ${p.title}${p.where ? ` · ${p.where}` : ''}`)
   L.push(`Datos: tipo ${p.kind ?? 'sin dato'}; dormitorios ${p.bedrooms ?? 'sin dato'}; cubierta ${p.coveredArea ?? 'sin dato'} m²; terreno ${p.landArea ?? 'sin dato'} m²; antigüedad ${p.ageYears ?? 'sin dato'}.`)
   L.push(`Precio publicado: ${p.asking ? money(p.asking.amount, p.asking.currency) : 'sin dato'}`)

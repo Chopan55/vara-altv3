@@ -125,8 +125,8 @@ export function ShareCard({
 
   return (
     <section aria-labelledby="share-title" className="mt-4 rounded-2xl bg-brand-950 p-5 text-white">
-      <h2 id="share-title" className="text-base font-semibold">¿Lo decidís con alguien más?</h2>
-      <p className="mt-0.5 text-sm text-slate-300">Mandale este análisis. Ve el precio, los comparables y los costos; no ve tus preferencias.</p>
+      <h2 id="share-title" className="text-base font-semibold">{analysis.subjectProperty.country === 'MX' ? '¿Lo decides con alguien más?' : '¿Lo decidís con alguien más?'}</h2>
+      <p className="mt-0.5 text-sm text-slate-300">{analysis.subjectProperty.country === 'MX' ? 'Mándale' : 'Mandale'} este análisis. Ve el precio, los comparables y los costos; no ve tus preferencias.</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <button type="button" onClick={whatsapp}
           className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 min-h-11">

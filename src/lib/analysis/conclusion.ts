@@ -20,15 +20,15 @@ export interface DecisionContext {
 }
 
 const NBA_LABEL: Record<NbaType, string> = {
-  GET_MISSING_INFORMATION: 'Pedí los datos que faltan',
-  COMPARE: 'Compará con otra propiedad',
-  VISIT: 'Coordiná una visita',
-  VERIFY_DOCUMENT: 'Verificá la documentación',
-  SAVE: 'Guardala para decidir después',
-  DISCARD: 'Descartala',
+  GET_MISSING_INFORMATION: 'Pedir los datos que faltan',
+  COMPARE: 'Comparar con otra propiedad',
+  VISIT: 'Coordinar una visita',
+  VERIFY_DOCUMENT: 'Verificar la documentación',
+  SAVE: 'Guardar para decidir después',
+  DISCARD: 'Descartar',
   PREPARE_OFFER: 'Preparar una oferta',
-  PROFESSIONAL_REVIEW: 'Consultá a un profesional',
-  ADD_COMPARABLES: 'Sumá avisos parecidos para comparar',
+  PROFESSIONAL_REVIEW: 'Consultar a un profesional',
+  ADD_COMPARABLES: 'Sumar avisos parecidos para comparar',
 }
 
 const hasHighMissing = (m: MissingInformation) => m.items.some(i => i.impact === 'HIGH')
@@ -73,7 +73,7 @@ export function decideNextAction(ctx: DecisionContext): NextBestAction {
     secondary = ['GET_MISSING_INFORMATION', 'SAVE']
   } else if (fit.state === 'EVALUATED' && (fit.score ?? 0) < 50) {
     primary = 'COMPARE'
-    reason = 'Encaja poco con lo que buscás.'
+    reason = 'Encaja poco con lo que estás buscando.'
     secondary = ['SAVE', 'DISCARD']
   } else {
     primary = 'VISIT'
@@ -102,7 +102,7 @@ export function buildConclusion(ctx: DecisionContext, nba: NextBestAction): Conc
     headline = 'Esta propiedad no cumple algo que marcaste como imprescindible.'
   } else if (price.confidence === 'INSUFFICIENT' && fit.state === 'NO_PROFILE') {
     verdict = 'UNDETERMINED'
-    headline = 'Todavía no tengo base para opinar: faltan avisos comparables y saber qué buscás.'
+    headline = 'Todavía no tengo base para opinar: faltan avisos comparables y saber qué estás buscando.'
   } else if (hasHighMissing(missing) || (price.position === 'ABOVE' && priceReliable(price))) {
     verdict = 'CAUTION'
     headline = fit.state === 'EVALUATED' && (fit.score ?? 0) >= 60
@@ -113,7 +113,7 @@ export function buildConclusion(ctx: DecisionContext, nba: NextBestAction): Conc
     headline = 'Es una buena candidata para vos y no aparecen alertas con lo que sabemos.'
   } else if (fit.state === 'NO_PROFILE' && priceReliable(price) && price.position !== 'ABOVE') {
     verdict = 'PROMISING'
-    headline = 'El precio publicado está en línea con los avisos comparables. Falta saber si encaja con lo que buscás.'
+    headline = 'El precio publicado está en línea con los avisos comparables. Falta saber si encaja con lo que estás buscando.'
   } else {
     verdict = 'UNDETERMINED'
     headline = 'Con lo que sabemos hasta ahora no hay una señal clara a favor ni en contra.'
