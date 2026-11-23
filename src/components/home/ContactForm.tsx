@@ -1,5 +1,6 @@
 'use client'
-import { useState, useSyncExternalStore } from 'react'
+import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 /** Mensajes precargados según el motivo que trae el link (?tema=…). */
 const TOPICS: Record<string, { message: string; place: string }> = {
@@ -7,17 +8,14 @@ const TOPICS: Record<string, { message: string; place: string }> = {
   notario: { message: 'Quiero que VARA me recomiende un notario para mi operación.', place: 'Municipio o alcaldía y estado de la propiedad' },
 }
 
-/** El motivo se lee de la URL sin estado: en el servidor no hay motivo; en el navegador, el de ?tema=. */
-const noop = () => () => {}
-const readTopic = () => new URLSearchParams(window.location.search).get('tema')
-const serverTopic = () => null
 
 type Status = 'idle' | 'sending' | 'sent' | 'error'
 
 export function ContactForm() {
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
-  const t = useSyncExternalStore(noop, readTopic, serverTopic)
+  // El motivo sale de ?tema= y se actualiza también al llegar con un link interno (sin recargar la página).
+  const t = useSearchParams().get('tema')
   const topic = t && TOPICS[t] ? TOPICS[t] : null
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {

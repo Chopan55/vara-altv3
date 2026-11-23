@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { Section } from '@/components/ui/Section'
@@ -60,6 +61,7 @@ export default function LandingPage() {
             <Link href="/vara-visit" className="transition-colors hover:text-ink">VARA Visit</Link>
             <Link href="/#como-funciona" className="transition-colors hover:text-ink">Cómo funciona</Link>
             <Link href="/planes" className="transition-colors hover:text-ink">Planes</Link>
+            <Link href="/?tema=escribano#contacto" className="transition-colors hover:text-ink">Pedí tu escribano</Link>
           </nav>
           <div className="flex items-center gap-2">
             <ButtonLink href="/login">Entrar</ButtonLink>
@@ -80,12 +82,17 @@ export default function LandingPage() {
           <HeroAnalyze />
           <HeroFeatures />
         </div>
-        <div className="mx-auto mt-14 max-w-6xl md:mt-20">
-          <ProductFrame
-            src="/marketing/real/dashboard.jpg"
-            alt="Inicio de VARA: la tarea más importante de tu operación, con el motivo y los próximos pasos"
-            priority
-          />
+        {/* El producto real arriba: el análisis de un aviso real, no datos de ejemplo. Tocarlo abre ese análisis. */}
+        <div className="mx-auto mt-14 max-w-2xl md:mt-20">
+          <Link href="/analizar?ejemplo=1" aria-label="Abrir el análisis real de este departamento en Palermo"
+            className="block rounded-[var(--radius-card)] transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600">
+            <ProductFrame
+              src="/marketing/real/analisis-palermo.jpg"
+              alt="Análisis de VARA de un departamento real en Palermo: precio publicado USD 149.000, total para avanzar USD 153.721 a 155.115 con gastos, y rango de avisos parecidos de USD 115.000 a 230.000"
+              caption="Análisis real de VARA de un aviso de Zonaprop (22/11/2026). Tocalo para verlo completo."
+              priority
+            />
+          </Link>
         </div>
       </Section>
 
@@ -131,7 +138,8 @@ export default function LandingPage() {
       <Section id="contacto" width="narrow" space="md">
         <h2 className="font-display text-center text-3xl font-extrabold text-brand-900 text-balance md:text-4xl">Hablá con una persona</h2>
         <p className="mb-8 mt-3 text-center text-ink-soft">Contanos qué querés hacer y te respondemos por mail.</p>
-        <ContactForm />
+        {/* El formulario lee ?tema= de la URL: necesita su límite de Suspense para el prerender. */}
+        <Suspense fallback={null}><ContactForm /></Suspense>
       </Section>
 
       <StickyCta />
