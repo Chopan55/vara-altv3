@@ -22,7 +22,7 @@ import { searchApp } from '@/lib/search/appSearch'
 import { GuiameButton, GuiameTrigger } from '@/components/guidance/GuiameButton'
 import { VaraAIFloat } from '@/components/ai/VaraAIFloat'
 
-const NO_SHELL = new Set(['/', '/onboarding', '/login', '/demo', '/labs', '/empezar', '/property-pack', '/planes'])
+const NO_SHELL = new Set(['/', '/onboarding', '/login', '/demo', '/labs', '/empezar', '/property-pack', '/planes', '/como-usar'])
 
 type JourneyType = 'BUY' | 'SELL'
 
