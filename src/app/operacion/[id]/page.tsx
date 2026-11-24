@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useBrowserValue } from '@/hooks/useHydrated'
 import Link from 'next/link'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Handshake, History } from 'lucide-react'
 import { ArrowLeft, CheckCircle2, Clock, AlertCircle, Lock, ChevronDown, ChevronUp, MapPin, FileText, User, DollarSign, Calendar, ShieldAlert, Zap, Sparkles } from 'lucide-react'
 import { InfoTip } from '@/components/ui/InfoTip'
@@ -121,6 +121,15 @@ export default function OperacionPage() {
   const operationId = typeof params.id === 'string' ? params.id : 'txn-001'
   const { operation } = useOperation(operationId)
   const { relations, getTransactionData, getStoredOperation, operations, activeOperation, journey, loaded: opsLoaded } = useOperations()
+  // «/operacion/inicio» es el link del menú cuando todavía no se sabe cuál es la operación activa
+  // (por ejemplo, alguien sin cuenta recién creó la suya): se abre la activa, o la primera.
+  const router = useRouter()
+  const fallbackOp = activeOperation ?? operations[0] ?? null
+  useEffect(() => {
+    if (operationId !== 'inicio' || !opsLoaded || !fallbackOp) return
+    const qs = typeof window !== 'undefined' ? window.location.search : ''
+    router.replace(`/operacion/${fallbackOp.id}${qs}`)
+  }, [operationId, opsLoaded, fallbackOp, router])
   const crossRelations = relations.filter(r => r.fromOperationId === operationId || r.toOperationId === operationId)
   // Para operaciones reales del usuario (guardadas en localStorage), buildTransaction las arma.
   // Solo la lista unificada (local + cuenta): leer localStorage en el render desfasa servidor y cliente.
@@ -169,7 +178,7 @@ export default function OperacionPage() {
 
   if (!txn) {
     // Estado puente: nunca una pantalla vacía sin explicación.
-    if (!opsLoaded) {
+    if (!opsLoaded || (operationId === 'inicio' && fallbackOp)) {
       return (
         <div className="min-h-screen bg-[var(--background)] flex items-center justify-center px-4">
           <p className="text-sm text-slate-400" role="status">Cargando tu operación…</p>
@@ -192,8 +201,8 @@ export default function OperacionPage() {
               : 'Primero cargá tu propiedad o preparemos la documentación. Cuando avances en serio con una propiedad, acá vas a ver sus documentos, riesgos y costos.'}
           </p>
           <div className="flex flex-col gap-2">
-            {hasOps && activeOperation ? (
-              <Link href={`/operacion/${activeOperation.id}`} className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white">Abrir mi operación</Link>
+            {hasOps && fallbackOp ? (
+              <Link href={`/operacion/${fallbackOp.id}`} className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white">Abrir mi operación</Link>
             ) : (
               <Link href={loadHref} className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white">Cargar propiedad</Link>
             )}
