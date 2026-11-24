@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { ArrowRight, Search, Home, KeyRound, Users, Lightbulb, BookOpen, Link2, Download, ShieldAlert, LifeBuoy } from 'lucide-react'
+import { ArrowRight, Search, Home, KeyRound, Users, Lightbulb, BookOpen, Link2, Download, ShieldAlert, LifeBuoy, Sparkles, LayoutGrid } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
+import { BENEFICIOS, FUNCIONES, REQUISITO_TEXTO, type Requisito } from '@/data/manual'
 
 export const metadata = {
   title: 'Cómo usar VARA',
@@ -21,8 +22,14 @@ const M = '/marketing/manual/'
 
 /** Nombre exacto de un botón, resaltado. Puede cortar línea en el celular. */
 const B = ({ children }: { children: React.ReactNode }) => (
-  <span className="rounded-md bg-brand-50 px-1.5 py-0.5 font-semibold text-brand-800">{children}</span>
+  <strong className="font-semibold text-brand-800">«{children}»</strong>
 )
+
+const REQ_COLOR: Record<Requisito, string> = {
+  gratis: 'bg-emerald-100 text-emerald-900',
+  cuenta: 'bg-sky-100 text-sky-900',
+  beta: 'bg-violet-100 text-violet-900',
+}
 
 const Box = ({ tone, title, children }: { tone: 'tip' | 'warn' | 'info' | 'mx'; title: string; children: React.ReactNode }) => {
   const c = {
@@ -106,7 +113,7 @@ const GUIDES: Guide[] = [
 
 const GLOSARIO: [string, string][] = [
   ['Aviso', 'La publicación de una casa o departamento en venta, con fotos y precio.'],
-  ['Portal', 'La página donde están los avisos: Zonaprop, Argenprop, MercadoLibre, Inmuebles24.'],
+  ['Portal', 'La página donde están los avisos: Zonaprop, Argenprop, MercadoLibre, Inmuebles24. Para publicar tu propiedad, VARA te lleva a Zonaprop, Argenprop o MercadoLibre.'],
   ['Link (o enlace)', 'La dirección de una página de internet. Empieza con «https://».'],
   ['Pegar', 'Poner en otro lugar lo que copiaste. En el celular: dejá el dedo apretado sobre el casillero y tocá «Pegar».'],
   ['Gastos de escritura', 'Lo que se paga además del precio: impuestos, honorarios del escribano y trámites.'],
@@ -120,7 +127,7 @@ const GLOSARIO: [string, string][] = [
 export default function ComoUsarPage() {
   return (
     <main className="min-h-screen bg-surface text-ink">
-      <header className="border-b border-line bg-white/80">
+      <header className="border-b border-line bg-white/80 print:hidden">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5">
           <VaraLogo size={26} />
           <Link href="/analizar" className="text-sm font-bold text-brand-700 hover:underline">Analizar un aviso</Link>
@@ -134,16 +141,18 @@ export default function ComoUsarPage() {
           <h1 className="font-display mt-2 text-4xl font-black leading-tight md:text-6xl">Cómo usar VARA</h1>
           <p className="mt-4 max-w-2xl text-lg text-brand-50 md:text-xl">Paso a paso y con fotos, para comprar o vender tu casa o departamento sin inmobiliaria, aunque nunca hayas usado una aplicación así.</p>
           <a href="/manual/Manual_VARA.pdf" download
-            className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-5 font-semibold text-brand-800 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+            className="mt-6 print:hidden inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-5 font-semibold text-brand-800 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
             <Download size={18} aria-hidden="true" /> Descargar la guía en PDF
           </a>
         </div>
 
-        <nav aria-label="Elegí qué querés hacer" className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <nav aria-label="Elegí qué querés hacer" className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 print:hidden">
           {[
+            { href: '#beneficios', icon: Sparkles, t: 'Lo que VARA hace por vos' },
             { href: '#glosario', icon: BookOpen, t: 'Palabras que vas a leer' },
             { href: '#link', icon: Link2, t: 'Cómo copiar el link de un aviso' },
             ...GUIDES.map(g => ({ href: `#${g.id}`, icon: g.icon, t: g.title })),
+            { href: '#funciones', icon: LayoutGrid, t: 'Todas las funciones' },
             { href: '#consejos', icon: LifeBuoy, t: 'Consejos y dónde pedir ayuda' },
           ].map(x => (
             <a key={x.href} href={x.href}
@@ -155,8 +164,24 @@ export default function ComoUsarPage() {
         </nav>
       </section>
 
+      {/* Beneficios */}
+      <section id="beneficios" className="mx-auto max-w-5xl scroll-mt-6 px-5 pt-12 print:break-before-page">
+        <h2 className="font-display text-2xl font-extrabold text-brand-900 md:text-3xl">Lo que VARA hace por vos</h2>
+        <p className="mt-2 text-ink-soft">VARA es una página web que te acompaña para comprar o vender una propiedad por tu cuenta. La usás desde el celular o la computadora.</p>
+        <div className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {BENEFICIOS.map(b => (
+            <div key={b.titulo} className="rounded-2xl border border-line bg-white p-5 break-inside-avoid">
+              <p className="text-2xl" aria-hidden="true">{b.emoji}</p>
+              <h3 className="mt-2 font-bold text-brand-900">{b.titulo}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-ink-soft">{b.texto}</p>
+            </div>
+          ))}
+        </div>
+        <Box tone="info" title="Qué necesitás para empezar">Un celular o computadora con internet y el aviso de la propiedad que te interesa. Para analizar un aviso <strong>no hace falta crear una cuenta</strong>. Para guardar y seguir tu operación, sí (con tu mail y una contraseña).</Box>
+      </section>
+
       {/* Glosario */}
-      <section id="glosario" className="mx-auto max-w-5xl scroll-mt-6 px-5 py-12">
+      <section id="glosario" className="mx-auto max-w-5xl scroll-mt-6 px-5 py-12 print:break-before-page">
         <h2 className="font-display text-2xl font-extrabold text-brand-900 md:text-3xl">Palabras que vas a leer</h2>
         <p className="mt-2 text-ink-soft">Si alguna palabra no te suena, buscala acá.</p>
         <dl className="mt-6 grid gap-3 md:grid-cols-2">
@@ -171,7 +196,7 @@ export default function ComoUsarPage() {
       </section>
 
       {/* Cómo copiar un link */}
-      <section id="link" className="scroll-mt-6 bg-white">
+      <section id="link" className="scroll-mt-6 bg-white print:break-before-page">
         <div className="mx-auto max-w-5xl px-5 py-12">
           <h2 className="font-display text-2xl font-extrabold text-brand-900 md:text-3xl">Cómo copiar el link de un aviso</h2>
           <p className="mt-2 text-ink-soft">Es lo primero que vas a hacer. Elegí cómo lo estás mirando.</p>
@@ -199,7 +224,7 @@ export default function ComoUsarPage() {
 
       {/* Guías */}
       {GUIDES.map((g, gi) => (
-        <section key={g.id} id={g.id} className={`scroll-mt-6 ${gi % 2 ? 'bg-white' : ''}`}>
+        <section key={g.id} id={g.id} className={`scroll-mt-6 print:break-before-page ${gi % 2 ? 'bg-white' : ''}`}>
           <div className="mx-auto max-w-5xl px-5 py-12">
             <div className="flex items-center gap-3">
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-700 text-white"><g.icon size={22} aria-hidden="true" /></span>
@@ -208,16 +233,16 @@ export default function ComoUsarPage() {
             <p className="mt-2 max-w-2xl text-ink-soft">{g.intro}</p>
             <ol className="mt-6 space-y-3">
               {g.steps.map((s, i) => (
-                <li key={s.title} className="flex gap-4 rounded-2xl border border-line bg-white p-4 shadow-sm">
+                <li key={s.title} className="flex gap-4 rounded-2xl border border-line bg-white p-4 shadow-sm break-inside-avoid">
                   <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-700 font-bold text-white">{i + 1}</span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-lg font-semibold text-ink">{s.title}</p>
+                    <h3 className="text-lg font-semibold text-ink">{s.title}</h3>
                     <p className="mt-1 leading-relaxed text-ink-soft">{s.body}</p>
                     {s.img && (
                       <a href={s.img.src} target="_blank" rel="noopener noreferrer" className="mt-3 block max-w-xl" aria-label={`Ver en grande: ${s.img.alt}`}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={s.img.src} alt={s.img.alt} loading="lazy" className="w-full rounded-xl border border-line shadow-sm" />
-                        <span className="mt-1 block text-xs text-ink-soft">Tocá la imagen para verla en grande</span>
+                        <img src={s.img.src} alt={s.img.alt} className="w-full rounded-xl border border-line shadow-sm" />
+                        <span className="mt-1 block text-xs text-ink-soft print:hidden">Tocá la imagen para verla en grande (se abre en otra pestaña)</span>
                       </a>
                     )}
                   </div>
@@ -225,15 +250,45 @@ export default function ComoUsarPage() {
               ))}
             </ol>
             {g.extra}
-            <Link href={g.cta.href} className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl bg-brand-700 px-5 font-semibold text-white hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
+            <Link href={g.cta.href} className="mt-6 print:hidden inline-flex min-h-12 items-center gap-2 rounded-xl bg-brand-700 px-5 font-semibold text-white hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
               {g.cta.label} <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </div>
         </section>
       ))}
 
+      {/* Todas las funciones */}
+      <section id="funciones" className="scroll-mt-6 bg-white print:break-before-page">
+        <div className="mx-auto max-w-5xl px-5 py-12">
+          <h2 className="font-display text-2xl font-extrabold text-brand-900 md:text-3xl">Todas las funciones</h2>
+          <p className="mt-2 text-ink-soft">Qué podés hacer con VARA, para qué te sirve cada cosa y dónde la encontrás.</p>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
+            {(Object.keys(REQUISITO_TEXTO) as Requisito[]).map(r => <span key={r} className={`rounded-full px-2.5 py-1 ${REQ_COLOR[r]}`}>{REQUISITO_TEXTO[r]}</span>)}
+          </div>
+          {FUNCIONES.map(g => (
+            <div key={g.id} id={g.id} className="mt-10 scroll-mt-6">
+              <h3 className="font-display text-xl font-extrabold text-brand-900">{g.titulo}</h3>
+              <p className="mt-1 text-sm text-ink-soft">{g.intro}</p>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {g.funciones.map(f => (
+                  <article key={f.nombre} className="rounded-2xl border border-line p-4 break-inside-avoid">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <h4 className="font-bold text-ink">{f.nombre}</h4>
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${REQ_COLOR[f.requisito]}`}>{REQUISITO_TEXTO[f.requisito]}</span>
+                    </div>
+                    <p className="mt-2 text-sm"><span className="font-semibold text-emerald-800">Para qué te sirve: </span><span className="text-ink-soft">{f.beneficio}</span></p>
+                    <p className="mt-1 text-sm"><span className="font-semibold text-brand-800">Cómo se usa: </span><span className="text-ink-soft">{f.uso}</span></p>
+                    <p className="mt-1 text-sm"><span className="font-semibold text-slate-700">Dónde está: </span><span className="text-ink-soft">{f.donde}</span></p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Consejos */}
-      <section id="consejos" className="mx-auto max-w-5xl scroll-mt-6 px-5 py-12">
+      <section id="consejos" className="mx-auto max-w-5xl scroll-mt-6 px-5 py-12 print:break-before-page">
         <h2 className="font-display flex items-center gap-2 text-2xl font-extrabold text-brand-900 md:text-3xl"><Lightbulb size={26} aria-hidden="true" /> Consejos y dónde pedir ayuda</h2>
         <Box tone="tip" title="Buenas prácticas">
           <ol className="list-decimal space-y-1 pl-5">
