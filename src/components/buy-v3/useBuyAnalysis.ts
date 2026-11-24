@@ -17,6 +17,7 @@ import { trackFunnel } from '@/lib/funnel/track'
 import { listingFromScrape, type UserOverrides } from '@/lib/analysis/normalize'
 import type { ListingFacts } from '@/lib/analysis/types'
 import { withSubjectLocation } from '@/lib/scrape/locationFromTitle'
+import { exampleLocation } from '@/data/exampleListing'
 import {
   addUserComparable, candidatesProvider, readUserComparables, removeUserComparable,
   userListingsProvider, userPropertyFromScrape,
@@ -182,6 +183,10 @@ export function useBuyAnalysis() {
         return
       }
       if (scrape.warnings?.length) setState(s => ({ ...s, warnings: scrape.warnings }))
+      if (opts?.example && pastedText) {
+        const loc = exampleLocation(pastedText)
+        scrape.data = { ...scrape.data, neighborhood: scrape.data?.neighborhood || loc.neighborhood, city: scrape.data?.city || loc.city }
+      }
       if (opts?.example && opts.comparables?.length) {
         const read = await Promise.all(opts.comparables.map(async c => {
           try {
@@ -190,7 +195,8 @@ export function useBuyAnalysis() {
               body: JSON.stringify({ url: c.url, text: c.text }),
             })
             const cs = (await r.json()) as ScrapeResult
-            cs.data = withSubjectLocation(cs.data, scrape.data)
+            const loc = exampleLocation(c.text)
+            cs.data = { ...cs.data, neighborhood: cs.data?.neighborhood || loc.neighborhood, city: cs.data?.city || loc.city }
             const l = listingFromScrape(cs)
             return l.price ? l : null
           } catch { return null }

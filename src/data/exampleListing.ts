@@ -137,3 +137,25 @@ export function formatCopiedAt(iso: string): string {
   const [y, m, d] = iso.split('-')
   return `${d}/${m}/${y}`
 }
+
+/**
+ * Barrio y ciudad de un aviso de ejemplo, sacados de su primera línea
+ * («Departamento en venta en Olivos, Vicente López, GBA Norte.»). Sin IA, el texto
+ * pegado no trae ubicación y sin ella no hay comparables: el ejemplo la completa
+ * con lo que el mismo aviso dice, nunca inventada.
+ */
+export function exampleLocation(text: string): { neighborhood?: string; city?: string } {
+  const m = text.match(/en venta en ([^.\n]+)\./i)
+  if (!m) return {}
+  const parts = m[1].split(',').map(p => p.trim()).filter(Boolean)
+  if (/ciudad de m[eé]xico/i.test(m[1])) return { neighborhood: parts[0], city: 'Ciudad de México' }
+  if (/gba/i.test(parts[parts.length - 1] ?? '')) {
+    const rest = parts.slice(0, -1)
+    return rest.length >= 2 ? { neighborhood: rest[0], city: rest[rest.length - 1] } : { city: rest[0] }
+  }
+  if (/capital federal|caba/i.test(parts[parts.length - 1] ?? '')) {
+    const rest = parts.slice(0, -1)
+    return { neighborhood: rest[rest.length - 1], city: 'Capital Federal' }
+  }
+  return {}
+}
