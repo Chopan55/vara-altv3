@@ -34,3 +34,16 @@ describe('ejemplo de la portada', () => {
     expect(exampleById('nada')).toBeNull()
   })
 })
+
+describe('ubicación de los ejemplos', () => {
+  it('sale de la primera línea del aviso', async () => {
+    const { exampleLocation, EXAMPLES } = await import('@/data/exampleListing')
+    expect(exampleLocation('Departamento en venta en Olivos, Vicente López, GBA Norte. X.')).toEqual({ neighborhood: 'Olivos', city: 'Vicente López' })
+    expect(exampleLocation('Departamento en venta en Las Cañitas, Palermo, Capital Federal. X.')).toEqual({ neighborhood: 'Palermo', city: 'Capital Federal' })
+    expect(exampleLocation('Departamento en venta en Nápoles, Benito Juárez, Ciudad de México. X.')).toEqual({ neighborhood: 'Nápoles', city: 'Ciudad de México' })
+    for (const e of EXAMPLES) {
+      expect(exampleLocation(e.text).city, e.id).toBeTruthy()
+      for (const c of e.comparables) expect(exampleLocation(c.text).city, c.url).toBeTruthy()
+    }
+  })
+})
