@@ -10,7 +10,9 @@ describe('manual «Cómo usar VARA»', () => {
       'Guardar análisis como PDF': 'src/components/buy-v3/ResultView.tsx',
       'Preparar mi compra': 'src/components/buy-v3/ResultView.tsx',
       'Empezar mi operación': 'src/app/onboarding/page.tsx',
-      'Confirmar visita': 'src/app/vara-visit/solicitar/page.tsx',
+      'Pedir una visita': 'src/app/vara-visit/page.tsx',
+      'Explicámelo simple': 'src/components/operation/NextStepAgent.tsx',
+      'Empezar una venta': 'src/app/preparar-venta/page.tsx',
     }
     for (const [label, file] of Object.entries(where)) {
       expect(page).toContain(label)
