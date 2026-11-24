@@ -50,8 +50,8 @@ async function loadOperationContext(operationId: string): Promise<{ text: string
 
 /** Operaciones en México: la terminología y la normativa son otras. */
 const MX_ADDENDUM = `IMPORTANTE — ESTA OPERACIÓN ES EN MÉXICO, no en Argentina.
-Respondé en español de México: tú/tienes/puedes, nunca vos/tenés/podés.
-Usá la terminología y el proceso mexicanos: notario (no escribano), apartado (no seña),
+Responde en español de México: tú/tienes/puedes, nunca vos/tenés/podés.
+Usa la terminología y el proceso mexicanos: notario (no escribano), apartado (no seña),
 contrato de promesa de compraventa (no boleto), firma ante notario, ISAI (lo paga el comprador),
 ISR del vendedor (puede estar exento si es casa habitación), Registro Público de la Propiedad (RPP),
 certificado de libertad de gravamen, avalúo, predial y agua al corriente, INE, RFC y CURP,

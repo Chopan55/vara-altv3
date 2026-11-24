@@ -340,7 +340,7 @@ export default function OperacionPage() {
                   </p>
                   <p className="text-xs text-amber-700 mt-0.5">
                     {isFundedBy
-                      ? `Los fondos vienen de la venta de "${linkedTxn.title}". Hay que confirmar el cierre antes de firmar.`
+                      ? `Los fondos vienen de la venta de "${linkedTxn.title}". Hay que confirmar el cierre antes de firmar el boleto (en México, la promesa de compraventa).`
                       : `Financia la compra de "${linkedTxn.title}". Hay que coordinar los cierres.`}
                   </p>
                 </div>

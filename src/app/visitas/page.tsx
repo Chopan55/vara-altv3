@@ -55,7 +55,7 @@ function varaRecommendation(progress: number, docsOk: boolean, interiorPct: numb
   }
   if (interiorPct < 80) return {
     title: 'Interior sin terminar de revisar',
-    body: 'El interior tiene el mayor peso en la evaluación. Ojo especialmente con la humedad, instalaciones eléctricas y estado de baños y cocina.',
+    body: 'El interior tiene el mayor peso en la evaluación. Ojo especialmente con la humedad, las instalaciones eléctricas y el estado de baños y cocina.',
     color: 'bg-amber-50 border-amber-200',
   }
   if (progress === 100) return {
