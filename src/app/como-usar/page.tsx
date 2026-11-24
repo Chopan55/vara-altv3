@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight, Search, Home, KeyRound, Users, Lightbulb } from 'lucide-react'
 import { VaraLogo } from '@/components/ui/VaraLogo'
-import { ProductFrame } from '@/components/ui/ProductFrame'
 
 export const metadata = {
   title: 'Cómo usar VARA',
@@ -13,7 +12,7 @@ export const metadata = {
  * verificados en el código el 23/11/2026). Si cambia un botón, se cambia acá.
  */
 
-type Step = { title: string; body: React.ReactNode }
+type Step = { title: string; body: React.ReactNode; img?: { src: string; alt: string } }
 type Guide = { id: string; icon: typeof Search; title: string; intro: string; steps: Step[]; cta?: { href: string; label: string }; note?: string }
 
 const B = ({ children }: { children: React.ReactNode }) => (
@@ -28,11 +27,14 @@ const GUIDES: Guide[] = [
     intro: 'Gratis y sin cuenta. En un minuto sabés cuánto te sale de verdad y qué preguntar.',
     steps: [
       { title: 'Copiá el link del aviso', body: <>Abrí el aviso en Zonaprop, Argenprop, MercadoLibre o Inmuebles24 y copiá la dirección de arriba de la pantalla.</> },
-      { title: 'Pegalo en la portada', body: <>En la portada de VARA, pegalo donde dice <B>Pegá el link del aviso</B> y tocá <B>Ver cuánto sale</B>.</> },
+      { title: 'Pegalo en la portada', body: <>En la portada de VARA, pegalo donde dice <B>Pegá el link del aviso</B> y tocá <B>Ver cuánto sale</B>.</>, img: { src: '/marketing/manual/00-pegar-link.jpg', alt: 'Campo de la portada para pegar el link del aviso, con el botón Ver cuánto sale' } },
       { title: 'Si el portal no deja leerlo', body: <>Tocá <B>Pegar el texto</B> y pegá todo el texto del aviso, o <B>Cargar a mano</B> con el precio y los metros. No hace falta el link.</> },
-      { title: 'Leé el resultado de arriba hacia abajo', body: <>Arriba ves el precio, el <strong>total con gastos</strong> y dónde cae el precio frente a avisos parecidos. Abajo: <strong>Tu plan para esta propiedad</strong>, qué preguntarle al vendedor y qué sabemos, qué estimamos y qué falta confirmar.</> },
+      { title: 'Mirá el resultado', body: <>Arriba ves el precio, el <strong>total con gastos</strong> y dónde cae el precio frente a avisos parecidos (la barrita oscura es esta propiedad).</>, img: { src: '/marketing/manual/01-resultado.jpg', alt: 'Resultado del análisis: precio publicado, total para avanzar con gastos y rango de avisos parecidos' } },
+      { title: 'Seguí tu plan', body: <>En <strong>Tu plan para esta propiedad</strong> tenés los pasos en orden: qué resolver primero, qué pedir, cuándo ir al escribano.</>, img: { src: '/marketing/manual/02-plan.jpg', alt: 'Tu plan para esta propiedad, con cuatro pasos numerados' } },
+      { title: 'Preguntale al vendedor', body: <>Las preguntas que sí o sí tenés que hacer antes de dar plata. Las copiás o las mandás por WhatsApp.</>, img: { src: '/marketing/manual/03-preguntas.jpg', alt: 'Preguntas para el vendedor con botones para copiarlas o mandarlas por WhatsApp' } },
+      { title: 'Sabé qué es dato y qué es estimado', body: <>En <strong>De dónde sale cada cosa</strong> separamos lo que sabemos, lo que estimamos y lo que falta confirmar.</>, img: { src: '/marketing/manual/04-semaforo.jpg', alt: 'Tres columnas: lo que sabemos, lo que estimamos y lo que falta confirmar' } },
       { title: 'Mejorá la comparación', body: <>Si viste otros avisos parecidos, sumalos en <B>Sumar un aviso parecido</B>. Con 3 o más, VARA arma un rango para ver dónde cae el precio; cuantos más avisos, más confiable.</> },
-      { title: 'Compartilo o guardalo', body: <>Con <B>Compartir por WhatsApp</B> se lo mandás a quien decide con vos (no ve tus preferencias). Con <B>Guardar análisis como PDF</B> te lo llevás.</> },
+      { title: 'Compartilo o guardalo', body: <>Con <B>Compartir por WhatsApp</B> se lo mandás a quien decide con vos (no ve tus preferencias). Con <B>Guardar análisis como PDF</B> te lo llevás.</>, img: { src: '/marketing/manual/06-compartir.jpg', alt: 'Recuadro para compartir el análisis por WhatsApp o copiar el link' } },
     ],
     cta: { href: '/analizar?ejemplo=1', label: 'Ver un análisis real de ejemplo' },
   },
@@ -43,7 +45,7 @@ const GUIDES: Guide[] = [
     intro: 'Cuando una propiedad te interesa, VARA te ordena todo lo que viene.',
     steps: [
       { title: 'Empezá desde el análisis', body: <>Tocá <B>Preparar mi compra</B> o <B>Seguir esta compra con VARA</B>. Si no tenés cuenta, la creás en el paso siguiente.</> },
-      { title: 'Contale a VARA lo básico', body: <>Tu nombre, <B>Quiero comprar</B>, el país y la provincia o estado. Después <B>Empezar mi operación</B>.</> },
+      { title: 'Contale a VARA lo básico', body: <>Tu nombre, <B>Quiero comprar</B>, el país y la provincia o estado. Después <B>Empezar mi operación</B>.</>, img: { src: '/marketing/manual/07-onboarding.jpg', alt: 'Pantalla para elegir país (Argentina o México) y provincia' } },
       { title: 'Seguí tus tareas', body: <>En <B>Mi operación</B> tenés las tareas en orden, los riesgos, los documentos, las ofertas y los costos. Siempre ves qué hacer ahora.</> },
       { title: 'Ordená los papeles', body: <>En <B>Documentos</B> subís lo que te mandan y ves qué falta pedir.</> },
       { title: 'Calculá la plata', body: <>En <B>Dinero</B> tenés los costos y, si lo necesitás, el financiamiento.</> },
@@ -67,9 +69,9 @@ const GUIDES: Guide[] = [
     title: 'Escribano y VARA Visit',
     intro: 'Nunca estás solo: tu escribano decide lo legal y, si querés, alguien te acompaña a visitar.',
     steps: [
-      { title: 'Llevale la consulta a tu escribano', body: <>Al final del análisis, en <strong>Llegá a tu escribano con las preguntas claras</strong>, copiás la consulta o la mandás por WhatsApp.</> },
+      { title: 'Llevale la consulta a tu escribano', body: <>Al final del análisis, en <strong>Llegá a tu escribano con las preguntas claras</strong>, copiás la consulta o la mandás por WhatsApp.</>, img: { src: '/marketing/manual/05-escribano.jpg', alt: 'Consulta armada para el escribano, con botones para copiarla o abrirla en WhatsApp' } },
       { title: '¿No tenés escribano?', body: <>Tocá <B>Pedirle un escribano a VARA</B> (o <strong>Pedí tu escribano</strong> en el menú de la portada) y te respondemos por mail.</> },
-      { title: 'Pedí que te acompañen a una visita', body: <>En <strong>VARA Visit</strong> tocá <B>Pedir una visita</B>, elegí zona, fecha y hora, y <B>Confirmar visita</B>. Ves el precio antes de confirmar. Necesitás cuenta.</> },
+      { title: 'Pedí que te acompañen a una visita', body: <>En <strong>VARA Visit</strong> tocá <B>Pedir una visita</B>, elegí zona, fecha y hora, y <B>Confirmar visita</B>. Ves el precio antes de confirmar. Necesitás cuenta.</>, img: { src: '/marketing/manual/08-visit.jpg', alt: 'Página de VARA Visit para pedir que alguien te acompañe a una visita' } },
     ],
     note: 'Si en tu zona todavía no hay acompañantes, te podés anotar para que te avisemos.',
   },
@@ -95,7 +97,7 @@ export default function ComoUsarPage() {
       <section className="mx-auto max-w-5xl px-5 pb-6 pt-12">
         <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">Guía rápida</p>
         <h1 className="font-display mt-2 text-4xl font-extrabold leading-tight text-brand-900 text-balance md:text-5xl">Cómo usar VARA</h1>
-        <p className="mt-3 max-w-2xl text-lg text-ink-soft">Elegí qué querés hacer. Cada guía son pocos pasos, con el nombre exacto de cada botón.</p>
+        <p className="mt-3 max-w-2xl text-lg text-ink-soft">Elegí qué querés hacer. Cada guía son pocos pasos, con el nombre exacto de cada botón y cómo se ve en la pantalla.</p>
         <nav aria-label="Guías" className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {GUIDES.map(g => (
             <a key={g.id} href={`#${g.id}`}
@@ -115,23 +117,23 @@ export default function ComoUsarPage() {
               <h2 className="font-display text-2xl font-extrabold text-brand-900 md:text-3xl">{g.title}</h2>
             </div>
             <p className="mt-2 max-w-2xl text-ink-soft">{g.intro}</p>
-            <div className={g.id === 'analizar' ? 'mt-8 grid items-start gap-10 lg:grid-cols-[1fr_0.8fr]' : 'mt-8'}>
+            <div className="mt-8">
               <ol className="space-y-3">
                 {g.steps.map((s, i) => (
                   <li key={s.title} className="flex gap-4 rounded-2xl border border-line bg-white p-4 shadow-sm">
                     <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white">{i + 1}</span>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-semibold text-ink">{s.title}</p>
                       <p className="mt-1 text-sm leading-relaxed text-ink-soft">{s.body}</p>
+                      {s.img && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={s.img.src} alt={s.img.alt} loading="lazy"
+                          className="mt-3 w-full max-w-md rounded-xl border border-line shadow-sm" />
+                      )}
                     </div>
                   </li>
                 ))}
               </ol>
-              {g.id === 'analizar' && (
-                <ProductFrame src="/marketing/real/analisis-palermo.jpg"
-                  alt="Así se ve un análisis de VARA: precio publicado, total con gastos y rango de avisos parecidos"
-                  caption="Así se ve un análisis real (departamento en Palermo, 22/11/2026)." />
-              )}
             </div>
             {g.note && <p className="mt-4 text-sm text-ink-soft">{g.note}</p>}
             {g.cta && (
