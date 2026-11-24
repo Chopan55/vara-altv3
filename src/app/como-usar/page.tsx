@@ -55,7 +55,7 @@ const GUIDES: Guide[] = [
     steps: [
       { title: 'Entrá a VARA', body: <>Abrí en tu navegador <strong>vara-ar.vercel.app</strong>. Vas a ver la página de inicio de VARA.</> },
       { title: 'Pegá el link y tocá «Ver cuánto sale»', body: <>En el casillero que dice <B>Pegá el link del aviso</B>, pegá el link que copiaste (<a href="#link" className="font-semibold text-brand-700 underline">cómo copiarlo</a>). Después tocá <B>Ver cuánto sale</B>.</>, img: { src: `${M}00-pegar-link.jpg`, alt: 'Casillero de la página de inicio para pegar el link, con el botón Ver cuánto sale' } },
-      { title: 'Mirá el resultado', body: <>Arriba ves el <strong>precio publicado</strong> y el <strong>total estimado con gastos</strong> (un cálculo aproximado: lo confirmás con tu escribano). Abajo, <strong>dónde cae el precio</strong>: la barrita oscura es esta propiedad y la franja clara, los avisos parecidos.</>, img: { src: `${M}01-resultado.jpg`, alt: 'Resultado del análisis: precio publicado, total estimado con gastos y rango de avisos parecidos' } },
+      { title: 'Mirá el resultado', body: <>Arriba ves el <strong>precio publicado</strong> y el <strong>total estimado con gastos</strong> (un cálculo aproximado: lo confirmás con tu escribano). Abajo, <strong>dónde cae el precio</strong>: la barra oscura muestra esta propiedad y la franja clara, las propiedades parecidas. Si la barra oscura está más a la izquierda, es más barata que las parecidas.</>, img: { src: `${M}01-resultado.jpg`, alt: 'Resultado del análisis: precio publicado, total estimado con gastos y rango de avisos parecidos' } },
       { title: 'Seguí «Tu plan para esta propiedad»', body: <>Los pasos en orden: qué resolver primero, qué pedirle al vendedor, cuándo ir al escribano y si querés ir acompañado a la visita.</>, img: { src: `${M}02-plan.jpg`, alt: 'Tu plan para esta propiedad, con cuatro pasos numerados' } },
       { title: 'Preguntale al vendedor', body: <>Las preguntas más importantes para hacer antes de dar plata. Tocá <B>Preguntar por WhatsApp</B> o <B>Copiar las preguntas</B>.</>, img: { src: `${M}03-preguntas.jpg`, alt: 'Preguntas para el vendedor con botones para mandarlas por WhatsApp o copiarlas' } },
       { title: 'Sabé qué es seguro y qué no', body: <>En <strong>De dónde sale cada cosa</strong>: lo que sabemos (dato del aviso), lo que estimamos (cálculo de VARA) y lo que falta confirmar antes de dar plata.</>, img: { src: `${M}04-semaforo.jpg`, alt: 'Tres columnas: lo que sabemos, lo que estimamos y lo que falta confirmar' } },
@@ -93,7 +93,7 @@ const GUIDES: Guide[] = [
     steps: [
       { title: 'Elegí «Quiero vender»', body: <>Al crear tu operación, elegí <B>Quiero vender</B>. En <strong>Preparar la venta</strong> tocá <B>Empezar una venta</B> y marcá los papeles que ya tenés.</> },
       { title: 'Armá tu aviso en 3 pasos', body: <>En <strong>Preparar publicación</strong>: <B>Preparación</B> (datos, fotos y descripción), <B>Revisión</B> y <B>Publicación</B>.</>, img: { src: `${M}15-publicar.jpg`, alt: 'Preparar publicación en tres pasos: preparación, revisión y publicación' } },
-      { title: 'Publicalo en el portal que elijas', body: <>Elegís Zonaprop, Argenprop o MercadoLibre. VARA te copia el texto y abre el portal; la publicación la terminás vos ahí. El aviso es tuyo.</> },
+      { title: 'Publicalo en el portal que elijas', body: <>Elegís Zonaprop, Argenprop o MercadoLibre. VARA prepara el texto y abre el portal; la publicación la terminás vos ahí, con tu usuario de ese portal. El aviso es tuyo.</> },
     ],
     cta: { href: '/onboarding?intent=SELL', label: 'Empezar mi venta' },
   },
@@ -140,6 +140,7 @@ export default function ComoUsarPage() {
           <p className="text-sm font-semibold uppercase tracking-wide text-brand-100">Guía para empezar</p>
           <h1 className="font-display mt-2 text-4xl font-black leading-tight md:text-6xl">Cómo usar VARA</h1>
           <p className="mt-4 max-w-2xl text-lg text-brand-50 md:text-xl">Paso a paso y con fotos, para comprar o vender tu casa o departamento sin inmobiliaria, aunque nunca hayas usado una aplicación así.</p>
+          <p className="mt-3 max-w-2xl text-brand-100">VARA te estima los costos, te muestra si el precio está alto o bajo, te avisa los riesgos y te dice qué sigue. No reemplaza al escribano ni publica por vos.</p>
           <a href="/manual/Manual_VARA.pdf" download
             className="mt-6 print:hidden inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-5 font-semibold text-brand-800 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
             <Download size={18} aria-hidden="true" /> Descargar la guía en PDF
@@ -178,6 +179,27 @@ export default function ComoUsarPage() {
           ))}
         </div>
         <Box tone="info" title="Qué necesitás para empezar">Un celular o computadora con internet y el aviso de la propiedad que te interesa. Para analizar un aviso <strong>no hace falta crear una cuenta</strong>. Para guardar y seguir tu operación, sí (con tu mail y una contraseña).</Box>
+      </section>
+
+      {/* Empezá por acá */}
+      <section className="mx-auto max-w-5xl px-5 pt-10">
+        <div className="rounded-3xl border-2 border-brand-200 bg-brand-50 p-6">
+          <h2 className="font-display text-2xl font-extrabold text-brand-900">Empezá por acá: tu primer análisis en 3 pasos</h2>
+          <ol className="mt-4 grid gap-3 md:grid-cols-3">
+            {[
+              ['Copiá el link del aviso', 'El aviso de la propiedad que te interesa, en Zonaprop, Argenprop, MercadoLibre o Inmuebles24.', '#link'],
+              ['Pegalo en VARA', 'En la página de inicio, donde dice «Pegá el link del aviso», y tocá «Ver cuánto sale».', '#analizar'],
+              ['Mirá el resultado', 'Precio, gastos estimados, si está caro o barato y qué preguntar antes de dar plata.', '#analizar'],
+            ].map(([t, d, h], i) => (
+              <li key={t} className="rounded-2xl bg-white p-4">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-700 font-bold text-white" aria-hidden="true">{i + 1}</span>
+                <h3 className="mt-2 font-bold text-brand-900">{t}</h3>
+                <p className="mt-1 text-sm text-ink-soft">{d}</p>
+                <a href={h} className="mt-2 inline-block text-sm font-semibold text-brand-700 underline print:hidden">Ver cómo</a>
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
 
       {/* Glosario */}
