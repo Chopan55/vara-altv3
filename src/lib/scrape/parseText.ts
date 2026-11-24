@@ -11,7 +11,8 @@ import type { ScrapedData } from '@/app/api/scrape-property/route'
 
 /** "185.000" → 185000 · "4,500,000" → 4500000 · "1.234,56" → 1234.56 · "95,5" → 95.5 */
 export function parseAmount(raw: string): number | undefined {
-  const s = raw.replace(/[^\d.,]/g, '')
+  // El punto o la coma del final cierran la oración («USD 149.000.»): no son parte del número.
+  const s = raw.replace(/[^\d.,]/g, '').replace(/[.,]+$/, '')
   if (!s || !/\d/.test(s)) return undefined
   let n: number
   if (/^\d{1,3}([.,]\d{3})+$/.test(s)) {

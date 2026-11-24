@@ -81,3 +81,23 @@ describe('casos borde', () => {
     expect(parseListingText('Casa\nUSD 250.000').title).toBeUndefined()
   })
 })
+
+describe('precio al final de una oración', () => {
+  it('lee «USD 149.000.» con el punto final', async () => {
+    const { parseAmount, parseListingText } = await import('@/lib/scrape/parseText')
+    expect(parseAmount('149.000.')).toBe(149000)
+    expect(parseAmount('3,390,000.')).toBe(3390000)
+    const r = parseListingText('Departamento en venta en Palermo.\nVenta. Departamento. USD 149.000. Expensas $ 200.000.\n48 m² totales.')
+    expect(r.price).toBe(149000)
+    expect(r.currency).toBe('USD')
+  })
+  it('los ejemplos de la portada se leen sin IA', async () => {
+    const { parseListingText } = await import('@/lib/scrape/parseText')
+    const { EXAMPLES } = await import('@/data/exampleListing')
+    for (const e of EXAMPLES) {
+      const mx = e.id === 'cdmx'
+      expect(parseListingText(e.text, { mx }).price, e.id).toBeGreaterThan(0)
+      for (const c of e.comparables) expect(parseListingText(c.text, { mx }).price, c.url).toBeGreaterThan(0)
+    }
+  })
+})
