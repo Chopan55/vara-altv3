@@ -328,7 +328,7 @@ function SidebarContent({
           {!collapsed && (
             <div className="min-w-0">
               <p className="text-xs font-bold leading-tight">VARA AI</p>
-              <p className="text-[10px] text-brand-100 leading-tight truncate">Preguntame lo que necesites</p>
+              <p className="text-[10px] text-brand-100 leading-tight truncate">Tu asistente para la operación</p>
             </div>
           )}
         </Link>

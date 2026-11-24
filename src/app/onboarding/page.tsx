@@ -125,7 +125,7 @@ function ScrapeStatusBadge({ status, portal, missing, errorMessage, data, photoC
     return (
       <div className="flex gap-2 items-start mt-2 bg-red-50 rounded-xl p-3">
         <XCircle size={13} className="text-red-400 flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-red-600">{errorMessage ?? 'No se pudo acceder al portal.'} El link quedó guardado — podés completar los datos desde el dashboard.</p>
+        <p className="text-xs text-red-600">{errorMessage ?? 'No se pudo acceder al portal.'} El link quedó guardado: los datos se pueden completar desde el inicio.</p>
       </div>
     )
   }
@@ -133,7 +133,7 @@ function ScrapeStatusBadge({ status, portal, missing, errorMessage, data, photoC
     <div className="flex gap-2 items-start mt-2 bg-slate-50 rounded-xl p-2.5">
       <CheckCircle size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
       <p className="text-xs text-slate-500">
-        Link guardado como referencia. <span className="text-slate-400">Hacé clic en &ldquo;Importar&rdquo; para intentar extraer los datos del portal.</span>
+        Link guardado como referencia. <span className="text-slate-400">Con &ldquo;Importar&rdquo; se intenta extraer los datos del portal.</span>
       </p>
     </div>
   )
@@ -342,7 +342,7 @@ function OnboardingInner() {
             <div className="mb-8">
               <p className="text-xs font-bold text-brand-500 uppercase tracking-widest mb-2">Paso 2</p>
               <h1 className="text-2xl font-extrabold text-slate-900 mb-1">
-                {name.trim() ? `${name.trim().split(' ')[0]}, ¿qué querés hacer?` : '¿Qué querés hacer?'}
+                {name.trim() ? `${name.trim().split(' ')[0]}, ¿qué ${country === 'MX' ? 'quieres' : 'querés'} hacer?` : (country === 'MX' ? '¿Qué quieres hacer?' : '¿Qué querés hacer?')}
               </h1>
               <p className="text-slate-400 text-sm">Configuramos tu operación según tu objetivo.</p>
             </div>
@@ -384,7 +384,7 @@ function OnboardingInner() {
               {scrapeStatus === 'loading' && (
                 <div className="flex items-center gap-2 mt-3 text-xs text-brand-500">
                   <Loader2 size={12} className="animate-spin" />
-                  Analizando la propiedad mientras elegís…
+                  Analizando la propiedad…
                 </div>
               )}
             </div>
@@ -527,16 +527,16 @@ function OnboardingInner() {
                 {/* Portales tras Cloudflare: el usuario pega el texto y la IA lo lee igual */}
                 {(scrapeStatus === 'blocked' || scrapeStatus === 'error') && (
                   <div className="mt-2 border border-slate-200 rounded-xl p-3 space-y-2">
-                    <p className="text-xs font-semibold text-slate-600">Pegá el texto del aviso</p>
+                    <p className="text-xs font-semibold text-slate-600">{country === 'MX' ? 'Pega el texto del anuncio' : 'Pegá el texto del aviso'}</p>
                     <p className="text-[11px] text-slate-400 leading-snug">
-                      Abrí el aviso en tu navegador, seleccioná todo el texto (Ctrl+A), copiá (Ctrl+C) y pegalo acá.
+                      {country === 'MX' ? 'Abre el anuncio, selecciona todo el texto (Ctrl+A), cópialo (Ctrl+C) y pégalo aquí.' : 'Abrí el aviso, seleccioná todo el texto (Ctrl+A), copiá (Ctrl+C) y pegalo acá.'}
                       Extraemos precio, superficie, ambientes y ubicación automáticamente.
                     </p>
                     <textarea
                       value={pasteText}
                       onChange={e => setPasteText(e.target.value)}
                       rows={4}
-                      placeholder="Pegá acá el contenido de la publicación…"
+                      placeholder={country === 'MX' ? 'Pega aquí el contenido de la publicación…' : 'Pegá acá el contenido de la publicación…'}
                       className="w-full border-2 border-slate-100 focus:border-brand-400 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none resize-none placeholder:text-slate-300"
                     />
                     <button
@@ -545,7 +545,7 @@ function OnboardingInner() {
                       className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-xs font-bold py-2.5 rounded-xl transition-colors"
                     >
                       {pasteText.trim().length < 150
-                        ? `Pegá el aviso (${pasteText.trim().length}/150 caracteres)`
+                        ? `${country === 'MX' ? 'Pega el anuncio' : 'Pegá el aviso'} (${pasteText.trim().length}/150 caracteres)`
                         : 'Leer datos del texto'}
                     </button>
                   </div>

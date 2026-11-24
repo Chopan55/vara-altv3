@@ -96,7 +96,7 @@ export const SETUP_PROPERTY_BUY: NextAction = {
   id: 'setup_property',
   priority: 1,
   category: 'SETUP',
-  title: 'Cargá la propiedad que estás mirando',
+  title: 'Primero, la propiedad que estás mirando',
   why: 'Con la propiedad VARA calcula cuánto te sale, detecta riesgos y ordena los papeles. Sin ella solo puedo darte el plan general.',
   evidence: ['Todavía no hay una propiedad asociada a esta operación'],
   cta: { label: 'Cargar la propiedad', href: '/propiedades' },
@@ -108,7 +108,7 @@ const SETUP_PLAN_SELL: NextAction = {
   id: 'setup_plan_sell',
   priority: 1,
   category: 'SETUP',
-  title: 'Empezá por preparar la venta',
+  title: 'Empezar por preparar la venta',
   why: 'Juntá los papeles y definí el precio antes de publicar.',
   evidence: ['Todavía no hay un plan de tareas para esta venta'],
   cta: { label: 'Preparar la venta', href: '/preparar-venta' },
@@ -121,7 +121,7 @@ function openOperationAction(operationId: string): NextAction {
     id: 'open_operation',
     priority: 5,
     category: 'REVIEW',
-    title: 'Abrí tu operación',
+    title: 'Abrir tu operación',
     why: 'No pudimos armar el resumen de esta operación ahora, pero tus datos están guardados.',
     evidence: ['No se pudo cargar el detalle de la operación'],
     cta: { label: 'Abrir la operación', href: `/operacion/${operationId}` },
@@ -291,7 +291,7 @@ export function buildFirstValue(input: FirstValueInput): FirstValue {
       : nextIdx >= 0 ? sellAction(steps[nextIdx], nextIdx, total, done, operationId)
       : {
           id: 'sell_all_done', priority: 90, category: 'REVIEW', title: 'Completaste todos los pasos de tu venta',
-          why: 'Revisá que todo siga en orden antes de cerrar la operación.', evidence: [`${done} de ${total} pasos hechos`],
+          why: 'Conviene revisar que todo siga en orden antes de cerrar la operación.', evidence: [`${done} de ${total} pasos hechos`],
           cta: { label: 'Ver mi operación', href: `/operacion/${operationId}` }, blocking: false, blockingEntities: [],
         }
     const upNext = steps

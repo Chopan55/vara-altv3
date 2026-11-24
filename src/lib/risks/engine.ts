@@ -99,7 +99,7 @@ function ruleMissingCriticalDocs(input: RiskInput): DerivedRisk[] {
     evidence: missing.map(
       d => `${DOCUMENT_CATEGORY_LABELS[d.category]}: "${d.name}" sin archivo cargado`,
     ),
-    action: 'Pedíselos al vendedor o a su escribano y subilos en Documentos.',
+    action: 'Pedirlos al vendedor o a su escribano (en México, notario) y subirlos en Documentos.',
     priority: 10,
   }]
 }
@@ -148,7 +148,7 @@ function ruleExpiringOffer(input: RiskInput): DerivedRisk[] {
     evidence: [
       `Oferta de ${o.currency} ${o.amount.toLocaleString('es-AR')} con validez hasta ${o.validUntil}`,
     ],
-    action: 'Hacé el seguimiento, o extendé el plazo con una oferta nueva.',
+    action: 'Hacer el seguimiento, o extender el plazo con una oferta nueva.',
     priority: 20,
   }]
 }
@@ -188,7 +188,7 @@ function ruleMissingPrice(input: RiskInput): DerivedRisk[] {
       'Sin el precio no podemos calcular sellos, honorarios ni gastos de ' +
       'registro, que suelen ser entre el 3% y el 8% de la operación.',
     evidence: ['La propiedad de esta operación no tiene precio cargado'],
-    action: 'Cargá el precio en la ficha de la propiedad.',
+    action: 'Cargar el precio en la ficha de la propiedad.',
     priority: 40,
   }]
 }
@@ -210,7 +210,7 @@ function ruleUnverifiedProvince(input: RiskInput): DerivedRisk[] {
       'Las alícuotas que usamos no están confirmadas contra la fuente oficial ' +
       'de esta provincia. El número real puede diferir.',
     evidence: [`Confianza del dato regulatorio: ${input.dataConfidence}`],
-    action: 'Confirmá los montos con un escribano matriculado antes de firmar.',
+    action: 'Confirmar los montos con un escribano o notario antes de firmar.',
     priority: 60,
   }]
 }
@@ -232,7 +232,7 @@ function ruleInsufficientData(input: RiskInput): DerivedRisk[] {
       label: 'No hay información suficiente para evaluar riesgos documentales',
       detail: 'Todavía no se cargaron documentos para esta operación, o la carga no pudo completarse. No es posible confirmar que no haya riesgos.',
       evidence: ['Lista de documentos vacía o no confirmada'],
-      action: 'Cargá los documentos requeridos para que VARA pueda hacer la evaluación.',
+      action: 'Cargar los documentos requeridos para que VARA pueda hacer la evaluación.',
       priority: 5,
     }]
   }

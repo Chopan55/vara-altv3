@@ -264,7 +264,7 @@ describe('la pantalla se lee en 5 segundos', () => {
     const at = (s: string) => screen.indexOf(s)
     expect(at('Compra')).toBeGreaterThan(-1)
     // Encabezado: "Compra · estado" (arriba) → título → motivo; después la acción, lo que falta y lo que sigue.
-    const order = ['Recién empezada', 'Mi compra', 'Todavía no marcaste ningún paso', 'Cargá la propiedad que estás mirando', 'En qué me baso', 'Cargar la propiedad', 'Lo que falta saber', 'Después de esto']
+    const order = ['Recién empezada', 'Mi compra', 'Todavía no marcaste ningún paso', 'Primero, la propiedad que estás mirando', 'En qué me baso', 'Cargar la propiedad', 'Lo que falta saber', 'Después de esto']
     const positions = order.map(at)
     expect(positions.every(p => p > -1)).toBe(true)
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
@@ -272,7 +272,7 @@ describe('la pantalla se lee en 5 segundos', () => {
   })
 
   it('la acción principal aparece una sola vez y no hay números en cero', () => {
-    expect(screen.split('Cargá la propiedad que estás mirando').length - 1).toBe(1)
+    expect(screen.split('Primero, la propiedad que estás mirando').length - 1).toBe(1)
     expect(screen.match(/<h1/g)).toHaveLength(1)
     expect(screen).not.toMatch(/\$\s?0\b|USD\s?0\b|~0K|NaN|Infinity/)
     expect(screen).not.toContain('Cuánto te sale') // sin precio no hay tarjeta de costos

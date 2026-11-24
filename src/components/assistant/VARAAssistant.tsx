@@ -54,14 +54,14 @@ export function VARAAssistant({ context, suggestions }: VARAAssistantProps) {
       })
 
       if (res.status === 401) {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'Para usar el asistente necesitás estar logueado.' }])
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Para usar el asistente hay que entrar con tu cuenta.' }])
         return
       }
 
       const data = await res.json() as { reply?: string; error?: string }
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply ?? data.error ?? 'Sin respuesta.' }])
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'No pude conectarme. Revisá tu conexión y reintentá.' }])
+      setMessages(prev => [...prev, { role: 'assistant', content: 'No pude conectarme. Revisa la conexión e intenta de nuevo.' }])
     } finally {
       setLoading(false)
     }
@@ -114,7 +114,7 @@ export function VARAAssistant({ context, suggestions }: VARAAssistantProps) {
               <div className="space-y-3">
                 <p className="text-sm text-slate-500 leading-relaxed">
                   {context
-                    ? 'Tengo el contexto de esta operación cargado. ¿Qué querés saber?'
+                    ? 'Tengo el contexto de esta operación cargado. ¿En qué te ayudo?'
                     : 'Hola, soy el asistente de VARA. Puedo ayudarte con costos, documentos, plazos, negociación y riesgos de tu operación inmobiliaria.'}
                 </p>
                 {suggestions && suggestions.length > 0 && (
@@ -164,7 +164,7 @@ export function VARAAssistant({ context, suggestions }: VARAAssistantProps) {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKey}
-                placeholder="Escribí tu pregunta…"
+                placeholder="Tu pregunta…"
                 rows={1}
                 className="flex-1 resize-none rounded-xl border border-slate-200 focus:border-brand-400 focus:outline-none px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 bg-white leading-relaxed max-h-28 overflow-y-auto"
               />
