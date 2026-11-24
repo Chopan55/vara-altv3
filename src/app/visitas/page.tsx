@@ -30,10 +30,10 @@ const toSaved = (items: ChecklistItem[], notes: UserNotes, updatedAt: string): S
   ({ checked: items.filter(i => i.checked).map(i => i.id), notes, updatedAt })
 
 const SECTION_META: Record<string, { tip: string; emoji: string; weight: number }> = {
-  Exterior:      { tip: 'Revisá la fachada y techo antes de entrar. El mantenimiento exterior refleja el cuidado general del inmueble.', emoji: '🏠', weight: 25 },
+  Exterior:      { tip: 'Mirar la fachada y el techo antes de entrar. El mantenimiento exterior refleja el cuidado general del inmueble.', emoji: '🏠', weight: 25 },
   Interior:      { tip: 'Atención a manchas en techos y paredes. El olor a humedad es difícil de disimular y costoso de reparar.', emoji: '🛋️', weight: 40 },
-  Entorno:       { tip: 'Si podés, visitá en distintos horarios. El ruido y el tráfico cambian mucho según la hora del día.', emoji: '🌳', weight: 20 },
-  Documentación: { tip: 'Sin estos papeles no podés verificar titularidad ni deudas. No avances sin ellos.', emoji: '📄', weight: 15 },
+  Entorno:       { tip: 'Si se puede, conviene visitar en distintos horarios. El ruido y el tráfico cambian mucho según la hora del día.', emoji: '🌳', weight: 20 },
+  Documentación: { tip: 'Sin estos papeles no se puede verificar titularidad ni deudas. No conviene avanzar sin ellos.', emoji: '📄', weight: 15 },
 }
 
 function sectionScore(pct: number): { color: string; bg: string; label: string } {
@@ -50,22 +50,22 @@ function varaRecommendation(progress: number, docsOk: boolean, interiorPct: numb
   }
   if (progress < 50) return {
     title: 'Checklist incompleto',
-    body: 'Completá al menos el 70% antes de tomar una decisión. Quedan puntos clave sin verificar que pueden cambiar tu evaluación.',
+    body: 'Conviene completar al menos el 70% antes de tomar una decisión. Quedan puntos clave sin verificar que pueden cambiar tu evaluación.',
     color: 'bg-amber-50 border-amber-200',
   }
   if (interiorPct < 80) return {
     title: 'Interior sin terminar de revisar',
-    body: 'El interior tiene el mayor peso en la evaluación. Revisá especialmente humedad, instalaciones eléctricas y estado de baños y cocina.',
+    body: 'El interior tiene el mayor peso en la evaluación. Ojo especialmente con la humedad, instalaciones eléctricas y estado de baños y cocina.',
     color: 'bg-amber-50 border-amber-200',
   }
   if (progress === 100) return {
     title: '¡Visita completa!',
-    body: 'Revisaste todo. Si los puntos críticos están ok, podés avanzar con confianza. Cualquier duda consultala con VARA antes de hacer una oferta.',
+    body: 'Está todo revisado. Si los puntos críticos están bien, se puede avanzar con confianza. Cualquier duda, consultarla con VARA antes de hacer una oferta.',
     color: 'bg-emerald-50 border-emerald-200',
   }
   return {
     title: 'Buen avance — seguí revisando',
-    body: 'Estás bien encaminado. Completá los ítems restantes antes de comprometerte. El score final de la propiedad depende de esta revisión.',
+    body: 'Vas bien encaminado. Conviene completar los ítems restantes antes de comprometerse. El score final de la propiedad depende de esta revisión.',
     color: 'bg-blue-50 border-blue-200',
   }
 }
@@ -375,7 +375,7 @@ export default function VisitasPage() {
                 </span>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Con VARA Visit va un profesional con vos: evalúa estado, precio y señales de alerta en el momento,
+                Con VARA Visit te acompaña alguien con experiencia: evalúa estado, precio y señales de alerta en el momento,
                 y te deja un informe escrito.
               </p>
               <p className="text-xs font-semibold text-amber-600 mt-1.5">Ver cómo funciona →</p>

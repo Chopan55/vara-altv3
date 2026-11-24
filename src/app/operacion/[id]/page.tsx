@@ -80,7 +80,7 @@ function TaskCard({ task, onToggle }: { task: Task; onToggle?: (task: Task) => v
       {open && (
         <div className="px-4 pb-4 space-y-3 border-t border-slate-100 pt-3">
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Qué tenés que hacer</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Qué hay que hacer</p>
             <p className="text-sm text-slate-600 leading-relaxed">{task.description}</p>
           </div>
           <div>
@@ -340,8 +340,8 @@ export default function OperacionPage() {
                   </p>
                   <p className="text-xs text-amber-700 mt-0.5">
                     {isFundedBy
-                      ? `Los fondos vienen de la venta de "${linkedTxn.title}". Confirmá el cierre antes de firmar boleto.`
-                      : `Financia la compra de "${linkedTxn.title}". Coordiná los cierres.`}
+                      ? `Los fondos vienen de la venta de "${linkedTxn.title}". Hay que confirmar el cierre antes de firmar.`
+                      : `Financia la compra de "${linkedTxn.title}". Hay que coordinar los cierres.`}
                   </p>
                 </div>
                 <Link href={`/operacion/${linkedId}`} className="text-[11px] font-bold text-amber-700 hover:text-amber-900 whitespace-nowrap flex-shrink-0">
@@ -690,9 +690,9 @@ export default function OperacionPage() {
             <div className="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <Sparkles size={24} className="text-amber-500" />
             </div>
-            <p className="font-bold text-slate-900 mb-1">Visualizá cómo quedaría</p>
+            <p className="font-bold text-slate-900 mb-1">Cómo quedaría</p>
             <p className="text-sm text-slate-500 mb-5 max-w-md mx-auto leading-relaxed">
-              Subí la foto de un ambiente y VARA la edita sobre tu propia foto: pintar la fachada,
+              Con la foto de un ambiente, VARA la edita sobre tu propia foto: pintar la fachada,
               renovar el interior, la cocina, el baño, el jardín o vaciar el ambiente.
               Además te estima cuánto costaría cada reforma.
             </p>

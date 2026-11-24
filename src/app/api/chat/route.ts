@@ -50,6 +50,7 @@ async function loadOperationContext(operationId: string): Promise<{ text: string
 
 /** Operaciones en México: la terminología y la normativa son otras. */
 const MX_ADDENDUM = `IMPORTANTE — ESTA OPERACIÓN ES EN MÉXICO, no en Argentina.
+Respondé en español de México: tú/tienes/puedes, nunca vos/tenés/podés.
 Usá la terminología y el proceso mexicanos: notario (no escribano), apartado (no seña),
 contrato de promesa de compraventa (no boleto), firma ante notario, ISAI (lo paga el comprador),
 ISR del vendedor (puede estar exento si es casa habitación), Registro Público de la Propiedad (RPP),
@@ -94,7 +95,7 @@ dominio, estudio de títulos, normativa CABA y Buenos Aires, créditos UVA, nego
 riesgos típicos y cómo mitigarlos.
 
 CÓMO RESPONDÉS:
-- Español rioplatense (vos/tenés). Directo, claro, sin paja.
+- Español rioplatense (vos/tenés), salvo que la operación sea en México (ver abajo). Directo, claro, sin paja.
 - Máximo 4 párrafos. Bullets si hay más de 3 ítems.
 - Etiquetá según certeza: [HECHO], [ESTIMADO], [RECOMENDACIÓN], [CONSULTAR PROFESIONAL].
 - Nunca inventes números impositivos: si no los tenés precisos, dá el rango y la fuente.

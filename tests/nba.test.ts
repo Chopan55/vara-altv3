@@ -64,7 +64,7 @@ describe('sin operación', () => {
   })
 
   it('la acción de arranque dice en qué se basa', () => {
-    expect(SETUP_ACTION.evidence).toContain('Todavía no tenés ninguna operación activa')
+    expect(SETUP_ACTION.evidence).toContain('Todavía no hay ninguna operación activa')
   })
 
   it('no hay nada bloqueante cuando no hay operación', () => {
