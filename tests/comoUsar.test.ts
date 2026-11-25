@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
 
-const page = readFileSync('src/app/como-usar/page.tsx', 'utf8')
+const manual = readFileSync('src/app/como-usar/page.tsx', 'utf8')
+  + readFileSync('src/components/manual/content.tsx', 'utf8')
 
 describe('manual «Cómo usar VARA»', () => {
   it('nombra botones que existen en la app', () => {
@@ -15,13 +16,13 @@ describe('manual «Cómo usar VARA»', () => {
       'Empezar una venta': 'src/app/preparar-venta/page.tsx',
     }
     for (const [label, file] of Object.entries(where)) {
-      expect(page).toContain(label)
+      expect(manual).toContain(label)
       expect(existsSync(file) && readFileSync(file, 'utf8').includes(label), `${label} en ${file}`).toBe(true)
     }
   })
   it('se llega desde la portada y desde Ayuda, y no promete garantía', () => {
     expect(readFileSync('src/app/page.tsx', 'utf8')).toContain('/como-usar')
     expect(readFileSync('src/app/guia/page.tsx', 'utf8')).toContain('/como-usar')
-    expect(page).not.toMatch(/garant/i)
+    expect(manual).not.toMatch(/garant/i)
   })
 })
