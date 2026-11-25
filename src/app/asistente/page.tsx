@@ -31,6 +31,7 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   time: string
+  documentsForOperation?: string
 }
 
 export default function AsistentePage() {
@@ -38,13 +39,8 @@ export default function AsistentePage() {
   const { journey, activeOperation } = useOperations()
   const nowTime = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 
-  const welcomeMsg = (() => {
-    const name = vara.loaded ? vara.userName.split(' ')[0] : ''
-    const kind = journey === 'SELL' ? 'venta' : 'compra'
-    return `${name ? `¡Hola, ${name}!` : '¡Hola!'} Soy el Asistente VARA, especializado en operaciones inmobiliarias argentinas.
-
-Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, negociación, riesgos legales, y cualquier duda del proceso. ¿Qué querés saber?`
-  })()
+  const name = vara.loaded ? vara.userName.split(' ')[0] : ''
+  const welcomeMsg = `${name ? `¡Hola, ${name}!` : '¡Hola!'} ¿En qué parte de tu compra o venta estás? Puedo ayudarte a entender qué falta, revisar los gastos o preparar una pregunta antes de avanzar.`
 
   // El historial y la hora se leen después de montar: en el servidor no existen y,
   // si se calculan durante el render, el HTML no coincide y React falla (#418).
@@ -109,7 +105,7 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
     setLoading(true)
 
     const context = vara.loaded
-      ? `Usuario: ${vara.userName} · Recorrido: ${journey === 'SELL' ? 'venta' : 'compra'}${activeOperation ? ` · Operación: ${activeOperation.title}` : ''} · Provincia: ${activeOperation?.province || vara.province}`
+      ? `Recorrido: ${journey === 'SELL' ? 'venta' : 'compra'} · Provincia: ${activeOperation?.province || vara.province}`
       : undefined
 
     try {
@@ -119,17 +115,27 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
         body: JSON.stringify({
           messages: updatedMessages.slice(1).map(m => ({ role: m.role, content: m.content })),
           context,
+          operationId: activeOperation?.id,
+          includeNextStep: true,
         }),
       })
-      const data = await safeJson<{ reply?: string; error?: string }>(res)
+      const data = await safeJson<{
+        reply?: string
+        error?: string
+        nextStep?: { operationId: string; target: 'documents' }
+      }>(res)
       if (!res.ok || !data.reply) {
         // Un error no es una respuesta del asistente: se avisa aparte y el mensaje vuelve al campo para reintentar.
         setMessages(messages)
         setInput(msg)
         setChatError({ auth: res.status === 401, text: res.status === 401 ? 'Tu sesión venció. Ingresá de nuevo para seguir conversando.' : apiErrorMessage(res.status, data.error) })
       } else {
-        const reply = data.reply as string
-        setMessages(prev => [...prev, { role: 'assistant', content: reply, time: nowTime() }])
+        const reply = data.reply
+        const documentsForOperation = data.nextStep?.target === 'documents'
+          && data.nextStep.operationId === activeOperation?.id
+          ? data.nextStep.operationId
+          : undefined
+        setMessages(prev => [...prev, { role: 'assistant', content: reply, time: nowTime(), documentsForOperation }])
         // "Leer respuestas": solo respuestas reales, nunca errores (esos no llegan acá). Si la voz falla, el texto ya está.
         if (voice.autoRead && !liveActive) void voice.play(String(updatedMessages.length), reply, { silent: true })
       }
@@ -159,7 +165,7 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
               <p role="status" aria-live="polite" data-testid="assistant-status" className="text-sm text-brand-700 font-medium mt-0.5">
                 {statusText}
               </p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Especializado en operaciones inmobiliarias AR</p>
+              <p className="mt-0.5 text-xs text-slate-600">Te ayuda a entender y dar el próximo paso</p>
             </div>
           </div>
 
@@ -223,6 +229,13 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
             Preguntas frecuentes
             {showFaqs ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
           </button>
+          {activeOperation && (
+            <button type="button" disabled={loading}
+              onClick={() => sendMessage('¿Qué me falta para avanzar?')}
+              className="mt-2 min-h-11 rounded-xl border border-brand-200 bg-brand-50 px-3 text-sm font-semibold text-brand-800 focus-visible:outline-2 focus-visible:outline-brand-700 disabled:opacity-50">
+              ¿Qué me falta para avanzar?
+            </button>
+          )}
           {showFaqs && (
             <div className="mt-2 flex flex-wrap gap-2">
               {(journey === 'SELL' ? SELLER_FAQS : BUYER_FAQS).map(q => (
@@ -251,6 +264,12 @@ Puedo ayudarte con tu operación de ${kind}: costos, documentación, plazos, neg
                   : 'bg-white shadow-card text-slate-800 rounded-tl-sm'
               )}>
                 <p className="text-sm leading-relaxed whitespace-pre-line">{msg.content}</p>
+                {msg.role === 'assistant' && msg.documentsForOperation && msg.documentsForOperation === activeOperation?.id && (
+                  <Link href={`/operacion/${encodeURIComponent(msg.documentsForOperation)}?tab=documentos`}
+                    className="mt-3 inline-flex rounded-lg bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 hover:underline">
+                    Revisar documentos
+                  </Link>
+                )}
                 <p className={cn('text-[10px] mt-1', msg.role === 'user' ? 'text-slate-400' : 'text-slate-300')}>
                   {msg.time}
                 </p>
