@@ -41,3 +41,21 @@ describe('borradores: casos borde', () => {
     expect(out.reply).not.toMatch(/BORRADOR/)
   })
 })
+
+describe('borradores: decoración', () => {
+  it('saca las rayas con las que el modelo enmarca el mensaje', () => {
+    expect(extractDraft('Nota.\nBORRADOR\n---\nHola\nGracias\n---\nFIN BORRADOR').draft).toBe('Hola\nGracias')
+  })
+})
+
+describe('borradores: línea de anuncio', () => {
+  it('quita la frase que anuncia el borrador con dos puntos', () => {
+    const out = extractDraft('Pedí tiempo.\nA continuación, te dejo un borrador:\nBORRADOR\nHola\nFIN BORRADOR\nRevisalo antes de enviar.')
+    expect(out.draft).toBe('Hola')
+    expect(out.reply).toBe('Pedí tiempo.\n\nRevisalo antes de enviar.')
+  })
+
+  it('no toca frases con dos puntos que no preceden al borrador', () => {
+    expect(extractDraft('Pasos: uno y dos.\nBORRADOR\nHola\nFIN BORRADOR').reply).toBe('Pasos: uno y dos.')
+  })
+})
