@@ -22,17 +22,15 @@ export function HelpSearch({ entries }: { entries: Entry[] }) {
   return (
     <div className="mt-6 rounded-2xl border border-line bg-white p-5 print:hidden">
       <label htmlFor="help-search" className="font-bold text-brand-900">¿Qué necesitás hacer?</label>
-      <input id="help-search" type="search" value={query} onChange={event => setQuery(event.target.value)}
+      <input id="help-search" aria-controls="help-results" type="search" value={query} onChange={event => setQuery(event.target.value)}
         placeholder="Por ejemplo, copiar el link"
         className="mt-2 block min-h-12 w-full rounded-xl border border-slate-400 bg-white px-4 text-ink focus-visible:outline-2 focus-visible:outline-brand-700" />
       <p role="status" className="mt-3 text-sm text-ink-soft">
-        {query.trim() && (results.length ? `${results.length} resultados` : 'No encontramos resultados. Probá con «aviso», «costos» o «visita».')}
+        {query.trim() && (results.length ? `${results.length} ${results.length === 1 ? 'resultado' : 'resultados'}` : 'No encontramos resultados. Probá con «aviso», «costos» o «visita».')}
       </p>
-      {results.length > 0 && (
-        <ul className="mt-2 divide-y divide-slate-100">
-          {results.map(entry => <li key={entry.href}><a className="block py-3 font-semibold text-brand-800 underline" href={entry.href}>{entry.title}</a></li>)}
-        </ul>
-      )}
+      <ul id="help-results" hidden={results.length === 0} className="mt-2 divide-y divide-slate-100">
+        {results.map(entry => <li key={entry.href}><a className="block py-3 font-semibold text-brand-800 underline" href={entry.href}>{entry.title}</a></li>)}
+      </ul>
     </div>
   )
 }

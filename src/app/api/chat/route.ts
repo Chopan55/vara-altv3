@@ -13,7 +13,7 @@ async function loadOperationContext(operationId: string, userId: string): Promis
   text: string
   country: string
   audience?: Audience
-  hasDocumentsToReview: boolean
+  documentCount: number | null
 } | null> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -59,7 +59,7 @@ async function loadOperationContext(operationId: string, userId: string): Promis
       text: 'Estado registrado de la operación (JSON de datos): ' + JSON.stringify(snapshot),
       country: snapshot.pais,
       audience: op.type === 'SELL_PROPERTY' ? 'SELL' : op.type === 'BUY_PROPERTY' ? 'BUY' : undefined,
-      hasDocumentsToReview: (documentCount ?? 0) > 0,
+      documentCount,
     }
   } catch {
     return null
@@ -77,7 +77,19 @@ crédito bancario o INFONAVIT/FOVISSSTE, precios en MXN o USD.
 No menciones DNI, CUIT, UIF, impuesto de sellos, ITI, expensas ni organismos argentinos.
 Si un dato depende del estado o del notario, decilo y recomendá confirmarlo con el notario.`
 
-const SYSTEM_PROMPT = `Sos VARA, el asistente de la plataforma VARA para operaciones inmobiliarias en Argentina.
+const SYSTEM_PROMPT = `Sos VARA, el acompañante inmobiliario de quien te consulta. Ayudás a buscar, comprar, vender y negociar con calma, claridad y criterio.
+
+PERSONALIDAD Y ACOMPAÑAMIENTO:
+- Empezá por lo que más le importa a la persona. Si expresa miedo, apuro o frustración, reconocé la preocupación concreta en una frase y retomá el control con un paso que pueda dar hoy.
+- Hablá con calidez y seguridad cuando haya evidencia. En situaciones inciertas, distinguí lo que figura en VARA, lo que contó la persona y lo que conviene confirmar.
+- Ayudá a decidir con un motivo claro y una acción concreta. Si falta información indispensable, avanzá lo que puedas y hacé una sola pregunta específica.
+- Evitá presionar para cerrar la operación, dar garantías o usar saludos y frases de empatía repetitivas.
+
+NEGOCIACIÓN:
+- Antes de recomendar una oferta, entendé el objetivo, el margen y la evidencia disponible. Explicá qué pedir o proponer y cómo cuidar la relación.
+- Si te piden un mensaje, redactá uno breve, cordial y firme, listo para revisar y copiar. Usá marcadores entre corchetes para monto, fecha o condiciones que falten. Respetá los límites privados y no los reveles en un mensaje para la otra parte.
+- Si hay presión para señar o firmar, ayudá a ganar tiempo con un pedido puntual y explicá qué corresponde verificar con el profesional a cargo.
+
 
 REGLA PRINCIPAL — no mandes al usuario afuera:
 VARA existe para que el usuario resuelva todo acá adentro. Nunca recomiendes herramientas,
@@ -194,10 +206,12 @@ export async function POST(req: NextRequest) {
     })
 
     const reply = completion.choices[0]?.message?.content ?? 'No pude generar una respuesta. Intentá de nuevo.'
-    const nextStep = includeNextStep === true && verified?.hasDocumentsToReview
+    const includeDocumentStatus = includeNextStep === true && verified !== null
+    const nextStep = includeDocumentStatus && verified.documentCount !== null && verified.documentCount > 0
       ? { operationId, target: 'documents' }
       : undefined
-    return NextResponse.json({ reply: cleanChatReply(reply), nextStep })
+    const documentsUnavailable = includeDocumentStatus && verified.documentCount === null
+    return NextResponse.json({ reply: cleanChatReply(reply), nextStep, documentsUnavailable })
 
   } catch (err) {
     console.error('[VARA Chat]', err)

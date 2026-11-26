@@ -2,10 +2,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useBrowserState } from '@/hooks/useHydrated'
 import Link from 'next/link'
-import { ArrowLeft, Send, User, ChevronDown, ChevronUp, Sparkles, Handshake, Volume2, VolumeX, Square, Loader2, Mic } from 'lucide-react'
+import { ArrowLeft, Copy, Send, User, ChevronDown, ChevronUp, Sparkles, Handshake, Volume2, VolumeX, Square, Loader2, Mic } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useVaraState } from '@/hooks/useVaraState'
-import { useOperations } from '@/hooks/useOperations'
+import { useOperations, type OperationsState } from '@/hooks/useOperations'
 import { useAssistantVoice } from '@/hooks/useAssistantVoice'
 import { useRealtimeVoice } from '@/hooks/useRealtimeVoice'
 import { VaraOrb } from '@/components/buy-v3/VaraOrb'
@@ -32,11 +32,23 @@ interface Message {
   content: string
   time: string
   documentsForOperation?: string
+  documentsUnavailable?: boolean
 }
 
 export default function AsistentePage() {
   const vara = useVaraState()
   const { journey, activeOperation } = useOperations()
+  const scope = activeOperation?.id ?? 'general'
+  return <AssistantConversation key={scope} vara={vara} journey={journey} activeOperation={activeOperation} scope={scope} />
+}
+
+function AssistantConversation({ vara, journey, activeOperation, scope }: {
+  vara: ReturnType<typeof useVaraState>
+  journey: OperationsState['journey']
+  activeOperation: OperationsState['activeOperation']
+  scope: string
+}) {
+  const historyKey = `vara_chat_history:${scope}`
   const nowTime = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 
   const name = vara.loaded ? vara.userName.split(' ')[0] : ''
@@ -49,7 +61,7 @@ export default function AsistentePage() {
     if (!vara.loaded) return []
     let restored: Message[] = []
     try {
-      const saved = sessionStorage.getItem('vara_chat_history')
+      const saved = sessionStorage.getItem(historyKey)
       // Se descartan errores técnicos que quedaron guardados como si fueran respuestas.
       if (saved) restored = (JSON.parse(saved) as Message[]).filter(m => !isErrorMessage(m.content))
     } catch { /* historial ilegible o storage bloqueado: se arranca de cero */ }
@@ -60,6 +72,7 @@ export default function AsistentePage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [showFaqs, setShowFaqs] = useState(false)
+  const [copyStatus, setCopyStatus] = useState<{ index: number; message: string }>()
   const bottomRef = useRef<HTMLDivElement>(null)
   const voice = useAssistantVoice()
   // Conversación de voz en tiempo real: lo que se dice queda en el mismo chat, en orden.
@@ -85,8 +98,8 @@ export default function AsistentePage() {
 
   useEffect(() => {
     if (!ready) return
-    try { sessionStorage.setItem('vara_chat_history', JSON.stringify(messages)) } catch {}
-  }, [messages, ready])
+    try { sessionStorage.setItem(historyKey, JSON.stringify(messages)) } catch {}
+  }, [messages, ready, historyKey])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -123,6 +136,7 @@ export default function AsistentePage() {
         reply?: string
         error?: string
         nextStep?: { operationId: string; target: 'documents' }
+        documentsUnavailable?: boolean
       }>(res)
       if (!res.ok || !data.reply) {
         // Un error no es una respuesta del asistente: se avisa aparte y el mensaje vuelve al campo para reintentar.
@@ -135,7 +149,10 @@ export default function AsistentePage() {
           && data.nextStep.operationId === activeOperation?.id
           ? data.nextStep.operationId
           : undefined
-        setMessages(prev => [...prev, { role: 'assistant', content: reply, time: nowTime(), documentsForOperation }])
+        setMessages(prev => [...prev, {
+          role: 'assistant', content: reply, time: nowTime(), documentsForOperation,
+          documentsUnavailable: data.documentsUnavailable === true,
+        }])
         // "Leer respuestas": solo respuestas reales, nunca errores (esos no llegan acá). Si la voz falla, el texto ya está.
         if (voice.autoRead && !liveActive) void voice.play(String(updatedMessages.length), reply, { silent: true })
       }
@@ -145,6 +162,15 @@ export default function AsistentePage() {
       setChatError({ auth: false, text: 'No pudimos conectarnos. Revisá tu conexión y probá de nuevo: tu mensaje sigue en el campo.' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function copyReply(index: number, content: string) {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopyStatus({ index, message: 'Copiado' })
+    } catch {
+      setCopyStatus({ index, message: 'No pudimos copiar. Podés seleccionar el texto y copiarlo.' })
     }
   }
 
@@ -264,6 +290,11 @@ export default function AsistentePage() {
                   : 'bg-white shadow-card text-slate-800 rounded-tl-sm'
               )}>
                 <p className="text-sm leading-relaxed whitespace-pre-line">{msg.content}</p>
+                {msg.role === 'assistant' && msg.documentsUnavailable && (
+                  <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                    No pudimos verificar el estado de tus documentos en este momento.
+                  </p>
+                )}
                 {msg.role === 'assistant' && msg.documentsForOperation && msg.documentsForOperation === activeOperation?.id && (
                   <Link href={`/operacion/${encodeURIComponent(msg.documentsForOperation)}?tab=documentos`}
                     className="mt-3 inline-flex rounded-lg bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 hover:underline">
@@ -278,6 +309,11 @@ export default function AsistentePage() {
                   const mine = voice.activeId === id
                   return (
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <button type="button" onClick={() => void copyReply(i, msg.content)}
+                        className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-slate-100 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+                        <Copy size={12} aria-hidden="true" /> Copiar respuesta
+                      </button>
+                      {copyStatus?.index === i && <span role="status" className="text-xs text-slate-700">{copyStatus.message}</span>}
                       {mine && voice.status === 'speaking' ? (
                         <button type="button" onClick={voice.stop} aria-label="Detener lectura" className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100">
                           <Square size={11} aria-hidden="true" /> Detener

@@ -72,7 +72,9 @@ describe('contexto de la operación en el asistente', () => {
     documentsQuery.in.mockResolvedValue({ error: { message: 'No disponible' }, count: null })
     const response = await ask({ operationId: 'operation-1', includeNextStep: true })
     expect(complete.mock.calls[0][0].messages[0].content).toContain('"documentosPendientesOEnRevision":null')
-    expect(await response.json()).not.toHaveProperty('nextStep')
+    const body = await response.json()
+    expect(body).not.toHaveProperty('nextStep')
+    expect(body.documentsUnavailable).toBe(true)
   })
 
   it('rechaza roles privilegiados en mensajes del cliente', async () => {
