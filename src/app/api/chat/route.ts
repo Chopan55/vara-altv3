@@ -8,7 +8,8 @@ import { requireAiAccess } from '@/lib/api/aiAccess'
 import { cleanChatReply } from '@/lib/ai/cleanReply'
 import { extractDraft } from '@/lib/ai/draft'
 import { privateLimitText } from '@/lib/ai/privateLimit'
-import { costFacts, costIntent, provinceFromContext } from '@/lib/ai/costFacts'
+import { costFactsWithSource, costIntent, provinceFromContext, type CostSource } from '@/lib/ai/costFacts'
+import { buildSources } from '@/lib/ai/sources'
 import { scrubWalkAway } from '@/lib/negotiation/walkAway'
 
 
@@ -22,6 +23,7 @@ async function loadOperationContext(operationId: string, userId: string): Promis
   text: string
   country: string
   province: string | null
+  stage: string | null
   audience?: Audience
   documentCount: number | null
 } | null> {
@@ -88,6 +90,7 @@ async function loadOperationContext(operationId: string, userId: string): Promis
       text: 'Estado registrado de la operación (JSON de datos): ' + JSON.stringify(snapshot),
       country: snapshot.pais,
       province: typeof op.province === 'string' ? op.province : null,
+      stage: typeof op.current_stage_key === 'string' ? op.current_stage_key : null,
       audience: op.type === 'SELL_PROPERTY' ? 'SELL' : op.type === 'BUY_PROPERTY' ? 'BUY' : undefined,
       documentCount,
     }
@@ -218,9 +221,11 @@ export async function POST(req: NextRequest) {
 
     // Costos: los valores salen de la calculadora de VARA (misma función que la pantalla de Costos), no de la memoria del modelo.
     const asksCosts = typeof lastUser?.content === 'string' && costIntent(lastUser.content)
-    const costBlock = asksCosts
-      ? costFacts({ province: verified?.province ?? provinceFromContext(context), country, audience: verified?.audience ?? audienceHint })
-      : ''
+    const costResult = asksCosts
+      ? costFactsWithSource({ province: verified?.province ?? provinceFromContext(context), country, audience: verified?.audience ?? audienceHint })
+      : null
+    const costBlock = costResult?.text ?? ''
+    const costSource: CostSource | null = costResult?.source ?? null
 
     const contextParts: string[] = [SYSTEM_PROMPT]
     if (country === 'MX') contextParts.push('', MX_ADDENDUM)
@@ -256,7 +261,12 @@ export async function POST(req: NextRequest) {
     // Si la persona contó su tope, ese monto se tapa en la respuesta y en el borrador aunque el modelo lo repita.
     const privateLimit = privateLimitText(messages)
     const { reply: visibleReply, draft } = extractDraft(scrubWalkAway(cleanChatReply(reply), privateLimit))
-    return NextResponse.json({ reply: visibleReply, draft, nextStep, documentsUnavailable })
+    const sources = buildSources({
+      operation: verified ? { stage: verified.stage, documentCount: verified.documentCount } : null,
+      cost: costSource,
+      knowledgeTitles: entries.map(e => e.title),
+    })
+    return NextResponse.json({ reply: visibleReply, draft, nextStep, documentsUnavailable, sources })
 
   } catch (err) {
     console.error('[VARA Chat]', err)

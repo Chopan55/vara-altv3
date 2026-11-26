@@ -30,7 +30,13 @@ const fmt = (n: number) => n.toFixed(2).replace(/\.?0+$/, '').replace('.', ',')
 const range = (min: number, max: number, unit: string) =>
   Math.abs(max - min) < 0.005 ? `${fmt(min)}${unit}` : `${fmt(min)}${unit} a ${fmt(max)}${unit}`
 
+export interface CostSource { jurisdiction: string; confidence: string; updatedAt: string }
+
 export function costFacts(opts: { province: string | null; country: CountryCode; audience?: 'BUY' | 'SELL' | 'BOTH' }): string {
+  return costFactsWithSource(opts).text
+}
+
+export function costFactsWithSource(opts: { province: string | null; country: CountryCode; audience?: 'BUY' | 'SELL' | 'BOTH' }): { text: string; source: CostSource } {
   const { province, country, audience } = opts
   const code = province ? resolveProvinceCode(province, country) : resolveProvinceCode('', country)
   const checklist = generateChecklist(code, 'BUY_PROPERTY', REFERENCE_PRICE_USD, country)
@@ -45,7 +51,7 @@ export function costFacts(opts: { province: string | null; country: CountryCode;
     `Vendedor (sobre el precio de la propiedad): ${mx ? 'ISAI' : 'sellos'} ${range(pct(c.stampTaxSeller.minAmount), pct(c.stampTaxSeller.maxAmount), '%')}; honorarios del ${notary} ${range(pct(c.notaryFeeSeller.minAmount), pct(c.notaryFeeSeller.maxAmount), '%')}. Total aproximado del vendedor: ${range(c.totalSeller.percentMin, c.totalSeller.percentMax, '%')} del precio.`,
   ]
 
-  return [
+  const text = [
     'CALCULADORA DE VARA (los únicos valores que podés usar para costos de escrituración):',
     `Jurisdicción usada: ${checklist.provinceName}${province ? '' : ' (no se informó la provincia: se usó la jurisdicción por defecto, avisalo)'}.`,
     `Confianza de los datos: ${checklist.dataConfidence}. Última actualización: ${checklist.lastUpdated}.`,
@@ -53,4 +59,5 @@ export function costFacts(opts: { province: string | null; country: CountryCode;
     ...c.notes.filter(Boolean).map(n => `Nota: ${n}`),
     'REGLAS PARA COSTOS: usá solo estos valores. No cites otros porcentajes, montos ni provincias de memoria. Si la persona dio un precio, multiplicá la proporción por ese precio y mostrá la cuenta; si no lo dio, respondé con el rango en porcentaje y pedí el precio en una línea. Decí qué jurisdicción usaste y, si la confianza no es VERIFIED, que conviene confirmarlo con el profesional. No incluyas comisión inmobiliaria, ganancias ni gastos del crédito: no están en estos valores. Cerrá indicando la sección Costos de VARA.',
   ].join('\n')
+  return { text, source: { jurisdiction: checklist.provinceName, confidence: String(checklist.dataConfidence), updatedAt: String(checklist.lastUpdated) } }
 }

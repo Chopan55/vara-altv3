@@ -46,6 +46,7 @@ interface Message {
   documentsForOperation?: string
   documentsUnavailable?: boolean
   draft?: string
+  sources?: { kind: 'operation' | 'calculator' | 'knowledge' | 'general'; label: string; detail?: string; href?: string }[]
 }
 
 export default function AsistentePage() {
@@ -148,6 +149,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
       const data = await safeJson<{
         reply?: string
         draft?: string
+        sources?: Message['sources']
         error?: string
         nextStep?: { operationId: string; target: 'documents' }
         documentsUnavailable?: boolean
@@ -167,6 +169,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
           role: 'assistant', content: reply, time: nowTime(), documentsForOperation,
           documentsUnavailable: data.documentsUnavailable === true,
           draft: typeof data.draft === 'string' && data.draft.trim() ? data.draft : undefined,
+          sources: Array.isArray(data.sources) ? data.sources.slice(0, 4) : undefined,
         }])
         // "Leer respuestas": solo respuestas reales, nunca errores (esos no llegan acá). Si la voz falla, el texto ya está.
         if (voice.autoRead && !liveActive) void voice.play(String(updatedMessages.length), reply, { silent: true })
@@ -340,6 +343,28 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
                       {copyStatus?.index === -(i + 1) && <span role="status" className="text-xs text-slate-700">{copyStatus.message}</span>}
                     </div>
                   </div>
+                )}
+                {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
+                  <ul aria-label="En qué se basa esta respuesta" className="mt-3 flex flex-wrap gap-1.5" data-testid="reply-sources">
+                    {msg.sources.map(src => {
+                      const chip = (
+                        <>
+                          <span className="font-semibold">{src.label}</span>
+                          {src.detail && <span className="text-slate-600"> · {src.detail}</span>}
+                        </>
+                      )
+                      const tone = src.kind === 'general' ? 'border-amber-200 bg-amber-50 text-amber-950' : 'border-emerald-200 bg-emerald-50 text-emerald-950'
+                      return (
+                        <li key={src.label}>
+                          {src.href ? (
+                            <Link href={src.href} className={cn('inline-block rounded-lg border px-2.5 py-1 text-xs hover:underline', tone)}>{chip}</Link>
+                          ) : (
+                            <span className={cn('inline-block rounded-lg border px-2.5 py-1 text-xs', tone)}>{chip}</span>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
                 )}
                 <p className={cn('text-[10px] mt-1', msg.role === 'user' ? 'text-slate-400' : 'text-slate-300')}>
                   {msg.time}

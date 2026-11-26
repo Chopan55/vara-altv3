@@ -146,4 +146,11 @@ describe('contexto de la operación en el asistente', () => {
     await ask({ operationId: 'operation-1' })
     expect(complete.mock.calls[0][0].messages[0].content).not.toContain('CALCULADORA DE VARA')
   })
+
+  it('devuelve en qué se basa la respuesta: operación y calculadora si preguntan por costos, general si no hay nada', async () => {
+    const withCosts = await (await ask({ operationId: 'operation-1', messages: [{ role: 'user', content: '¿Cuánto cuesta escriturar?' }] })).json()
+    expect(withCosts.sources.map((x: { kind: string }) => x.kind)).toEqual(expect.arrayContaining(['operation', 'calculator']))
+    const general = await (await ask({ messages: [{ role: 'user', content: 'Hola' }] })).json()
+    expect(general.sources.map((x: { kind: string }) => x.kind)).toEqual(['general'])
+  })
 })
