@@ -28,3 +28,16 @@ describe('borradores del asistente', () => {
     expect(extractDraft('BORRADOR\nHola\nFIN BORRADOR').reply).toBe('Te dejo un borrador para que lo revises.')
   })
 })
+
+describe('borradores: casos borde', () => {
+  it('acepta saltos de línea de Windows', () => {
+    expect(extractDraft('Nota.\r\nBORRADOR\r\nHola\r\nFIN BORRADOR')).toEqual({ reply: 'Nota.', draft: 'Hola' })
+  })
+
+  it('con dos bloques conserva el primero y no deja marcadores', () => {
+    const out = extractDraft('Uno.\nBORRADOR\nPrimero\nFIN BORRADOR\nDos.\nBORRADOR\nSegundo\nFIN BORRADOR')
+    expect(out.draft).toBe('Primero')
+    expect(out.reply).toBe('Uno.\n\nDos.')
+    expect(out.reply).not.toMatch(/BORRADOR/)
+  })
+})

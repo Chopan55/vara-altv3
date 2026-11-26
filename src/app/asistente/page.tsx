@@ -309,7 +309,8 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
           {messages.map((msg, i) => (
             <div key={i} className={cn('flex gap-3', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
               <div className={cn(
-                'max-w-[80%] rounded-2xl px-4 py-3',
+                'rounded-2xl px-4 py-3',
+                msg.draft ? 'w-full sm:max-w-[80%]' : 'max-w-[80%]',
                 msg.role === 'user'
                   ? 'bg-slate-900 text-white rounded-tr-sm'
                   : 'bg-white shadow-card text-slate-800 rounded-tl-sm'

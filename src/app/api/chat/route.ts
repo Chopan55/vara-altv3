@@ -7,6 +7,8 @@ import { findKnowledge, type Audience } from '@/data/knowledge'
 import { requireAiAccess } from '@/lib/api/aiAccess'
 import { cleanChatReply } from '@/lib/ai/cleanReply'
 import { extractDraft } from '@/lib/ai/draft'
+import { privateLimitText } from '@/lib/ai/privateLimit'
+import { scrubWalkAway } from '@/lib/negotiation/walkAway'
 
 
 /** Los nombres los escribe cada persona: se recortan y se pasan al modelo como datos, nunca como instrucciones. */
@@ -61,6 +63,7 @@ async function loadOperationContext(operationId: string, userId: string): Promis
       .from('operation_tasks')
       .select('title, status, due_date')
       .eq('operation_id', operationId)
+      .eq('user_id', userId)
       .in('status', ['TODO', 'IN_PROGRESS', 'BLOCKED'])
       .order('due_date', { ascending: true, nullsFirst: false })
       .limit(6)
@@ -240,7 +243,9 @@ export async function POST(req: NextRequest) {
       ? { operationId, target: 'documents' }
       : undefined
     const documentsUnavailable = includeDocumentStatus && verified.documentCount === null
-    const { reply: visibleReply, draft } = extractDraft(cleanChatReply(reply))
+    // Si la persona contó su tope, ese monto se tapa en la respuesta y en el borrador aunque el modelo lo repita.
+    const privateLimit = privateLimitText(messages)
+    const { reply: visibleReply, draft } = extractDraft(scrubWalkAway(cleanChatReply(reply), privateLimit))
     return NextResponse.json({ reply: visibleReply, draft, nextStep, documentsUnavailable })
 
   } catch (err) {

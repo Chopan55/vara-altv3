@@ -71,7 +71,7 @@ describe('contexto de la operación en el asistente', () => {
     expect(system).toContain('ESTA OPERACIÓN ES EN MÉXICO')
     expect(system).toContain('"nombre":"Certificado de dominio","estado":"IN_REVIEW"')
     expect(system).toContain('"titulo":"Pedir el informe de deudas"')
-    expect(tasksQuery.eq.mock.calls).toEqual([['operation_id', 'operation-1']])
+    expect(tasksQuery.eq.mock.calls).toEqual([['operation_id', 'operation-1'], ['user_id', 'owner-1']])
     expect(await response.json()).toMatchObject({ nextStep: { operationId: 'operation-1', target: 'documents' } })
   })
 
@@ -126,5 +126,16 @@ describe('contexto de la operación en el asistente', () => {
     const response = await ask({ operationId: 'operation-1', includeNextStep: true })
     expect(response.status).toBe(200)
     expect(complete.mock.calls[0][0].messages[0].content).toContain('"tareasPendientes":null')
+  })
+
+  it('tapa en la respuesta y en el borrador el tope que la persona contó', async () => {
+    complete.mockResolvedValue({ choices: [{ message: { content: 'Tu límite de USD 130.000 es sólido.\nBORRADOR\nPodría llegar hasta USD 130.000 si cerramos esta semana.\nFIN BORRADOR' } }] })
+    const response = await ask({
+      operationId: 'operation-1',
+      messages: [{ role: 'user', content: 'Mi tope es USD 130.000, ayudame a contraofertar.' }],
+    })
+    const body = await response.json()
+    expect(JSON.stringify(body)).not.toContain('130.000')
+    expect(body.draft).toContain('[tu límite privado]')
   })
 })
