@@ -20,4 +20,25 @@ describe('tope privado en el chat', () => {
     const text = privateLimitText([{ role: 'user', content: 'No pagaría más de U$S 130 mil.' }])
     expect(scrubWalkAway('Podemos subir hasta USD 130.000.', text)).toContain('[tu límite privado]')
   })
+
+  it('no toca montos legítimos de la operación', () => {
+    for (const content of [
+      'La reserva es de USD 10.000.',
+      'El vendedor acepta hasta USD 150.000 de seña.',
+      'El máximo de la tasación fue USD 140.000.',
+    ]) {
+      expect(privateLimitText([{ role: 'user', content }]), content).toBe('')
+    }
+  })
+
+  it('detecta las formas en primera persona', () => {
+    for (const content of [
+      'Mi techo es USD 120.000.',
+      'No puedo pagar más de 130 mil dólares.',
+      'No vendo por menos de USD 95.000.',
+      'Puedo pagar hasta USD 110.000.',
+    ]) {
+      expect(privateLimitText([{ role: 'user', content }]), content).not.toBe('')
+    }
+  })
 })
