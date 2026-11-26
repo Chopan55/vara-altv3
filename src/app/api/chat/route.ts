@@ -182,24 +182,36 @@ export async function POST(req: NextRequest) {
     // Transmisión: la respuesta aparece mientras se genera. Solo sin herramientas (en costos hay un cálculo de por medio).
     if (stream === true && !asksCosts) {
       const encoder = new TextEncoder()
+      // Si la persona cierra la pantalla o cancela, se corta también el pedido a OpenAI: no se sigue gastando crédito.
+      const abort = new AbortController()
+      req.signal.addEventListener('abort', () => abort.abort())
+      let closed = false
       const body = new ReadableStream<Uint8Array>({
         async start(controller) {
-          const send = (event: unknown) => controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
+          const send = (event: unknown) => {
+            if (closed) return
+            try { controller.enqueue(encoder.encode(JSON.stringify(event) + '\n')) } catch { closed = true }
+          }
           try {
             const completionStream = await openai.chat.completions.create({
               model: 'gpt-4o', messages: conversation, max_tokens: 1100, temperature: 0.4, stream: true,
-            })
+            }, { signal: abort.signal })
             let raw = ''
             for await (const chunk of completionStream) {
+              if (closed) break
               const delta = chunk.choices[0]?.delta?.content
               if (delta) { raw += delta; send({ t: 'd', v: delta }) }
             }
-            send({ t: 'f', ...finalize(raw || 'No pude generar una respuesta. Intentá de nuevo.') })
+            if (!closed) send({ t: 'f', ...finalize(raw || 'No pude generar una respuesta. Intentá de nuevo.') })
           } catch (err) {
-            send({ t: 'e', ...chatError(err) })
+            if (!closed) send({ t: 'e', ...chatError(err) })
           } finally {
-            controller.close()
+            if (!closed) { closed = true; try { controller.close() } catch { /* ya cerrado */ } }
           }
+        },
+        cancel() {
+          closed = true
+          abort.abort()
         },
       })
       return new Response(body, {

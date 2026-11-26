@@ -70,6 +70,11 @@ describe('lector de la transmisión', () => {
     expect(await readChatStream(broken, user, () => {})).toEqual({ kind: 'cut' })
   })
 
+  it('procesa una última línea que llegó sin salto de línea', async () => {
+    const out = await readChatStream(bodyOf('{"t":"d","v":"Ho"}\n{"t":"f","reply":"Listo"}'), user, () => {})
+    expect(out).toMatchObject({ kind: 'final', payload: { reply: 'Listo' } })
+  })
+
   it('ignora líneas ilegibles y sigue', async () => {
     const out = await readChatStream(bodyOf('basura\n{"t":"f","reply":"ok"}\n'), user, () => {})
     expect(out).toMatchObject({ kind: 'final' })
@@ -160,5 +165,41 @@ describe('ruta del chat transmitida', () => {
     const res = await ask('hola')
     expect(res.headers.get('content-type')).toContain('application/json')
     expect(await res.json()).toMatchObject({ reply: 'Hola.' })
+  })
+
+  it('si la persona cancela a mitad de la respuesta, se aborta el pedido a OpenAI y no se sigue enviando', async () => {
+    let upstreamSignal: AbortSignal | undefined
+    let produced = 0
+    complete.mockImplementation(async (_args: unknown, options?: { signal?: AbortSignal }) => {
+      upstreamSignal = options?.signal
+      return (async function* () {
+        for (let i = 0; i < 50; i++) {
+          if (options?.signal?.aborted) return
+          produced++
+          yield { choices: [{ delta: { content: `p${i} ` } }] }
+          await new Promise(r => setTimeout(r, 5))
+        }
+      })()
+    })
+    const res = await ask('hola', { stream: true })
+    const reader = res.body!.getReader()
+    await reader.read() // llegó el primer pedazo
+    await reader.cancel()
+    await new Promise(r => setTimeout(r, 60))
+    expect(upstreamSignal?.aborted).toBe(true)
+    expect(produced).toBeLessThan(50)
+  })
+
+  it('si el navegador se desconecta (abort de la petición), también se aborta el pedido a OpenAI', async () => {
+    const controller = new AbortController()
+    let upstreamSignal: AbortSignal | undefined
+    complete.mockImplementation(async (_args: unknown, options?: { signal?: AbortSignal }) => {
+      upstreamSignal = options?.signal
+      return chunks('Hola')
+    })
+    const req = new NextRequest('http://localhost/api/chat', { method: 'POST', body: JSON.stringify({ messages: [{ role: 'user', content: 'hola' }], stream: true }), signal: controller.signal })
+    await POST(req)
+    controller.abort()
+    expect(upstreamSignal?.aborted).toBe(true)
   })
 })

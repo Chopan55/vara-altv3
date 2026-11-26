@@ -79,8 +79,8 @@ export async function readChatStream(
   try {
     for (;;) {
       const { done, value } = await reader.read()
-      if (done) break
-      const split = splitNdjson(buffer, decoder.decode(value, { stream: true }))
+      // Al terminar, se procesa también el remanente del decodificador y una última línea sin salto de línea.
+      const split = done ? splitNdjson(buffer, decoder.decode() + '\n') : splitNdjson(buffer, decoder.decode(value, { stream: true }))
       buffer = split.rest
       for (const line of split.lines) {
         const event = parseStreamEvent(line)
@@ -89,6 +89,7 @@ export async function readChatStream(
         else if (event.t === 'f') { const { t: _t, ...payload } = event; return { kind: 'final', payload } }
         else return { kind: 'error', status: event.status, error: event.error }
       }
+      if (done) break
     }
   } catch {
     return { kind: 'cut' }

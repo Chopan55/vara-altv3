@@ -104,4 +104,42 @@ describe('herramienta calcular_costos', () => {
     expect(prices).toEqual(expect.arrayContaining([150_000, 180_000, 1_200_000]))
     expect(prices).not.toContain(999_000)
   })
+
+  describe('qué cuenta como precio dicho por la persona', () => {
+    const price = (text: string) => pricesFromUserMessages([{ role: 'user', content: text }])
+
+    it('acepta dólares con o sin marca de moneda en distintos formatos', () => {
+      expect(price('Una casa de USD 150.000')).toContain(150_000)
+      expect(price('cuesta 150.000 dólares')).toContain(150_000)
+      expect(price('U$S 1,2 millones')).toContain(1_200_000)
+      expect(price('pedían 180 mil')).toContain(180_000)
+      expect(price('es de 150.000')).toContain(150_000) // sin moneda pero plausible como precio
+      expect(price('valor 95000')).toContain(95_000)
+    })
+
+    it('descarta montos en pesos aunque sean grandes', () => {
+      expect(price('Me piden $150.000.000')).toEqual([])
+      expect(price('son 120.000.000 pesos')).toEqual([])
+      expect(price('ARS 90.000.000')).toEqual([])
+      expect(price('AR$ 90.000.000')).toEqual([])
+    })
+
+    it('descarta años, teléfonos, documentos y montos que no pueden ser un precio', () => {
+      expect(price('en 2026 firmo')).toEqual([])
+      expect(price('llamame al 1122334455')).toEqual([])
+      expect(price('mi DNI es 30123456')).toEqual([])
+      expect(price('pago 5.000 de expensas')).toEqual([]) // por debajo de un precio plausible sin marca de dólares
+      expect(price('son 3 ambientes y 2 baños')).toEqual([])
+    })
+
+    it('un monto chico con marca de dólares sí cuenta; el precio del asistente nunca', () => {
+      expect(price('USD 5.000 de seña')).toContain(5_000)
+      expect(pricesFromUserMessages([{ role: 'assistant', content: 'Con USD 999.000 sería distinto.' }])).toEqual([])
+    })
+
+    it('el año no se cuela como precio permitido para el cálculo', () => {
+      const out = runCostTool({ precio_usd: 2026 }, { ...ar, allowedPrices: price('en 2026 compro') })
+      expect(out.ok).toBe(false)
+    })
+  })
 })

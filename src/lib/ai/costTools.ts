@@ -6,7 +6,6 @@
  */
 import { generateChecklist, resolveProvinceCode } from '@/lib/regulations'
 import { effectiveCountry } from './costFacts'
-import { walkAwayAmounts } from '@/lib/negotiation/walkAway'
 import type { CountryCode } from '@/types'
 
 export const COST_TOOL_NAME = 'calcular_costos'
@@ -40,9 +39,53 @@ export interface CostToolContext {
   allowedPrices: number[]
 }
 
-/** Montos (de al menos 1.000) que la persona escribió en sus propios mensajes. Lo que dijo el asistente no cuenta. */
+const USD_MARK = /(?:U\$S|US\$|\bUSD\b|d[oó]lar(?:es)?|\bu\$s\b)/i
+const ARS_AFTER = /^\s*(?:pesos?|ARS\b)/i
+const ARS_BEFORE = /(?:\bAR\$|\bARS\b|(?:^|[^A-Za-z])\$)\s*$/i
+const AMOUNT = /(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d{1,2})?)(?:\s*(mil\b|k\b|millones?\b|M\b))?/gi
+
+function amountValue(token: string, suffix: string | undefined): number | null {
+  let n: number
+  if (/^\d{1,3}(?:\.\d{3})+$/.test(token)) n = Number(token.replace(/\./g, ''))
+  else if (/^\d{1,3}(?:,\d{3})+$/.test(token)) n = Number(token.replace(/,/g, ''))
+  else n = Number(token.replace(',', '.'))
+  if (!Number.isFinite(n)) return null
+  const unit = suffix?.toLowerCase()
+  if (unit === 'mil' || unit === 'k') n *= 1_000
+  else if (unit && (unit.startsWith('millon') || unit === 'm')) n *= 1_000_000
+  return n
+}
+
+/**
+ * Precios en dólares que la persona escribió en sus propios mensajes (lo que dijo el asistente no cuenta).
+ * Se descartan los montos en pesos («$», «pesos», «ARS»), los años (2026), los teléfonos y los números que no pueden ser
+ * un precio de propiedad. Un monto sin moneda se acepta solo si es plausible como precio en dólares.
+ */
 export function pricesFromUserMessages(messages: { role: string; content: string }[]): number[] {
-  return messages.filter(m => m.role === 'user').flatMap(m => walkAwayAmounts(m.content))
+  const prices: number[] = []
+  for (const message of messages) {
+    if (message.role !== 'user') continue
+    const text = message.content
+    for (const match of text.matchAll(AMOUNT)) {
+      const index = match.index ?? 0
+      const end = index + match[0].length
+      const before = text.slice(Math.max(0, index - 12), index)
+      const after = text.slice(end, end + 14)
+      if (ARS_BEFORE.test(before) && !USD_MARK.test(before)) continue
+      if (ARS_AFTER.test(after) && !USD_MARK.test(before)) continue
+      const hasUsd = USD_MARK.test(before) || USD_MARK.test(after)
+      const bare = !match[2] && !/[.,]/.test(match[1])
+      const value = amountValue(match[1], match[2])
+      if (value === null || value < 1_000 || value > 100_000_000) continue
+      if (!hasUsd) {
+        if (value < 10_000) continue
+        if (bare && value >= 1900 && value <= 2100) continue // un año
+        if (bare && match[1].length >= 8) continue // teléfono, DNI, código
+      }
+      prices.push(value)
+    }
+  }
+  return prices
 }
 
 const sameAmount = (a: number, b: number) => b > 0 && Math.abs(a - b) / b < 0.005
