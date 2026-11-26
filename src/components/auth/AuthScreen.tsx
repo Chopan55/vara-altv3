@@ -314,13 +314,6 @@ function LoginForm({ audience }: { audience: AuthAudience }) {
         </div>
       ) : (
         <>
-          <p className="mt-6 text-center text-xs text-slate-300">
-            ¿Solo querés mirar?{' '}
-            <Link href="/onboarding" className="text-slate-400 hover:text-slate-600 underline">
-              Probá sin cuenta
-            </Link>
-          </p>
-
           {/* La puerta de los Visit Partners. Entran por acá y no desde adentro de la
               cuenta de quien compra o vende: son otra cara del producto. */}
           <div className="mt-6 border-t border-slate-100 pt-5">
@@ -475,13 +468,9 @@ export function AuthScreen({ audience = 'client' }: { audience?: AuthAudience })
           {!isSupabaseConfigured ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center">
               <p className="font-bold text-slate-800 text-sm mb-1">Las cuentas todavía no están activas</p>
-              <p className="text-xs text-slate-500 mb-4">
-                Por ahora VARA guarda todo en este navegador. Podés usar la app igual.
+              <p className="text-xs text-slate-500">
+                Estamos terminando de activarlas. Volvé en unos minutos.
               </p>
-              <Link href="/onboarding"
-                className="inline-block bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
-                Empezar
-              </Link>
             </div>
           ) : (
             <div className="rounded-3xl bg-white border border-slate-200/70 shadow-elevated p-7">

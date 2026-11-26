@@ -5,6 +5,8 @@ const PUBLIC_EXACT = new Set([
   '/onboarding',
   '/analizar',
   '/como-usar',
+  '/guia',
+  '/compartido',
   '/labs',
   '/planes',
   '/vara-visit',
@@ -14,7 +16,7 @@ const PUBLIC_EXACT = new Set([
 ])
 
 /** Rutas con un código o flujo propio que no usan la cuenta principal. */
-const PUBLIC_PREFIXES = ['/visit/']
+const PUBLIC_PREFIXES = ['/visit/', '/invitacion/']
 
 /** Demo y producto operativo sí requieren una sesión válida. */
 export function isPublicPath(pathname: string): boolean {
