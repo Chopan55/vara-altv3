@@ -27,12 +27,25 @@ const SELLER_FAQS = [
   '¿Cómo negocio una contra-oferta?',
 ]
 
+const OPERATION_ACTIONS_BUY = [
+  'Prepará una pregunta para el vendedor',
+  'Ayudame a pedir más tiempo antes de señar',
+  'Armame un mensaje para contraofertar',
+]
+
+const OPERATION_ACTIONS_SELL = [
+  'Prepará una respuesta a la oferta que recibí',
+  'Armame un mensaje para pedir documentos al comprador',
+  'Ayudame a pedir una mejora de oferta',
+]
+
 interface Message {
   role: 'user' | 'assistant'
   content: string
   time: string
   documentsForOperation?: string
   documentsUnavailable?: boolean
+  draft?: string
 }
 
 export default function AsistentePage() {
@@ -134,6 +147,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
       })
       const data = await safeJson<{
         reply?: string
+        draft?: string
         error?: string
         nextStep?: { operationId: string; target: 'documents' }
         documentsUnavailable?: boolean
@@ -152,6 +166,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
         setMessages(prev => [...prev, {
           role: 'assistant', content: reply, time: nowTime(), documentsForOperation,
           documentsUnavailable: data.documentsUnavailable === true,
+          draft: typeof data.draft === 'string' && data.draft.trim() ? data.draft : undefined,
         }])
         // "Leer respuestas": solo respuestas reales, nunca errores (esos no llegan acá). Si la voz falla, el texto ya está.
         if (voice.autoRead && !liveActive) void voice.play(String(updatedMessages.length), reply, { silent: true })
@@ -262,6 +277,16 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
               ¿Qué me falta para avanzar?
             </button>
           )}
+          {activeOperation && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(journey === 'SELL' ? OPERATION_ACTIONS_SELL : OPERATION_ACTIONS_BUY).map(q => (
+                <button key={q} type="button" disabled={loading} onClick={() => sendMessage(q)}
+                  className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:border-brand-300 focus-visible:outline-2 focus-visible:outline-brand-700 disabled:opacity-50">
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
           {showFaqs && (
             <div className="mt-2 flex flex-wrap gap-2">
               {(journey === 'SELL' ? SELLER_FAQS : BUYER_FAQS).map(q => (
@@ -284,7 +309,8 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
           {messages.map((msg, i) => (
             <div key={i} className={cn('flex gap-3', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
               <div className={cn(
-                'max-w-[80%] rounded-2xl px-4 py-3',
+                'rounded-2xl px-4 py-3',
+                msg.draft ? 'w-full sm:max-w-[80%]' : 'max-w-[80%]',
                 msg.role === 'user'
                   ? 'bg-slate-900 text-white rounded-tr-sm'
                   : 'bg-white shadow-card text-slate-800 rounded-tl-sm'
@@ -300,6 +326,20 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
                     className="mt-3 inline-flex rounded-lg bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 hover:underline">
                     Revisar documentos
                   </Link>
+                )}
+                {msg.role === 'assistant' && msg.draft && (
+                  <div className="mt-3 rounded-xl border border-brand-200 bg-brand-50/60 p-3" data-testid="assistant-draft">
+                    <p className="text-xs font-bold text-brand-800">Borrador para revisar</p>
+                    <p className="mt-1.5 text-sm leading-relaxed text-slate-800 whitespace-pre-line">{msg.draft}</p>
+                    <p className="mt-2 text-xs text-slate-600">VARA no lo envía. Revisalo, completá lo que está entre corchetes y mandalo vos.</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <button type="button" onClick={() => void copyReply(-(i + 1), msg.draft ?? '')}
+                        className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-brand-600 px-3 text-xs font-semibold text-white hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
+                        <Copy size={12} aria-hidden="true" /> Copiar borrador
+                      </button>
+                      {copyStatus?.index === -(i + 1) && <span role="status" className="text-xs text-slate-700">{copyStatus.message}</span>}
+                    </div>
+                  </div>
                 )}
                 <p className={cn('text-[10px] mt-1', msg.role === 'user' ? 'text-slate-400' : 'text-slate-300')}>
                   {msg.time}

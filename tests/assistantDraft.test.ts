@@ -1,0 +1,61 @@
+import { describe, expect, it } from 'vitest'
+import { extractDraft } from '@/lib/ai/draft'
+
+describe('borradores del asistente', () => {
+  it('separa el borrador y deja la explicación', () => {
+    expect(extractDraft('Mandalo hoy.\nBORRADOR\nHola [nombre]\nGracias\nFIN BORRADOR\nRevisá el monto.')).toEqual({
+      reply: 'Mandalo hoy.\n\nRevisá el monto.',
+      draft: 'Hola [nombre]\nGracias',
+    })
+  })
+
+  it('sin borrador devuelve el texto como está', () => {
+    expect(extractDraft('Respuesta común.')).toEqual({ reply: 'Respuesta común.' })
+  })
+
+  it('un marcador suelto no se muestra y no genera tarjeta', () => {
+    const out = extractDraft('Texto\nBORRADOR\nsin cierre')
+    expect(out.draft).toBeUndefined()
+    expect(out.reply).not.toMatch(/^BORRADOR$/m)
+  })
+
+  it('limita el largo del borrador', () => {
+    const out = extractDraft('BORRADOR\n' + 'a'.repeat(5000) + '\nFIN BORRADOR')
+    expect(out.draft?.length).toBe(1500)
+  })
+
+  it('si solo hay borrador, deja una frase de acompañamiento', () => {
+    expect(extractDraft('BORRADOR\nHola\nFIN BORRADOR').reply).toBe('Te dejo un borrador para que lo revises.')
+  })
+})
+
+describe('borradores: casos borde', () => {
+  it('acepta saltos de línea de Windows', () => {
+    expect(extractDraft('Nota.\r\nBORRADOR\r\nHola\r\nFIN BORRADOR')).toEqual({ reply: 'Nota.', draft: 'Hola' })
+  })
+
+  it('con dos bloques conserva el primero y no deja marcadores', () => {
+    const out = extractDraft('Uno.\nBORRADOR\nPrimero\nFIN BORRADOR\nDos.\nBORRADOR\nSegundo\nFIN BORRADOR')
+    expect(out.draft).toBe('Primero')
+    expect(out.reply).toBe('Uno.\n\nDos.')
+    expect(out.reply).not.toMatch(/BORRADOR/)
+  })
+})
+
+describe('borradores: decoración', () => {
+  it('saca las rayas con las que el modelo enmarca el mensaje', () => {
+    expect(extractDraft('Nota.\nBORRADOR\n---\nHola\nGracias\n---\nFIN BORRADOR').draft).toBe('Hola\nGracias')
+  })
+})
+
+describe('borradores: línea de anuncio', () => {
+  it('quita la frase que anuncia el borrador con dos puntos', () => {
+    const out = extractDraft('Pedí tiempo.\nA continuación, te dejo un borrador:\nBORRADOR\nHola\nFIN BORRADOR\nRevisalo antes de enviar.')
+    expect(out.draft).toBe('Hola')
+    expect(out.reply).toBe('Pedí tiempo.\n\nRevisalo antes de enviar.')
+  })
+
+  it('no toca frases con dos puntos que no preceden al borrador', () => {
+    expect(extractDraft('Pasos: uno y dos.\nBORRADOR\nHola\nFIN BORRADOR').reply).toBe('Pasos: uno y dos.')
+  })
+})
