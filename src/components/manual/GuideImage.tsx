@@ -16,10 +16,7 @@ export function GuideImage({ src, alt }: { src: string; alt: string }) {
       </button>
       <dialog ref={dialog} aria-label={alt} onClick={event => {
         const dialogElement = event.currentTarget
-        if (event.target !== dialogElement) return
-        const bounds = dialogElement.getBoundingClientRect()
-        if (event.clientX < bounds.left || event.clientX > bounds.right
-          || event.clientY < bounds.top || event.clientY > bounds.bottom) dialogElement.close()
+        if (event.target === dialogElement) dialogElement.close()
       }} className="m-auto max-h-[90dvh] w-[94vw] max-w-3xl overflow-auto rounded-2xl bg-white p-3 shadow-xl backdrop:bg-slate-950/70 print:hidden">
         <form method="dialog" className="sticky top-0 z-10 mb-2 flex justify-end">
           <button className="min-h-11 rounded-xl bg-brand-700 px-4 font-semibold text-white">Cerrar captura</button>

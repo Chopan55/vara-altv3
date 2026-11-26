@@ -295,7 +295,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
                     No pudimos verificar el estado de tus documentos en este momento.
                   </p>
                 )}
-                {msg.role === 'assistant' && msg.documentsForOperation && msg.documentsForOperation === activeOperation?.id && (
+                {msg.role === 'assistant' && msg.documentsForOperation && (
                   <Link href={`/operacion/${encodeURIComponent(msg.documentsForOperation)}?tab=documentos`}
                     className="mt-3 inline-flex rounded-lg bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 hover:underline">
                     Revisar documentos

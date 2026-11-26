@@ -294,16 +294,22 @@ describe('invitación a crear cuenta', () => {
   })
 })
 
-describe('el invitado no se topa con un muro de registro', () => {
-  const GUEST_PAGES = ['src/app/onboarding/page.tsx', 'src/app/dashboard/page.tsx', 'src/app/analizar/page.tsx', 'src/app/comparar/page.tsx', 'src/proxy.ts']
+describe('entrada pública y protección de la plataforma', () => {
+  const GUEST_PAGES = ['src/app/onboarding/page.tsx', 'src/app/dashboard/page.tsx', 'src/app/analizar/page.tsx', 'src/app/comparar/page.tsx']
 
-  it('onboarding, dashboard, analizar, comparar y el proxy no redirigen al login ni exigen sesión', () => {
+  it('el flujo de entrada y análisis puede empezar sin cuenta', () => {
     for (const f of GUEST_PAGES) {
       const src = read(f)
       expect(src, f).not.toMatch(/redirect\(\s*['"`]\/login/)
       expect(src, f).not.toMatch(/router\.(push|replace)\(\s*['"`]\/login/)
-      expect(src, f).not.toMatch(/NextResponse\.redirect/)
     }
+  })
+
+  it('el proxy sí protege las rutas de plataforma y conserva el retorno seguro', () => {
+    const src = read('src/proxy.ts')
+    expect(src).toContain('isPublicPath')
+    expect(src).toContain('NextResponse.redirect')
+    expect(src).toContain("searchParams.set('next'")
   })
 
   it('el onboarding crea la operación con createOperationAnywhere (invitado o con sesión) y no abre signup', () => {
