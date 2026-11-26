@@ -9,7 +9,7 @@ describe('acceso a rutas', () => {
   })
 
   it('protege demo y la plataforma operativa', () => {
-    for (const path of ['/demo', '/dashboard', '/costos', '/vara-labs', '/visitas', '/vara-visit/solicitar', '/partner', '/operacion/123', '/empezar', '/compartida', '/compartida/123']) {
+    for (const path of ['/demo', '/dashboard', '/costos', '/vara-labs', '/visitas', '/vara-visit/solicitar', '/partner', '/operacion/123', '/empezar', '/banco-demo', '/compartida', '/compartida/123']) {
       expect(isPublicPath(path), path).toBe(false)
     }
   })
