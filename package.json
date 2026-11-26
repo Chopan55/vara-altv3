@@ -9,7 +9,8 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "eval:assistant": "EVAL_REAL=1 vitest run tests/assistantEvalsReal.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

@@ -10,6 +10,7 @@ import { useAssistantVoice } from '@/hooks/useAssistantVoice'
 import { useRealtimeVoice } from '@/hooks/useRealtimeVoice'
 import { VaraOrb } from '@/components/buy-v3/VaraOrb'
 import { apiErrorMessage, safeJson } from '@/lib/api/client'
+import { readChatStream, type FinalPayload } from '@/lib/assistant/chatStream'
 import { isErrorMessage, isSpeakable, moodLabel, orbMoodFor } from '@/lib/assistant/voice'
 import { liveErrorMessage, liveLabel, liveOrbMood } from '@/lib/assistant/realtime'
 
@@ -46,6 +47,7 @@ interface Message {
   documentsForOperation?: string
   documentsUnavailable?: boolean
   draft?: string
+  sources?: { kind: 'operation' | 'calculator' | 'knowledge' | 'general'; label: string; detail?: string; href?: string }[]
 }
 
 export default function AsistentePage() {
@@ -84,6 +86,9 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
   const [chatError, setChatError] = useState<{ auth: boolean; text: string } | null>(null)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  // Texto provisorio de la respuesta mientras se está generando (se reemplaza por la respuesta final del servidor).
+  const [streamText, setStreamText] = useState<string | null>(null)
+  const streamFrame = useRef<number | null>(null)
   const [showFaqs, setShowFaqs] = useState(false)
   const [copyStatus, setCopyStatus] = useState<{ index: number; message: string }>()
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -106,7 +111,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
     if (liveActive) { live.stop(); return }
     voice.stop() // la lectura de una respuesta no se pisa con la conversación
     setChatError(null)
-    void live.start()
+    void live.start(activeOperation?.id)
   }
 
   useEffect(() => {
@@ -116,7 +121,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, live.partial])
+  }, [messages, live.partial, streamText])
 
   async function sendMessage(text?: string) {
     const msg = text ?? input.trim()
@@ -135,28 +140,42 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
       : undefined
 
     try {
+      const history = updatedMessages.slice(1).map(m => ({ role: m.role, content: m.content }))
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: updatedMessages.slice(1).map(m => ({ role: m.role, content: m.content })),
-          context,
-          operationId: activeOperation?.id,
-          includeNextStep: true,
-        }),
+        body: JSON.stringify({ messages: history, context, operationId: activeOperation?.id, includeNextStep: true, stream: true }),
       })
-      const data = await safeJson<{
-        reply?: string
-        draft?: string
-        error?: string
-        nextStep?: { operationId: string; target: 'documents' }
-        documentsUnavailable?: boolean
-      }>(res)
-      if (!res.ok || !data.reply) {
+
+      // Dos formas de respuesta: transmitida (el texto aparece mientras se genera) o JSON completa (costos y errores).
+      let status = res.status
+      let data: Partial<FinalPayload> & { error?: string } = {}
+      let failed = false
+      if (res.ok && (res.headers.get('content-type') ?? '').includes('ndjson') && res.body) {
+        // El texto provisorio se pinta como mucho una vez por cuadro de pantalla: fluido y sin trabar el celular.
+        let latest = ''
+        const outcome = await readChatStream(res.body, history, text => {
+          latest = text
+          if (streamFrame.current === null) {
+            streamFrame.current = requestAnimationFrame(() => { streamFrame.current = null; setStreamText(latest) })
+          }
+        })
+        if (streamFrame.current !== null) { cancelAnimationFrame(streamFrame.current); streamFrame.current = null }
+        setStreamText(null)
+        if (outcome.kind === 'final') data = outcome.payload
+        else { failed = true; status = outcome.kind === 'error' ? outcome.status : 0; data = { error: outcome.kind === 'error' ? outcome.error : undefined } }
+      } else {
+        data = await safeJson<Partial<FinalPayload> & { error?: string }>(res)
+        failed = !res.ok || !data.reply
+      }
+
+      if (failed || !data.reply) {
         // Un error no es una respuesta del asistente: se avisa aparte y el mensaje vuelve al campo para reintentar.
         setMessages(messages)
         setInput(msg)
-        setChatError({ auth: res.status === 401, text: res.status === 401 ? 'Tu sesión venció. Ingresá de nuevo para seguir conversando.' : apiErrorMessage(res.status, data.error) })
+        setChatError(status === 0
+          ? { auth: false, text: 'Se cortó la conexión mientras respondía. Probá de nuevo: tu mensaje sigue en el campo.' }
+          : { auth: status === 401, text: status === 401 ? 'Tu sesión venció. Ingresá de nuevo para seguir conversando.' : apiErrorMessage(status, data.error) })
       } else {
         const reply = data.reply
         const documentsForOperation = data.nextStep?.target === 'documents'
@@ -167,6 +186,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
           role: 'assistant', content: reply, time: nowTime(), documentsForOperation,
           documentsUnavailable: data.documentsUnavailable === true,
           draft: typeof data.draft === 'string' && data.draft.trim() ? data.draft : undefined,
+          sources: Array.isArray(data.sources) ? data.sources.slice(0, 4) : undefined,
         }])
         // "Leer respuestas": solo respuestas reales, nunca errores (esos no llegan acá). Si la voz falla, el texto ya está.
         if (voice.autoRead && !liveActive) void voice.play(String(updatedMessages.length), reply, { silent: true })
@@ -176,6 +196,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
       setInput(msg)
       setChatError({ auth: false, text: 'No pudimos conectarnos. Revisá tu conexión y probá de nuevo: tu mensaje sigue en el campo.' })
     } finally {
+      setStreamText(null)
       setLoading(false)
     }
   }
@@ -341,6 +362,28 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
                     </div>
                   </div>
                 )}
+                {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
+                  <ul aria-label="En qué se basa esta respuesta" className="mt-3 flex flex-wrap gap-1.5" data-testid="reply-sources">
+                    {msg.sources.map(src => {
+                      const chip = (
+                        <>
+                          <span className="font-semibold">{src.label}</span>
+                          {src.detail && <span className="text-slate-600"> · {src.detail}</span>}
+                        </>
+                      )
+                      const tone = src.kind === 'general' ? 'border-amber-200 bg-amber-50 text-amber-950' : 'border-emerald-200 bg-emerald-50 text-emerald-950'
+                      return (
+                        <li key={src.label}>
+                          {src.href ? (
+                            <Link href={src.href} className={cn('inline-block rounded-lg border px-2.5 py-1 text-xs hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700', tone)}>{chip}</Link>
+                          ) : (
+                            <span className={cn('inline-block rounded-lg border px-2.5 py-1 text-xs', tone)}>{chip}</span>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
                 <p className={cn('text-[10px] mt-1', msg.role === 'user' ? 'text-slate-400' : 'text-slate-300')}>
                   {msg.time}
                 </p>
@@ -388,7 +431,17 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
               </div>
             </div>
           ))}
-          {loading && (
+          {loading && streamText && (
+            <div className="flex gap-3 justify-start" data-testid="stream-bubble">
+              <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-slate-800 shadow-card" aria-busy="true">
+                <p className="whitespace-pre-line text-sm leading-relaxed">
+                  {streamText}
+                  <span aria-hidden="true" className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 bg-brand-600 motion-safe:animate-pulse" />
+                </p>
+              </div>
+            </div>
+          )}
+          {loading && !streamText && (
             <div className="flex gap-3 justify-start">
               <div className="bg-white shadow-card rounded-2xl rounded-tl-sm px-4 py-3" role="status" aria-label="VARA está pensando">
                 <div className="flex gap-1 items-center h-5">
