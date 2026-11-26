@@ -41,13 +41,13 @@ export interface RealtimeSessionConfig {
   }
 }
 
-export function buildRealtimeSession(model?: string): RealtimeSessionConfig {
+export function buildRealtimeSession(model?: string, extraInstructions?: string | null): RealtimeSessionConfig {
   return {
     expires_after: { anchor: 'created_at', seconds: CLIENT_SECRET_TTL_SECONDS },
     session: {
       type: 'realtime',
       model: model?.trim() || DEFAULT_REALTIME_MODEL,
-      instructions: VOICE_INSTRUCTIONS,
+      instructions: extraInstructions ? `${VOICE_INSTRUCTIONS}\n\n${extraInstructions}` : VOICE_INSTRUCTIONS,
       max_output_tokens: 700,
       audio: {
         input: {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { GREETING_INSTRUCTIONS } from '@/lib/assistant/voiceContext'
 import {
   INITIAL_LIVE, LIVE_LIMITS, applyRealtimeEvent, historySeed, livePartial, takeFinished,
   type LiveEntry, type LiveErrorCode, type LiveState, type LiveStatus, type RealtimeEvent,
@@ -115,7 +116,7 @@ export function useRealtimeVoice({ onFinal, getHistory, isError }: Options) {
     if (done.length) opts.current.onFinal(done)
   }, [armIdle])
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (operationId?: string) => {
     const r = res.current
     if (r.pc || status === 'connecting') return
     const run = ++r.run
@@ -139,12 +140,19 @@ export function useRealtimeVoice({ onFinal, getHistory, isError }: Options) {
 
       // 2. Secreto efímero desde el servidor.
       let secret = ''
+      let greet = false
       try {
-        const resp = await fetch('/api/assistant/realtime', { method: 'POST' })
+        const resp = await fetch('/api/assistant/realtime', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operationId }),
+        })
         if (resp.status === 403 || resp.status === 401) throw new LiveError('not-allowed')
         if (resp.status === 429) throw new LiveError('limit')
         if (!resp.ok) throw new LiveError('unavailable')
-        secret = ((await resp.json()) as { value?: string }).value ?? ''
+        const payload = (await resp.json()) as { value?: string; greet?: boolean }
+        secret = payload.value ?? ''
+        greet = payload.greet === true
       } catch (e) {
         throw e instanceof LiveError ? e : new LiveError('unavailable')
       }
@@ -182,7 +190,8 @@ export function useRealtimeVoice({ onFinal, getHistory, isError }: Options) {
       dc.onopen = () => {
         if (stale()) return
         // La voz retoma la conversación de texto que ya había.
-        for (const m of historySeed(opts.current.getHistory(), opts.current.isError)) {
+        const seed = historySeed(opts.current.getHistory(), opts.current.isError)
+        for (const m of seed) {
           dc.send(JSON.stringify({
             type: 'conversation.item.create',
             item: { type: 'message', role: m.role, content: [{ type: m.role === 'user' ? 'input_text' : 'output_text', text: m.text }] },
@@ -191,6 +200,10 @@ export function useRealtimeVoice({ onFinal, getHistory, isError }: Options) {
         r.live = INITIAL_LIVE
         setStatus('listening')
         armIdle()
+        // Con una operación conocida y sin charla previa, VARA abre la conversación ofreciendo el próximo paso.
+        if (greet && seed.length === 0) {
+          dc.send(JSON.stringify({ type: 'response.create', response: { instructions: GREETING_INSTRUCTIONS } }))
+        }
       }
       pc.onconnectionstatechange = () => {
         if (stale()) return

@@ -173,9 +173,12 @@ describe('seguridad y limpieza', () => {
     expect(route).toContain('createRateLimiter(')
     expect(route).toContain('/v1/realtime/client_secrets')
     // al navegador solo vuelve el secreto efímero
-    expect(route).toContain('NextResponse.json({ value: data.value }')
-    // el navegador no elige modelo ni instrucciones: la ruta no lee el cuerpo
-    expect(route).not.toMatch(/req\.(json|text)\(/)
+    expect(route).toContain('NextResponse.json({ value: data.value, greet: operation !== null }')
+    // el navegador no elige modelo, voz ni instrucciones: del cuerpo solo se lee el id de la operación,
+    // y ese id se valida contra la sesión (consulta filtrada por el dueño) antes de usarse
+    expect(route).toContain('operationId?: unknown')
+    expect(route).toContain('loadOperationContext(operationId, user.id)')
+    expect(route).not.toMatch(/body\.(model|instructions|session|voice|prompt)/)
   })
 
   it('la clave de OpenAI no existe en el navegador', () => {

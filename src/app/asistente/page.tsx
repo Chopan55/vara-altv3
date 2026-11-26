@@ -107,7 +107,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
     if (liveActive) { live.stop(); return }
     voice.stop() // la lectura de una respuesta no se pisa con la conversación
     setChatError(null)
-    void live.start()
+    void live.start(activeOperation?.id)
   }
 
   useEffect(() => {
