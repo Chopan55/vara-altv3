@@ -153,4 +153,43 @@ describe('contexto de la operación en el asistente', () => {
     const general = await (await ask({ messages: [{ role: 'user', content: 'Hola' }] })).json()
     expect(general.sources.map((x: { kind: string }) => x.kind)).toEqual(['general'])
   })
+
+  it('en costos el modelo puede pedir el cálculo exacto y se le devuelven los números validados', async () => {
+    complete
+      .mockResolvedValueOnce({ choices: [{ message: { role: 'assistant', content: null, tool_calls: [{ id: 'call-1', type: 'function', function: { name: 'calcular_costos', arguments: JSON.stringify({ precio_usd: 150000 }) } }] } }] })
+      .mockResolvedValueOnce({ choices: [{ message: { content: 'Te conviene preparar el total que figura en el cálculo.' } }] })
+    const body = await (await ask({ operationId: 'operation-1', messages: [{ role: 'user', content: '¿Cuánto cuesta escriturar una casa de USD 150.000?' }] })).json()
+    expect(body.reply).toBe('Te conviene preparar el total que figura en el cálculo.')
+    expect(complete).toHaveBeenCalledTimes(2)
+    expect(complete.mock.calls[0][0].tools[0].function.name).toBe('calcular_costos')
+    const second = complete.mock.calls[1][0].messages
+    const toolMessage = second.find((m: { role: string }) => m.role === 'tool')
+    expect(toolMessage.tool_call_id).toBe('call-1')
+    expect(JSON.parse(toolMessage.content).precio_usd).toBe(150000)
+  })
+
+  it('si el modelo manda argumentos inválidos o una herramienta desconocida, no se calcula nada', async () => {
+    complete
+      .mockResolvedValueOnce({ choices: [{ message: { role: 'assistant', content: null, tool_calls: [
+        { id: 'c1', type: 'function', function: { name: 'calcular_costos', arguments: 'no es json' } },
+        { id: 'c2', type: 'function', function: { name: 'borrar_operacion', arguments: '{}' } },
+      ] } }] })
+      .mockResolvedValueOnce({ choices: [{ message: { content: '¿Cuál es el precio en dólares?' } }] })
+    await ask({ operationId: 'operation-1', messages: [{ role: 'user', content: '¿Cuánto cuesta escriturar?' }] })
+    const msgs = complete.mock.calls[1][0].messages.filter((m: { role: string }) => m.role === 'tool')
+    expect(JSON.parse(msgs[0].content)).toHaveProperty('error')
+    expect(JSON.parse(msgs[1].content)).toEqual({ error: 'herramienta desconocida' })
+  })
+
+  it('fuera de las preguntas de costos no se ofrece ninguna herramienta', async () => {
+    await ask({ operationId: 'operation-1' })
+    expect(complete.mock.calls[0][0].tools).toBeUndefined()
+  })
+
+  it('un modelo que insiste en llamar herramientas no puede hacer un bucle infinito', async () => {
+    const loop = { choices: [{ message: { role: 'assistant', content: null, tool_calls: [{ id: 'x', type: 'function', function: { name: 'calcular_costos', arguments: '{"precio_usd":100000}' } }] } }] }
+    complete.mockResolvedValue(loop)
+    await ask({ operationId: 'operation-1', messages: [{ role: 'user', content: '¿Cuánto cuesta escriturar?' }] })
+    expect(complete.mock.calls.length).toBeLessThanOrEqual(3)
+  })
 })

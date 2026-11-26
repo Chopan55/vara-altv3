@@ -8,6 +8,7 @@ import { extractDraft } from '@/lib/ai/draft'
 import { privateLimitText } from '@/lib/ai/privateLimit'
 import { costFactsWithSource, costIntent, provinceFromContext, type CostSource } from '@/lib/ai/costFacts'
 import { buildSources } from '@/lib/ai/sources'
+import { COST_TOOL, COST_TOOL_NAME, runCostTool, type CostToolContext } from '@/lib/ai/costTools'
 import { scrubWalkAway } from '@/lib/negotiation/walkAway'
 import { loadOperationContext, MX_ADDENDUM, VERIFIED_USAGE_RULES } from '@/lib/assistant/operationContext'
 
@@ -140,16 +141,40 @@ export async function POST(req: NextRequest) {
       : []
     const systemContent = contextParts.join('\n') + kb + (costBlock ? '\n\n' + costBlock : '')
 
-    const completion = await openai.chat.completions.create({
+    const conversation: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemContent },
+      ...screenHint,
+      ...messages.slice(-12).map(({ role, content }: { role: 'user' | 'assistant'; content: string }) => ({ role, content })),
+    ]
+    // Solo en preguntas de costos el modelo puede pedir el cálculo exacto; sus argumentos se validan antes de usarse.
+    const costContext: CostToolContext = { province: verified?.province ?? provinceFromContext(context), country, audience: verified?.audience ?? audienceHint }
+    const request = () => openai.chat.completions.create({
       model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemContent },
-        ...screenHint,
-        ...messages.slice(-12).map(({ role, content }) => ({ role, content })),
-      ],
+      messages: conversation,
       max_tokens: 1100,
       temperature: 0.4,
+      ...(asksCosts ? { tools: [COST_TOOL], tool_choice: 'auto' as const } : {}),
     })
+    let completion = await request()
+    for (let round = 0; round < 2; round++) {
+      const assistantMessage = completion.choices[0]?.message
+      const calls = assistantMessage?.tool_calls ?? []
+      if (!assistantMessage || calls.length === 0) break
+      conversation.push(assistantMessage)
+      for (const call of calls) {
+        let content: string
+        if (call.type === 'function' && call.function.name === COST_TOOL_NAME) {
+          let parsed: unknown = {}
+          try { parsed = JSON.parse(call.function.arguments) } catch { /* argumentos ilegibles: se rechazan abajo */ }
+          const out = runCostTool(parsed, costContext)
+          content = JSON.stringify(out.ok ? out.result : { error: out.error })
+        } else {
+          content = JSON.stringify({ error: 'herramienta desconocida' })
+        }
+        conversation.push({ role: 'tool', tool_call_id: call.id, content })
+      }
+      completion = await request()
+    }
 
     const reply = completion.choices[0]?.message?.content ?? 'No pude generar una respuesta. Intentá de nuevo.'
     const includeDocumentStatus = includeNextStep === true && verified !== null

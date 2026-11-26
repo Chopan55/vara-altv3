@@ -57,7 +57,7 @@ export function costFactsWithSource(opts: { province: string | null; country: Co
     `Confianza de los datos: ${checklist.dataConfidence}. Última actualización: ${checklist.lastUpdated}.`,
     ...(audience === 'SELL' ? seller : audience === 'BUY' ? buyer : [...buyer, ...seller]),
     ...c.notes.filter(Boolean).map(n => `Nota: ${n}`),
-    'REGLAS PARA COSTOS: usá solo estos valores. No cites otros porcentajes, montos ni provincias de memoria. Si la persona dio un precio, multiplicá la proporción por ese precio y mostrá la cuenta; si no lo dio, respondé con el rango en porcentaje y pedí el precio en una línea. Decí qué jurisdicción usaste y, si la confianza no es VERIFIED, que conviene confirmarlo con el profesional. No incluyas comisión inmobiliaria, ganancias ni gastos del crédito: no están en estos valores. Cerrá indicando la sección Costos de VARA.',
+    'REGLAS PARA COSTOS: usá solo estos valores. No cites otros porcentajes, montos ni provincias de memoria. Si la persona dio un precio, llamá a la herramienta calcular_costos y citá sus números: no hagas la cuenta de memoria. Si no lo dio, respondé con el rango en porcentaje y pedí el precio en una línea. Decí qué jurisdicción usaste y, si la confianza no es VERIFIED, que conviene confirmarlo con el profesional. No incluyas comisión inmobiliaria, ganancias ni gastos del crédito: no están en estos valores. Cerrá indicando la sección Costos de VARA.',
   ].join('\n')
   return { text, source: { jurisdiction: checklist.provinceName, confidence: String(checklist.dataConfidence), updatedAt: String(checklist.lastUpdated) } }
 }
