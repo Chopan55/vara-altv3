@@ -22,3 +22,8 @@ const PUBLIC_PREFIXES = ['/visit/', '/invitacion/']
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_EXACT.has(pathname) || PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix))
 }
+
+/** A qué pantalla de entrada manda el filtro: el portal de partners tiene la suya. */
+export function loginPathFor(pathname: string): string {
+  return pathname === '/partner' || pathname.startsWith('/partner/') ? '/partner/entrar' : '/login'
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isPublicPath } from '@/lib/auth/routeAccess'
+import { isPublicPath, loginPathFor } from '@/lib/auth/routeAccess'
 
 describe('acceso a rutas', () => {
   it('mantiene públicas las entradas y el contenido informativo', () => {
@@ -12,5 +12,12 @@ describe('acceso a rutas', () => {
     for (const path of ['/demo', '/dashboard', '/costos', '/vara-labs', '/visitas', '/vara-visit/solicitar', '/partner', '/operacion/123', '/empezar', '/compartida', '/compartida/123']) {
       expect(isPublicPath(path), path).toBe(false)
     }
+  })
+
+  it('el portal de partners manda a su propia entrada y el resto al login general', () => {
+    expect(loginPathFor('/partner')).toBe('/partner/entrar')
+    expect(loginPathFor('/partner/onboarding')).toBe('/partner/entrar')
+    expect(loginPathFor('/dashboard')).toBe('/login')
+    expect(loginPathFor('/partnerx')).toBe('/login')
   })
 })

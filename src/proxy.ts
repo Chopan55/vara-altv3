@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { isPublicPath } from '@/lib/auth/routeAccess'
+import { isPublicPath, loginPathFor } from '@/lib/auth/routeAccess'
 
 /**
  * Refresca el token de sesión en cada request.
@@ -60,7 +60,7 @@ export async function proxy(request: NextRequest) {
   // producto sin abrir datos de cuenta.
   if (!user && !isPublicPath(pathname)) {
     const loginUrl = request.nextUrl.clone()
-    loginUrl.pathname = '/login'
+    loginUrl.pathname = loginPathFor(pathname)
     loginUrl.search = ''
     loginUrl.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`)
     return NextResponse.redirect(loginUrl)
