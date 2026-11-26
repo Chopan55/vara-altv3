@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { costFacts, costIntent, provinceFromContext } from '@/lib/ai/costFacts'
+import { costFacts, costIntent, effectiveCountry, provinceFromContext } from '@/lib/ai/costFacts'
 import { generateChecklist, resolveProvinceCode } from '@/lib/regulations'
 
 describe('costos del asistente desde la calculadora', () => {
@@ -53,5 +53,27 @@ describe('costos del asistente desde la calculadora', () => {
 
   it('incluye la regla de no citar otros valores de memoria', () => {
     expect(costFacts({ province: 'Buenos Aires', country: 'AR' })).toContain('usá solo estos valores')
+  })
+
+  it('en México el vendedor no paga ISAI: es del comprador, y el ISR queda fuera', () => {
+    const sell = costFacts({ province: 'Ciudad de México', country: 'MX', audience: 'SELL' })
+    expect(sell).toContain('honorarios del notario')
+    expect(sell).toContain('El ISAI lo paga el comprador')
+    expect(sell).toContain('ISR del vendedor no está incluido')
+    expect(sell).not.toMatch(/Vendedor \(sobre el precio de la propiedad\): ISAI/)
+    expect(sell).not.toMatch(/sellos|escribano/)
+  })
+
+  it('si la provincia es mexicana el país es México aunque llegue como Argentina', () => {
+    const text = costFacts({ province: 'Ciudad de México', country: 'AR', audience: 'BUY' })
+    expect(text).toContain('ISAI')
+    expect(text).toContain('notario')
+    expect(text).not.toMatch(/sellos|escribano/)
+  })
+
+  it('una provincia argentina con país México mantiene el país indicado', () => {
+    expect(effectiveCountry('Córdoba', 'AR')).toBe('AR')
+    expect(effectiveCountry(null, 'MX')).toBe('MX')
+    expect(effectiveCountry('Ciudad de México', 'AR')).toBe('MX')
   })
 })

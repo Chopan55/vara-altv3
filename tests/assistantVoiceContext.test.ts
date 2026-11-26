@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { GREETING_INSTRUCTIONS, voiceContext } from '@/lib/assistant/voiceContext'
+import { voiceContext } from '@/lib/assistant/voiceContext'
 import { VOICE_INSTRUCTIONS, buildRealtimeSession } from '@/lib/assistant/realtimeSession'
 import type { OperationContext } from '@/lib/assistant/operationContext'
 
@@ -35,17 +35,20 @@ describe('contexto de la voz', () => {
     expect(s.endsWith('CONTEXTO')).toBe(true)
   })
 
-  it('el saludo ofrece el próximo paso en una frase', () => {
-    expect(GREETING_INSTRUCTIONS).toMatch(/una sola frase/)
-    expect(GREETING_INSTRUCTIONS).toMatch(/próximo paso/)
+  it('el saludo lo define el servidor: una frase que ofrece el próximo paso', () => {
+    const text = voiceContext(op(), null) ?? ''
+    expect(text).toMatch(/primera intervención es saludar en una sola frase corta/)
+    expect(text).toMatch(/próximo paso/)
   })
 
-  it('el navegador manda solo el id de la operación y abre con saludo únicamente si no había charla previa', () => {
+  it('el navegador manda solo el id de la operación y pide el saludo sin mandar texto', () => {
     const hook = readFileSync(new URL('../src/hooks/useRealtimeVoice.ts', import.meta.url), 'utf8')
     expect(hook).toContain('JSON.stringify({ operationId })')
     expect(hook).toContain('greet && seed.length === 0')
-    expect(hook).not.toContain("instructions: '")
-    expect(hook).not.toContain('instructions: `')
+    expect(hook).toContain("JSON.stringify({ type: 'response.create' })")
+    // ninguna instrucción sale del navegador
+    expect(hook).not.toMatch(/instructions\s*:/)
+    expect(hook).not.toContain('GREETING_INSTRUCTIONS')
   })
 })
 

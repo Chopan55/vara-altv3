@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { GREETING_INSTRUCTIONS } from '@/lib/assistant/voiceContext'
 import {
   INITIAL_LIVE, LIVE_LIMITS, applyRealtimeEvent, historySeed, livePartial, takeFinished,
   type LiveEntry, type LiveErrorCode, type LiveState, type LiveStatus, type RealtimeEvent,
@@ -202,7 +201,8 @@ export function useRealtimeVoice({ onFinal, getHistory, isError }: Options) {
         armIdle()
         // Con una operación conocida y sin charla previa, VARA abre la conversación ofreciendo el próximo paso.
         if (greet && seed.length === 0) {
-          dc.send(JSON.stringify({ type: 'response.create', response: { instructions: GREETING_INSTRUCTIONS } }))
+          // Sin parámetros: el saludo lo define el servidor en las instrucciones de la sesión; el navegador no manda texto.
+          dc.send(JSON.stringify({ type: 'response.create' }))
         }
       }
       pc.onconnectionstatechange = () => {

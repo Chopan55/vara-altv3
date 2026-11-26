@@ -60,4 +60,23 @@ describe('herramienta calcular_costos', () => {
     const out = runCostTool({ precio_usd: 100_000, cotizacion_ars: -3 }, ar)
     expect(out.ok && out.result).not.toHaveProperty('en_pesos_con_la_cotizacion_informada')
   })
+
+  it('en México el vendedor no tiene ISAI ni sellos: solo notario, y se avisa del ISR', () => {
+    const out = runCostTool({ precio_usd: 100_000 }, { province: 'Ciudad de México', country: 'MX', audience: 'SELL' })
+    expect(out.ok).toBe(true)
+    if (!out.ok) return
+    const vendedor = out.result.vendedor as Record<string, unknown>
+    expect(Object.keys(vendedor)).toEqual(expect.arrayContaining(['honorarios_notario', 'total_sin_isr', 'nota']))
+    expect(JSON.stringify(vendedor)).not.toMatch(/isai"|sellos|escribano/)
+    expect(String(vendedor.nota)).toContain('ISR')
+  })
+
+  it('con provincia mexicana y país argentino usa México', () => {
+    const out = runCostTool({ precio_usd: 100_000, cotizacion_ars: 1200 }, { province: 'Ciudad de México', country: 'AR', audience: 'BUY' })
+    expect(out.ok).toBe(true)
+    if (!out.ok) return
+    const text = JSON.stringify(out.result)
+    expect(text).toContain('isai')
+    expect(text).not.toMatch(/sellos|escribano|en_pesos/)
+  })
 })

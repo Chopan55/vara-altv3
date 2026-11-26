@@ -5,6 +5,7 @@
  * manda el modelo nunca se usa sin revisar.
  */
 import { generateChecklist, resolveProvinceCode } from '@/lib/regulations'
+import { effectiveCountry } from './costFacts'
 import type { CountryCode } from '@/types'
 
 export const COST_TOOL_NAME = 'calcular_costos'
@@ -49,10 +50,11 @@ export function runCostTool(rawArgs: unknown, ctx: CostToolContext): CostToolRes
     ? args.cotizacion_ars
     : null
 
-  const code = resolveProvinceCode(ctx.province ?? '', ctx.country)
-  const checklist = generateChecklist(code, 'BUY_PROPERTY', price, ctx.country)
+  const country = effectiveCountry(ctx.province, ctx.country)
+  const code = resolveProvinceCode(ctx.province ?? '', country)
+  const checklist = generateChecklist(code, 'BUY_PROPERTY', price, country)
   const c = checklist.costs
-  const mx = ctx.country === 'MX'
+  const mx = country === 'MX'
   const line = (l: { minAmount: number; maxAmount: number }) => r(l.minAmount, l.maxAmount)
 
   const buyer = {
@@ -63,12 +65,23 @@ export function runCostTool(rawArgs: unknown, ctx: CostToolContext): CostToolRes
     total: r(c.totalBuyer.min, c.totalBuyer.max),
     total_porcentaje_del_precio: { min: Number(c.totalBuyer.percentMin.toFixed(2)), max: Number(c.totalBuyer.percentMax.toFixed(2)) },
   }
-  const seller = {
-    [mx ? 'isai' : 'sellos']: line(c.stampTaxSeller),
-    [mx ? 'honorarios_notario' : 'honorarios_escribano']: line(c.notaryFeeSeller),
-    total: r(c.totalSeller.min, c.totalSeller.max),
-    total_porcentaje_del_precio: { min: Number(c.totalSeller.percentMin.toFixed(2)), max: Number(c.totalSeller.percentMax.toFixed(2)) },
-  }
+  // En México el ISAI lo paga el comprador: el vendedor solo tiene su parte del notario y el ISR queda fuera (lo calcula el notario).
+  const seller = mx
+    ? {
+        honorarios_notario: line(c.notaryFeeSeller),
+        total_sin_isr: r(c.notaryFeeSeller.minAmount, c.notaryFeeSeller.maxAmount),
+        total_porcentaje_del_precio_sin_isr: {
+          min: Number(((c.notaryFeeSeller.minAmount / price) * 100).toFixed(2)),
+          max: Number(((c.notaryFeeSeller.maxAmount / price) * 100).toFixed(2)),
+        },
+        nota: 'El ISAI lo paga el comprador. El ISR del vendedor no está incluido: lo calcula el notario.',
+      }
+    : {
+        sellos: line(c.stampTaxSeller),
+        honorarios_escribano: line(c.notaryFeeSeller),
+        total: r(c.totalSeller.min, c.totalSeller.max),
+        total_porcentaje_del_precio: { min: Number(c.totalSeller.percentMin.toFixed(2)), max: Number(c.totalSeller.percentMax.toFixed(2)) },
+      }
 
   const result: Record<string, unknown> = {
     jurisdiccion: checklist.provinceName,

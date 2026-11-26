@@ -357,7 +357,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
                       return (
                         <li key={src.label}>
                           {src.href ? (
-                            <Link href={src.href} className={cn('inline-block rounded-lg border px-2.5 py-1 text-xs hover:underline', tone)}>{chip}</Link>
+                            <Link href={src.href} className={cn('inline-block rounded-lg border px-2.5 py-1 text-xs hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700', tone)}>{chip}</Link>
                           ) : (
                             <span className={cn('inline-block rounded-lg border px-2.5 py-1 text-xs', tone)}>{chip}</span>
                           )}

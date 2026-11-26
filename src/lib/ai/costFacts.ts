@@ -6,7 +6,7 @@
  * (`generateChecklist`), con su jurisdicción, nivel de confianza y fecha de actualización.
  * Son proporciones sobre el precio, salvo los certificados, que son un monto fijo en USD.
  */
-import { generateChecklist, resolveProvinceCode } from '@/lib/regulations'
+import { countryOfProvince, generateChecklist, resolveProvinceCode } from '@/lib/regulations'
 import type { CountryCode } from '@/types'
 
 /** Preguntas que tocan costos, impuestos o gastos de la operación. */
@@ -23,6 +23,11 @@ export function provinceFromContext(context: unknown): string | null {
   return match ? match[1].trim().slice(0, 60) || null : null
 }
 
+/** El país sigue a la provincia: un estado mexicano nunca se rotula con terminología argentina. */
+export function effectiveCountry(province: string | null, country: CountryCode): CountryCode {
+  return province && countryOfProvince(province) === 'MX' ? 'MX' : country
+}
+
 const REFERENCE_PRICE_USD = 100_000
 
 const pct = (amount: number) => (amount / REFERENCE_PRICE_USD) * 100
@@ -37,7 +42,8 @@ export function costFacts(opts: { province: string | null; country: CountryCode;
 }
 
 export function costFactsWithSource(opts: { province: string | null; country: CountryCode; audience?: 'BUY' | 'SELL' | 'BOTH' }): { text: string; source: CostSource } {
-  const { province, country, audience } = opts
+  const { province, audience } = opts
+  const country = effectiveCountry(province, opts.country)
   const code = province ? resolveProvinceCode(province, country) : resolveProvinceCode('', country)
   const checklist = generateChecklist(code, 'BUY_PROPERTY', REFERENCE_PRICE_USD, country)
   const c = checklist.costs
@@ -47,8 +53,11 @@ export function costFactsWithSource(opts: { province: string | null; country: Co
   const buyer = [
     `Comprador (sobre el precio de la propiedad): ${mx ? 'ISAI' : 'sellos'} ${range(pct(c.stampTaxBuyer.minAmount), pct(c.stampTaxBuyer.maxAmount), '%')}; honorarios del ${notary} ${range(pct(c.notaryFeeBuyer.minAmount), pct(c.notaryFeeBuyer.maxAmount), '%')}; inscripción en el registro ${range(pct(c.registryFee.minAmount), pct(c.registryFee.maxAmount), '%')}; certificados y gestiones: monto fijo de USD ${Math.round(c.certificates.minAmount)} a ${Math.round(c.certificates.maxAmount)}. Total aproximado del comprador: ${range(c.totalBuyer.percentMin, c.totalBuyer.percentMax, '%')} del precio (con certificados incluidos para un precio de USD 100.000).`,
   ]
+  // En México el ISAI lo paga el comprador: el vendedor solo tiene su parte de los honorarios del notario (el ISR no está incluido).
   const seller = [
-    `Vendedor (sobre el precio de la propiedad): ${mx ? 'ISAI' : 'sellos'} ${range(pct(c.stampTaxSeller.minAmount), pct(c.stampTaxSeller.maxAmount), '%')}; honorarios del ${notary} ${range(pct(c.notaryFeeSeller.minAmount), pct(c.notaryFeeSeller.maxAmount), '%')}. Total aproximado del vendedor: ${range(c.totalSeller.percentMin, c.totalSeller.percentMax, '%')} del precio.`,
+    mx
+      ? `Vendedor (sobre el precio de la propiedad): honorarios del notario ${range(pct(c.notaryFeeSeller.minAmount), pct(c.notaryFeeSeller.maxAmount), '%')}. El ISAI lo paga el comprador y el ISR del vendedor no está incluido: lo calcula el notario. Total aproximado del vendedor sin ISR: ${range(pct(c.notaryFeeSeller.minAmount), pct(c.notaryFeeSeller.maxAmount), '%')} del precio.`
+      : `Vendedor (sobre el precio de la propiedad): sellos ${range(pct(c.stampTaxSeller.minAmount), pct(c.stampTaxSeller.maxAmount), '%')}; honorarios del escribano ${range(pct(c.notaryFeeSeller.minAmount), pct(c.notaryFeeSeller.maxAmount), '%')}. Total aproximado del vendedor: ${range(c.totalSeller.percentMin, c.totalSeller.percentMax, '%')} del precio.`,
   ]
 
   const text = [
