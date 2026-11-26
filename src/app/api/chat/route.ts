@@ -76,13 +76,22 @@ CÓMO RESPONDÉS:
 - Texto plano: sin asteriscos, sin títulos con # ni tablas. Para listas usá guiones o números.
 - Si no hay una operación verificada en el contexto, NO asumas que el usuario compra, vende o tiene una operación en marcha. Si hace falta saberlo, preguntalo en una línea.`
 
+/** Mismo criterio de errores para la respuesta normal y para la transmitida. */
+function chatError(err: unknown): { status: number; error: string } {
+  console.error('[VARA Chat]', err)
+  const msg = err instanceof Error ? err.message : ''
+  if (/insufficient_quota|credit_balance|no credits/i.test(msg)) return { status: 402, error: 'La cuenta de IA se quedó sin crédito. Contactá al soporte.' }
+  if (/rate limit|429/i.test(msg)) return { status: 429, error: 'Demasiados pedidos seguidos. Esperá un minuto y reintentá.' }
+  return { status: 500, error: 'Error al procesar tu consulta. Intentá de nuevo.' }
+}
+
 export async function POST(req: NextRequest) {
   const auth = await requireAiAccess('text')
   if (auth.error) return auth.error
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   try {
-    const { messages, context, operationId, includeNextStep } = await req.json()
+    const { messages, context, operationId, includeNextStep, stream } = await req.json()
 
     if (!Array.isArray(messages) || messages.length === 0 || !messages.every(message =>
       message && (message.role === 'assistant' || message.role === 'user') && typeof message.content === 'string'
@@ -153,6 +162,51 @@ export async function POST(req: NextRequest) {
       audience: verified?.audience ?? audienceHint,
       allowedPrices: [...pricesFromUserMessages(messages), ...(verified?.propertyPriceUSD != null ? [verified.propertyPriceUSD] : [])],
     }
+    // Cierre común de la respuesta: limpieza, tope tapado, borrador separado y fuentes (igual en modo normal y transmitido).
+    const finalize = (rawReply: string) => {
+      const includeDocumentStatus = includeNextStep === true && verified !== null
+      const nextStep = includeDocumentStatus && verified.documentCount !== null && verified.documentCount > 0
+        ? { operationId, target: 'documents' }
+        : undefined
+      const documentsUnavailable = includeDocumentStatus && verified.documentCount === null
+      // Si la persona contó su tope, ese monto se tapa en la respuesta y en el borrador aunque el modelo lo repita.
+      const { reply, draft } = extractDraft(scrubWalkAway(cleanChatReply(rawReply), privateLimitText(messages)))
+      const sources = buildSources({
+        operation: verified ? { stage: verified.stage, documentCount: verified.documentCount } : null,
+        cost: costSource,
+        knowledgeTitles: entries.map(e => e.title),
+      })
+      return { reply, draft, nextStep, documentsUnavailable, sources }
+    }
+
+    // Transmisión: la respuesta aparece mientras se genera. Solo sin herramientas (en costos hay un cálculo de por medio).
+    if (stream === true && !asksCosts) {
+      const encoder = new TextEncoder()
+      const body = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          const send = (event: unknown) => controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
+          try {
+            const completionStream = await openai.chat.completions.create({
+              model: 'gpt-4o', messages: conversation, max_tokens: 1100, temperature: 0.4, stream: true,
+            })
+            let raw = ''
+            for await (const chunk of completionStream) {
+              const delta = chunk.choices[0]?.delta?.content
+              if (delta) { raw += delta; send({ t: 'd', v: delta }) }
+            }
+            send({ t: 'f', ...finalize(raw || 'No pude generar una respuesta. Intentá de nuevo.') })
+          } catch (err) {
+            send({ t: 'e', ...chatError(err) })
+          } finally {
+            controller.close()
+          }
+        },
+      })
+      return new Response(body, {
+        headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' },
+      })
+    }
+
     // Con un precio registrado en la operación, el primer paso es siempre el cálculo exacto (no se deja a criterio del modelo).
     const forceCalculation = asksCosts && verified?.propertyPriceUSD != null
     const request = (force: boolean) => openai.chat.completions.create({
@@ -185,31 +239,10 @@ export async function POST(req: NextRequest) {
       completion = await request(false)
     }
 
-    const reply = completion.choices[0]?.message?.content ?? 'No pude generar una respuesta. Intentá de nuevo.'
-    const includeDocumentStatus = includeNextStep === true && verified !== null
-    const nextStep = includeDocumentStatus && verified.documentCount !== null && verified.documentCount > 0
-      ? { operationId, target: 'documents' }
-      : undefined
-    const documentsUnavailable = includeDocumentStatus && verified.documentCount === null
-    // Si la persona contó su tope, ese monto se tapa en la respuesta y en el borrador aunque el modelo lo repita.
-    const privateLimit = privateLimitText(messages)
-    const { reply: visibleReply, draft } = extractDraft(scrubWalkAway(cleanChatReply(reply), privateLimit))
-    const sources = buildSources({
-      operation: verified ? { stage: verified.stage, documentCount: verified.documentCount } : null,
-      cost: costSource,
-      knowledgeTitles: entries.map(e => e.title),
-    })
-    return NextResponse.json({ reply: visibleReply, draft, nextStep, documentsUnavailable, sources })
+    return NextResponse.json(finalize(completion.choices[0]?.message?.content ?? 'No pude generar una respuesta. Intentá de nuevo.'))
 
   } catch (err) {
-    console.error('[VARA Chat]', err)
-    const msg = err instanceof Error ? err.message : ''
-    if (/insufficient_quota|credit_balance|no credits/i.test(msg)) {
-      return NextResponse.json({ error: 'La cuenta de IA se quedó sin crédito. Contactá al soporte.' }, { status: 402 })
-    }
-    if (/rate limit|429/i.test(msg)) {
-      return NextResponse.json({ error: 'Demasiados pedidos seguidos. Esperá un minuto y reintentá.' }, { status: 429 })
-    }
-    return NextResponse.json({ error: 'Error al procesar tu consulta. Intentá de nuevo.' }, { status: 500 })
+    const { status, error } = chatError(err)
+    return NextResponse.json({ error }, { status })
   }
 }
