@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { resolveProvinceCode, generateChecklist } from '@/lib/regulations'
 import { createOperationAnywhere } from '@/lib/userOperations'
+import { accountUrl } from '@/lib/auth/entryJourney'
+import { isSupabaseConfigured } from '@/lib/supabase/client'
 import type { OperationType, CountryCode } from '@/types'
 import type { ScrapeResult } from '@/app/api/scrape-property/route'
 
@@ -284,7 +286,9 @@ function OnboardingInner() {
     })
     try { localStorage.setItem('vara_operation_id', op.id) } catch {}
 
-    router.push('/dashboard')
+    // Sin cuenta no se entra a la plataforma: la operación queda guardada en este dispositivo
+    // y se sube sola al crear la cuenta (createOperationAnywhere + migración al volver con sesión).
+    router.push(isSupabaseConfigured ? accountUrl('/dashboard', 'signup') : '/dashboard')
   }
 
   const progressWidth = `${(step / TOTAL_STEPS) * 100}%`

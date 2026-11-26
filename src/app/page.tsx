@@ -157,7 +157,6 @@ export default function LandingPage() {
           <p className="text-xs text-ink-soft">© 2026 VARA · Plataforma inmobiliaria</p>
           <nav aria-label="Pie" className="flex flex-wrap items-center justify-center gap-5 text-xs text-ink-soft">
             <Link href="/como-usar" className="hover:text-ink">Cómo usar VARA</Link>
-            <Link href="/costos" className="hover:text-ink">Costos</Link>
             <Link href="/labs" className="hover:text-ink">Labs</Link>
             <Link href="/vara-visit" className="hover:text-ink">VARA Visit</Link>
             <Link href="/partner/entrar" className="hover:text-ink">Visit Partners</Link>

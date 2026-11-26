@@ -11,6 +11,8 @@ import {
   ClipboardCheck, Zap, BarChart2, Globe, FolderOpen, LifeBuoy, ChevronDown, Wrench,
 } from 'lucide-react'
 import { tryCreateClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { hasSession } from '@/lib/supabase/visits'
+import { isPublicPath } from '@/lib/auth/routeAccess'
 import { cn } from '@/lib/utils'
 import { VaraLogo } from '@/components/ui/VaraLogo'
 import { isEnabled } from '@/lib/flags'
@@ -523,6 +525,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [guiaMenuOpen, setGuiaMenuOpen] = useState(false)
 
   const { journey, activeOperationId, operations: allOps, loaded: opsLoaded } = useOperations()
+  // Sin cuenta no hay menú de la app: las páginas públicas muestran solo el marco simple con «Entrar».
+  // El resultado se guarda con la ruta en la que se consultó: si cambia la ruta, vale «sin saber» hasta
+  // que llegue la respuesta nueva, y una respuesta que llega tarde se descarta.
+  const [session, setSession] = useState<{ path: string; signedIn: boolean } | null>(null)
+  useEffect(() => {
+    let alive = true
+    void hasSession().then(value => { if (alive) setSession({ path: pathname, signedIn: value }) })
+    return () => { alive = false }
+  }, [pathname])
+  const signedIn = session && session.path === pathname ? session.signedIn : null
   const changeJourney = (j: JourneyType) => vara.setJourneyType(journeyToStored(j))
 
   // Una pantalla de compra o de venta ajusta el modo a sí misma: menú, guía y contenido nunca se contradicen.
@@ -551,6 +563,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
   // Quien llega a analizar un aviso o a ver un análisis compartido, sin operación propia, no necesita el menú.
+  if (isSupabaseConfigured && signedIn === false && isPublicPath(pathname)) {
+    return <PublicFrame>{children}</PublicFrame>
+  }
   if (PUBLIC_WHEN_NEW.has(pathname) && (!opsLoaded || allOps.length === 0)) {
     return <PublicFrame>{children}</PublicFrame>
   }

@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isPublicPath, loginPathFor } from '@/lib/auth/routeAccess'
 
 /**
  * Refresca el token de sesión en cada request.
@@ -46,7 +47,24 @@ export async function proxy(request: NextRequest) {
   // getUser() valida el JWT y rota el refresh token si está cerca de expirar.
   // No reemplazar por getSession() (no valida contra el servidor) ni por getClaims()
   // (solo decodifica el JWT local, no lo rota).
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Los route handlers aplican su propio contrato JSON (401/403) con
+  // requireAuth/requireAiAccess. No convertir esos errores en una redirección HTML.
+  const pathname = request.nextUrl?.pathname ?? ''
+  if (pathname.startsWith('/api/')) return response
+
+  // La demo, Costos, Labs operativos, VARA Visit interno, Partners y el resto
+  // de la plataforma no son contenido público: sin sesión vuelven al login.
+  // Las páginas informativas quedan visibles para que la home pueda explicar el
+  // producto sin abrir datos de cuenta.
+  if (!user && !isPublicPath(pathname)) {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = loginPathFor(pathname)
+    loginUrl.search = ''
+    loginUrl.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`)
+    return NextResponse.redirect(loginUrl)
+  }
 
   return response
 }

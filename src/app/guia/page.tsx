@@ -1,4 +1,5 @@
 'use client'
+import { accountUrl } from '@/lib/auth/entryJourney'
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Search, ChevronDown, ChevronUp, AlertTriangle, MessageSquare, BookOpen } from 'lucide-react'
@@ -89,7 +90,7 @@ export default function GuiaPage() {
     <div className="min-h-screen bg-[var(--background)]">
       <header className="px-4 lg:px-6 pt-8 pb-3">
         <div className="max-w-4xl mx-auto">
-                      <Link href="/dashboard" className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm mb-4 transition-colors">
+                      <Link href={accountUrl('/dashboard', 'login')} className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm mb-4 transition-colors">
               <ArrowLeft size={14} /> Volver al inicio
             </Link>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Guía</h1>
@@ -134,9 +135,9 @@ export default function GuiaPage() {
             <BookOpen size={26} className="text-slate-300 mx-auto mb-3" />
             <p className="font-bold text-slate-900 mb-1">No encontramos ese tema</p>
             <p className="text-sm text-slate-400 mb-4">
-              Preguntale al asistente: responde con este mismo material.
+              Preguntale al asistente (hace falta entrar con tu cuenta): responde con este mismo material.
             </p>
-            <Link href="/asistente"
+            <Link href={accountUrl('/asistente', 'login')}
               className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
               <MessageSquare size={14} /> Preguntar
             </Link>
@@ -178,11 +179,11 @@ export default function GuiaPage() {
           </div>
         )}
 
-        <Link href="/asistente"
+        <Link href={accountUrl('/asistente', 'login')}
           className="flex items-center justify-between bg-slate-900 rounded-2xl p-5 hover:bg-slate-800 transition-colors">
           <div>
             <p className="font-bold text-white text-sm mb-0.5">¿Te quedó una duda puntual?</p>
-            <p className="text-xs text-slate-400">El asistente responde con este mismo material.</p>
+            <p className="text-xs text-slate-400">El asistente (con tu cuenta) responde con este mismo material.</p>
           </div>
           <MessageSquare size={18} className="text-brand-400 flex-shrink-0" />
         </Link>
