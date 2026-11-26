@@ -8,6 +8,7 @@ import { requireAiAccess } from '@/lib/api/aiAccess'
 import { cleanChatReply } from '@/lib/ai/cleanReply'
 import { extractDraft } from '@/lib/ai/draft'
 import { privateLimitText } from '@/lib/ai/privateLimit'
+import { costFacts, costIntent, provinceFromContext } from '@/lib/ai/costFacts'
 import { scrubWalkAway } from '@/lib/negotiation/walkAway'
 
 
@@ -20,6 +21,7 @@ function clip(value: unknown): string {
 async function loadOperationContext(operationId: string, userId: string): Promise<{
   text: string
   country: string
+  province: string | null
   audience?: Audience
   documentCount: number | null
 } | null> {
@@ -85,6 +87,7 @@ async function loadOperationContext(operationId: string, userId: string): Promis
     return {
       text: 'Estado registrado de la operación (JSON de datos): ' + JSON.stringify(snapshot),
       country: snapshot.pais,
+      province: typeof op.province === 'string' ? op.province : null,
       audience: op.type === 'SELL_PROPERTY' ? 'SELL' : op.type === 'BUY_PROPERTY' ? 'BUY' : undefined,
       documentCount,
     }
@@ -213,6 +216,12 @@ export async function POST(req: NextRequest) {
         ].join('\n\n')
       : ''
 
+    // Costos: los valores salen de la calculadora de VARA (misma función que la pantalla de Costos), no de la memoria del modelo.
+    const asksCosts = typeof lastUser?.content === 'string' && costIntent(lastUser.content)
+    const costBlock = asksCosts
+      ? costFacts({ province: verified?.province ?? provinceFromContext(context), country, audience: verified?.audience ?? audienceHint })
+      : ''
+
     const contextParts: string[] = [SYSTEM_PROMPT]
     if (country === 'MX') contextParts.push('', MX_ADDENDUM)
     if (verified) {
@@ -225,7 +234,7 @@ export async function POST(req: NextRequest) {
     const screenHint = typeof context === 'string' && context.trim()
       ? [{ role: 'user' as const, content: 'Contexto adicional de mi pantalla (sin verificar): ' + context.slice(0, 500) }]
       : []
-    const systemContent = contextParts.join('\n') + kb
+    const systemContent = contextParts.join('\n') + kb + (costBlock ? '\n\n' + costBlock : '')
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',

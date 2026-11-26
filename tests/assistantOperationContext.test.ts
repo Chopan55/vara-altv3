@@ -138,4 +138,12 @@ describe('contexto de la operación en el asistente', () => {
     expect(JSON.stringify(body)).not.toContain('130.000')
     expect(body.draft).toContain('[tu límite privado]')
   })
+
+  it('en preguntas de costos agrega los valores de la calculadora; en otras, no', async () => {
+    await ask({ operationId: 'operation-1', messages: [{ role: 'user', content: '¿Cuánto cuesta escriturar?' }] })
+    expect(complete.mock.calls[0][0].messages[0].content).toContain('CALCULADORA DE VARA')
+    complete.mockClear()
+    await ask({ operationId: 'operation-1' })
+    expect(complete.mock.calls[0][0].messages[0].content).not.toContain('CALCULADORA DE VARA')
+  })
 })
