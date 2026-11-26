@@ -526,8 +526,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const { journey, activeOperationId, operations: allOps, loaded: opsLoaded } = useOperations()
   // Sin cuenta no hay menú de la app: las páginas públicas muestran solo el marco simple con «Entrar».
-  const [signedIn, setSignedIn] = useState<boolean | null>(null)
-  useEffect(() => { void hasSession().then(setSignedIn) }, [pathname])
+  // El resultado se guarda con la ruta en la que se consultó: si cambia la ruta, vale «sin saber» hasta
+  // que llegue la respuesta nueva, y una respuesta que llega tarde se descarta.
+  const [session, setSession] = useState<{ path: string; signedIn: boolean } | null>(null)
+  useEffect(() => {
+    let alive = true
+    void hasSession().then(value => { if (alive) setSession({ path: pathname, signedIn: value }) })
+    return () => { alive = false }
+  }, [pathname])
+  const signedIn = session && session.path === pathname ? session.signedIn : null
   const changeJourney = (j: JourneyType) => vara.setJourneyType(journeyToStored(j))
 
   // Una pantalla de compra o de venta ajusta el modo a sí misma: menú, guía y contenido nunca se contradicen.
