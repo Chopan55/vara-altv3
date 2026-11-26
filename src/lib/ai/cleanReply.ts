@@ -13,9 +13,12 @@ const LABELS: [RegExp, string][] = [
   [/\[CONSULTAR PROFESIONAL\]\s*/gi, 'Consultá con un profesional: '],
 ]
 
-export function cleanChatReply(text: string): string {
+export function cleanChatReply(text: string, country: 'AR' | 'MX' = 'AR'): string {
   let out = text
-  for (const [re, to] of LABELS) out = out.replace(re, to)
+  for (const [re, to] of LABELS) {
+    // En México no se usa voseo: la etiqueta traducida también va en «tú».
+    out = out.replace(re, country === 'MX' && to.startsWith('Consultá') ? 'Consulta con un profesional: ' : to)
+  }
   return out
     .replace(/\*\*([\s\S]+?)\*\*/g, '$1')
     .replace(/__([\s\S]+?)__/g, '$1')

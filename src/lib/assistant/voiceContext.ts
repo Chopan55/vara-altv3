@@ -2,7 +2,7 @@
  * Contexto que se le da a la voz cuando la persona tiene una operación verificada.
  * Pura: se prueba sin red. La arma el servidor; el navegador nunca elige qué se le cuenta a la voz.
  */
-import { MX_ADDENDUM, VERIFIED_USAGE_RULES, type OperationContext } from './operationContext'
+import { MX_ADDENDUM, MX_REMINDER, VERIFIED_USAGE_RULES, type OperationContext } from './operationContext'
 
 const VOICE_RULES = [
   'La persona ya tiene una operación en VARA y conocés su estado registrado.',
@@ -18,5 +18,6 @@ export function voiceContext(operation: OperationContext | null, costText: strin
   if (operation.country === 'MX') parts.push(MX_ADDENDUM)
   parts.push(operation.text, VERIFIED_USAGE_RULES)
   if (costText) parts.push(costText)
+  if (operation.country === 'MX') parts.push(MX_REMINDER)
   return parts.join('\n\n')
 }

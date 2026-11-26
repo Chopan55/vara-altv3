@@ -275,4 +275,13 @@ describe('contexto de la operación en el asistente', () => {
     const tool = complete.mock.calls[1][0].messages.find((m: { role: string }) => m.role === 'tool')
     expect(JSON.parse(tool.content).error).toMatch(/pedile el precio/)
   })
+
+  it('en México el recordatorio de «tú» va al final del prompt y la etiqueta sale sin voseo', async () => {
+    operationQuery.maybeSingle.mockResolvedValue({ data: { type: 'SELL_PROPERTY', status: 'ACTIVE', current_stage_key: 'DOCUMENTACION', province: 'Jalisco', country: 'MX' } })
+    complete.mockResolvedValue({ choices: [{ message: { content: '[CONSULTAR PROFESIONAL] Confirma el predial.' } }] })
+    const body = await (await ask({ operationId: 'operation-1', messages: [{ role: 'user', content: '¿Qué sigue?' }] })).json()
+    const system = complete.mock.calls[0][0].messages[0].content as string
+    expect(system.trimEnd().endsWith('promesa de compraventa).')).toBe(true)
+    expect(body.reply).toBe('Consulta con un profesional: Confirma el predial.')
+  })
 })

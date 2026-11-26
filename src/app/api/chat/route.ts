@@ -10,7 +10,7 @@ import { costFactsWithSource, costIntent, provinceFromContext, type CostSource }
 import { buildSources } from '@/lib/ai/sources'
 import { COST_TOOL, COST_TOOL_NAME, pricesFromUserMessages, runCostTool, type CostToolContext } from '@/lib/ai/costTools'
 import { scrubWalkAway } from '@/lib/negotiation/walkAway'
-import { loadOperationContext, MX_ADDENDUM, VERIFIED_USAGE_RULES } from '@/lib/assistant/operationContext'
+import { loadOperationContext, MX_ADDENDUM, MX_REMINDER, VERIFIED_USAGE_RULES } from '@/lib/assistant/operationContext'
 
 
 const SYSTEM_PROMPT = `Sos VARA, el acompañante inmobiliario de quien te consulta. Ayudás a buscar, comprar, vender y negociar con calma, claridad y criterio.
@@ -75,6 +75,40 @@ CÓMO RESPONDÉS:
 - Si el usuario menciona su operación, usá ese contexto.
 - Texto plano: sin asteriscos, sin títulos con # ni tablas. Para listas usá guiones o números.
 - Si no hay una operación verificada en el contexto, NO asumas que el usuario compra, vende o tiene una operación en marcha. Si hace falta saberlo, preguntalo en una línea.`
+
+/**
+ * Modelo del chat. Medido con el prompt real (6 preguntas): gpt-5.4-mini sin razonamiento extra iguala a gpt-4o en velocidad
+ * (primera palabra ~0,65 s, respuesta completa ~1,9 s), es más estable y escribe más claro. Se puede volver al anterior sin
+ * tocar el código con OPENAI_CHAT_MODEL=gpt-4o.
+ */
+const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL?.trim() || 'gpt-5.4-mini'
+
+/** Los modelos gpt-5 usan otros parámetros que gpt-4o (max_completion_tokens y razonamiento, sin temperature). */
+function chatParams(model: string) {
+  return model.startsWith('gpt-5')
+    ? { model, max_completion_tokens: 1100, reasoning_effort: 'none' as const }
+    : { model, max_tokens: 1100, temperature: 0.4 }
+}
+
+const FALLBACK_MODEL = 'gpt-4o'
+
+/** Un modelo al que la cuenta no tiene acceso (o que ya no existe) no debe dejar al chat sin responder. */
+function modelUnavailable(err: unknown): boolean {
+  const e = err as { status?: number; code?: string; message?: string }
+  return e?.status === 404 || e?.code === 'model_not_found' || /model.*(not found|does not exist|do not have access)/i.test(e?.message ?? '')
+}
+
+async function withModelFallback<T>(run: (model: string) => Promise<T>): Promise<T> {
+  try {
+    return await run(CHAT_MODEL)
+  } catch (err) {
+    if (CHAT_MODEL !== FALLBACK_MODEL && modelUnavailable(err)) {
+      console.error('[VARA Chat] modelo no disponible, se usa el de respaldo:', CHAT_MODEL)
+      return run(FALLBACK_MODEL)
+    }
+    throw err
+  }
+}
 
 /** Mismo criterio de errores para la respuesta normal y para la transmitida. */
 function chatError(err: unknown): { status: number; error: string } {
@@ -148,7 +182,7 @@ export async function POST(req: NextRequest) {
     const screenHint = typeof context === 'string' && context.trim()
       ? [{ role: 'user' as const, content: 'Contexto adicional de mi pantalla (sin verificar): ' + context.slice(0, 500) }]
       : []
-    const systemContent = contextParts.join('\n') + kb + (costBlock ? '\n\n' + costBlock : '')
+    const systemContent = contextParts.join('\n') + kb + (costBlock ? '\n\n' + costBlock : '') + (country === 'MX' ? '\n\n' + MX_REMINDER : '')
 
     const conversation: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemContent },
@@ -170,7 +204,7 @@ export async function POST(req: NextRequest) {
         : undefined
       const documentsUnavailable = includeDocumentStatus && verified.documentCount === null
       // Si la persona contó su tope, ese monto se tapa en la respuesta y en el borrador aunque el modelo lo repita.
-      const { reply, draft } = extractDraft(scrubWalkAway(cleanChatReply(rawReply), privateLimitText(messages)))
+      const { reply, draft } = extractDraft(scrubWalkAway(cleanChatReply(rawReply, country), privateLimitText(messages)))
       const sources = buildSources({
         operation: verified ? { stage: verified.stage, documentCount: verified.documentCount } : null,
         cost: costSource,
@@ -193,9 +227,9 @@ export async function POST(req: NextRequest) {
             try { controller.enqueue(encoder.encode(JSON.stringify(event) + '\n')) } catch { closed = true }
           }
           try {
-            const completionStream = await openai.chat.completions.create({
-              model: 'gpt-4o', messages: conversation, max_tokens: 1100, temperature: 0.4, stream: true,
-            }, { signal: abort.signal })
+            const completionStream = await withModelFallback(model => openai.chat.completions.create({
+              ...chatParams(model), messages: conversation, stream: true,
+            }, { signal: abort.signal }))
             let raw = ''
             for await (const chunk of completionStream) {
               if (closed) break
@@ -221,15 +255,13 @@ export async function POST(req: NextRequest) {
 
     // Con un precio registrado en la operación, el primer paso es siempre el cálculo exacto (no se deja a criterio del modelo).
     const forceCalculation = asksCosts && verified?.propertyPriceUSD != null
-    const request = (force: boolean) => openai.chat.completions.create({
-      model: 'gpt-4o',
+    const request = (force: boolean) => withModelFallback(model => openai.chat.completions.create({
+      ...chatParams(model),
       messages: conversation,
-      max_tokens: 1100,
-      temperature: 0.4,
       ...(asksCosts
         ? { tools: [COST_TOOL], tool_choice: force ? { type: 'function' as const, function: { name: COST_TOOL_NAME } } : ('auto' as const) }
         : {}),
-    })
+    }))
     let completion = await request(forceCalculation)
     for (let round = 0; round < 2; round++) {
       const assistantMessage = completion.choices[0]?.message

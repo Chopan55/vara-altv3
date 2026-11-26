@@ -25,7 +25,9 @@ describe('contexto de la voz', () => {
   })
 
   it('para México suma la terminología mexicana', () => {
-    expect(voiceContext(op({ country: 'MX' }), null)).toContain('ESTA OPERACIÓN ES EN MÉXICO')
+    const mx = voiceContext(op({ country: 'MX' }), null) ?? ''
+    expect(mx).toContain('ESTA OPERACIÓN ES EN MÉXICO')
+    expect(mx.trimEnd().endsWith('terminología mexicana (notario, apartado, promesa de compraventa).')).toBe(true) // lo último que lee el modelo
   })
 
   it('la sesión de voz agrega el contexto a las instrucciones base, o las deja iguales', () => {

@@ -202,4 +202,40 @@ describe('ruta del chat transmitida', () => {
     controller.abort()
     expect(upstreamSignal?.aborted).toBe(true)
   })
+
+  it('si el modelo principal no está disponible reintenta con el de respaldo, también al transmitir', async () => {
+    complete
+      .mockRejectedValueOnce(Object.assign(new Error('The model `gpt-5.4-mini` does not exist'), { status: 404, code: 'model_not_found' }))
+      .mockImplementationOnce(async () => chunks('Hola desde el respaldo'))
+    const events = await readEvents(await ask('hola', { stream: true }))
+    expect(events[events.length - 1]).toMatchObject({ t: 'f', reply: 'Hola desde el respaldo' })
+    expect(complete.mock.calls[0][0].model).toBe('gpt-5.4-mini')
+    expect(complete.mock.calls[1][0].model).toBe('gpt-4o')
+    // el modelo de respaldo usa los parámetros de gpt-4o
+    expect(complete.mock.calls[1][0].max_tokens).toBe(1100)
+    expect(complete.mock.calls[1][0].max_completion_tokens).toBeUndefined()
+  })
+
+  it('en el modo JSON también cae al respaldo, y un error que no es de modelo no lo dispara', async () => {
+    complete
+      .mockRejectedValueOnce(Object.assign(new Error('model not found'), { status: 404 }))
+      .mockResolvedValueOnce({ choices: [{ message: { content: 'Respuesta del respaldo.' } }] })
+    expect((await (await ask('hola')).json()).reply).toBe('Respuesta del respaldo.')
+    complete.mockReset()
+    complete.mockRejectedValue(new Error('429 rate limit'))
+    const res = await ask('hola')
+    expect(res.status).toBe(429)
+    expect(complete).toHaveBeenCalledTimes(1)
+  })
+
+  it('el modelo principal usa los parámetros de gpt-5: sin temperature y con razonamiento apagado', async () => {
+    complete.mockResolvedValue({ choices: [{ message: { content: 'ok' } }] })
+    await ask('hola')
+    const args = complete.mock.calls[0][0]
+    expect(args.model).toBe('gpt-5.4-mini')
+    expect(args.max_completion_tokens).toBe(1100)
+    expect(args.reasoning_effort).toBe('none')
+    expect(args.temperature).toBeUndefined()
+    expect(args.max_tokens).toBeUndefined()
+  })
 })
