@@ -41,6 +41,9 @@ export const SCOPE_INFO: Record<Scope, { label: string; bankSees: string }> = {
   },
 }
 
+/** El ejecutivo ve también lo que él mismo registra; se le avisa al cliente antes de confirmar. */
+export const EXECUTIVE_NOTE = 'Lo que el ejecutivo registre sobre tu caso (estado, responsable y fecha) también lo ve él.'
+
 export const NEVER_SHARED: readonly string[] = [
   'Tus conversaciones con el asistente y tus borradores',
   'Tus búsquedas, propiedades guardadas y análisis',
@@ -48,8 +51,10 @@ export const NEVER_SHARED: readonly string[] = [
   'Cualquier evaluación crediticia: VARA no la hace ni la deduce',
 ]
 
-export interface Consent { id: string; scopes: Scope[]; grantedAt: string; revokedAt: string | null }
-export interface NextStep { status: string; owner: string; updatedAt: string }
+/** El permiso queda atado a la propiedad que el cliente eligió al otorgarlo: cambiar de propiedad después no cambia lo compartido. */
+export interface Consent { id: string; scopes: Scope[]; propertyId: string | null; grantedAt: string; revokedAt: string | null }
+/** Lo registra el ejecutivo bajo un permiso concreto: solo se muestra mientras ese permiso siga vigente. */
+export interface NextStep { status: string; owner: string; updatedAt: string; consentId: string }
 export interface AuditEvent { id: number; at: string; actor: Actor; action: AuditAction; caseRef: string; scope: string }
 
 export interface DemoState {
@@ -100,7 +105,8 @@ export function grantConsent(state: DemoState, scopes: Scope[], at: string): Gra
   }
   if (isConsentActive(state.consent)) return { ok: false, state, reason: 'Ya hay un permiso activo. Retiralo para cambiar el alcance.' }
   const consentCount = state.consentCount + 1
-  const consent: Consent = { id: `permiso-${consentCount}`, scopes: unique, grantedAt: at, revokedAt: null }
+  const propertyId = unique.includes('PROPERTY_SELECTED') ? state.chosenPropertyId : null
+  const consent: Consent = { id: `permiso-${consentCount}`, scopes: unique, propertyId, grantedAt: at, revokedAt: null }
   let next: DemoState = { ...state, consent, consentCount }
   next = log(next, at, 'CLIENT', 'CONSENT_GRANTED', unique.join('+'))
   return { ok: true, state: next }
@@ -135,11 +141,11 @@ export function readAsExecutive(state: DemoState, presentedConsentId: string, at
   if (consent.scopes.includes('INVITATION_ACCEPTED') && state.invitationAcceptedAt) {
     milestones.push({ kind: 'INVITATION_ACCEPTED', label: SCOPE_INFO.INVITATION_ACCEPTED.label, detail: CASE_REF, at: state.invitationAcceptedAt })
   }
-  if (consent.scopes.includes('PROPERTY_SELECTED') && state.chosenPropertyId) {
-    const property = DEMO_PROPERTIES.find(p => p.id === state.chosenPropertyId)
+  if (consent.scopes.includes('PROPERTY_SELECTED') && consent.propertyId) {
+    const property = DEMO_PROPERTIES.find(p => p.id === consent.propertyId)
     if (property) milestones.push({ kind: 'PROPERTY_SELECTED', label: SCOPE_INFO.PROPERTY_SELECTED.label, detail: `Referencia ${property.ref}`, at: consent.grantedAt })
   }
-  if (state.nextStep) {
+  if (state.nextStep && state.nextStep.consentId === consent.id) {
     milestones.push({ kind: 'NEXT_STEP', label: 'Próxima gestión', detail: `${state.nextStep.status} · Responsable: ${state.nextStep.owner}`, at: state.nextStep.updatedAt })
   }
   return {
@@ -159,6 +165,6 @@ export function setNextStep(state: DemoState, presentedConsentId: string, input:
   const status = clean(input.status)
   const owner = clean(input.owner)
   if (!status || !owner) return { ok: false, state, reason: 'Completá el estado y el responsable.' }
-  const next: DemoState = { ...state, nextStep: { status, owner, updatedAt: at } }
+  const next: DemoState = { ...state, nextStep: { status, owner, updatedAt: at, consentId: state.consent.id } }
   return { ok: true, state: log(next, at, 'EXECUTIVE', 'STATUS_UPDATED', 'NEXT_STEP') }
 }

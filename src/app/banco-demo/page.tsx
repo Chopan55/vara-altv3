@@ -1,9 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Building2, Check, RotateCcw, ScrollText, ShieldCheck, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  BANK_NAME, CASE_REF, DEMO_PROPERTIES, NEVER_SHARED, SCOPE_INFO,
+  BANK_NAME, CASE_REF, DEMO_PROPERTIES, EXECUTIVE_NOTE, NEVER_SHARED, SCOPE_INFO,
   acceptInvitation, chooseProperty, grantConsent, initialState, isConsentActive, readAsExecutive, revokeConsent, setNextStep,
   type DemoState, type ExecutiveView, type Scope,
 } from '@/lib/bank/demo'
@@ -31,6 +31,13 @@ export default function BancoDemoPage() {
   const [execView, setExecView] = useState<ExecutiveView | null>(null)
   const [execNotice, setExecNotice] = useState<string | null>(null)
   const [form, setForm] = useState({ status: 'Tasación a coordinar', owner: 'Equipo de tasación' })
+
+  const panelRef = useRef<HTMLElement>(null)
+  const firstRender = useRef(true)
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return }
+    panelRef.current?.focus()
+  }, [tab])
 
   const consent = state.consent
   const active = isConsentActive(consent)
@@ -98,7 +105,7 @@ export default function BancoDemoPage() {
       <div className="mx-auto max-w-3xl">
         <div role="note" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <strong>Demostración con datos ficticios.</strong> {BANK_NAME} y los clientes no existen. No es una oferta de crédito ni una
-          promesa de aprobación: el banco decide por sus propios circuitos.
+          promesa de aprobación. VARA no evalúa crédito: el banco decide por sus propios circuitos.
         </div>
 
         <header className="mt-5 flex flex-wrap items-start justify-between gap-3">
@@ -117,7 +124,7 @@ export default function BancoDemoPage() {
 
         <div role="tablist" aria-label="Vistas de la demo" className="mt-5 flex flex-wrap gap-2">
           {tabs.map(({ id, label, icon: Icon }) => (
-            <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => openTab(id)}
+            <button key={id} id={`tab-${id}`} type="button" role="tab" aria-selected={tab === id} aria-controls={`panel-${id}`} onClick={() => openTab(id)}
               className={cn(
                 'inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700',
                 tab === id ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300',
@@ -128,7 +135,7 @@ export default function BancoDemoPage() {
         </div>
 
         {tab === 'cliente' && (
-          <section role="tabpanel" aria-label="Vista del cliente" className="mt-5 space-y-4">
+          <section ref={panelRef} id="panel-cliente" tabIndex={-1} role="tabpanel" aria-labelledby="tab-cliente" className="mt-5 space-y-4">
             <Card title="1. Invitación">
               {state.invitationAcceptedAt ? (
                 <p className="flex items-center gap-2 text-sm text-slate-700"><Check size={15} className="text-emerald-600" aria-hidden="true" /> Aceptada el {fmt(state.invitationAcceptedAt)}</p>
@@ -165,6 +172,11 @@ export default function BancoDemoPage() {
                   <ul className="text-sm text-slate-700">
                     {consent.scopes.map(s => <li key={s}>• {SCOPE_INFO[s].label}: {SCOPE_INFO[s].bankSees}</li>)}
                   </ul>
+                  {consent.propertyId && (
+                    <p className="text-sm text-slate-700">
+                      Propiedad compartida: <strong>{DEMO_PROPERTIES.find(p => p.id === consent.propertyId)?.title}</strong>. Si elegís otra, el banco sigue viendo esta; para compartir otra, retirá el permiso y volvé a compartir.
+                    </p>
+                  )}
                   <Btn tone="danger" onClick={() => { setState(revokeConsent(state, nowIso())); setClientNotice(null) }}>Retirar permiso</Btn>
                 </div>
               ) : (
@@ -192,6 +204,7 @@ export default function BancoDemoPage() {
                       <ul className="mt-1 text-sm text-slate-800">
                         {scopes.map(s => <li key={s}>• {SCOPE_INFO[s].label}: {SCOPE_INFO[s].bankSees}</li>)}
                       </ul>
+                      <p className="mt-2 text-sm text-slate-800">• {EXECUTIVE_NOTE}</p>
                       <p className="mt-2 text-sm font-bold text-slate-900">Lo que NO ve nunca:</p>
                       <ul className="text-sm text-slate-700">{NEVER_SHARED.map(n => <li key={n}>• {n}</li>)}</ul>
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -216,7 +229,7 @@ export default function BancoDemoPage() {
         )}
 
         {tab === 'ejecutivo' && (
-          <section role="tabpanel" aria-label="Vista del ejecutivo" className="mt-5 space-y-4">
+          <section ref={panelRef} id="panel-ejecutivo" tabIndex={-1} role="tabpanel" aria-labelledby="tab-ejecutivo" className="mt-5 space-y-4">
             <Card title={`Panel del ejecutivo · ${BANK_NAME} · ${CASE_REF}`}>
               {execView?.allowed ? (
                 execView.milestones.length > 0 ? (
@@ -256,7 +269,7 @@ export default function BancoDemoPage() {
         )}
 
         {tab === 'auditoria' && (
-          <section role="tabpanel" aria-label="Auditoría" className="mt-5">
+          <section ref={panelRef} id="panel-auditoria" tabIndex={-1} role="tabpanel" aria-labelledby="tab-auditoria" className="mt-5">
             <Card title="Registro de auditoría">
               <p className="text-sm text-slate-600">Quién hizo qué, sobre qué caso y con qué alcance. No copia el contenido de los hitos.</p>
               {state.audit.length === 0 ? (

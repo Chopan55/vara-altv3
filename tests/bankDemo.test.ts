@@ -115,3 +115,63 @@ describe('demo para bancos: auditoría y escritura', () => {
     expect(setNextStep(s, 'permiso-1', { status: '', owner: 'x' }, T(2)).ok).toBe(false)
   })
 })
+
+describe('demo para bancos: el alcance y la propiedad quedan atados al permiso', () => {
+  it('con permiso solo de invitación, el ejecutivo ve su propia gestión registrada pero ninguna propiedad', () => {
+    let s = ready(['INVITATION_ACCEPTED'])
+    const w = setNextStep(s, 'permiso-1', { status: 'Tasación a coordinar', owner: 'Equipo' }, T(2))
+    if (w.ok) s = w.state
+    const { view } = readAsExecutive(s, 'permiso-1', T(3))
+    const kinds = view.allowed ? view.milestones.map(m => m.kind) : []
+    expect(kinds).toContain('NEXT_STEP')
+    expect(kinds).not.toContain('PROPERTY_SELECTED')
+  })
+
+  it('cambiar de propiedad después de consentir no cambia la que ve el banco', () => {
+    let s = ready()
+    s = chooseProperty(s, 'p2')
+    const { view } = readAsExecutive(s, 'permiso-1', T(2))
+    const text = JSON.stringify(view)
+    expect(text).toContain(DEMO_PROPERTIES[0].ref)
+    expect(text).not.toContain(DEMO_PROPERTIES[1].ref)
+  })
+
+  it('un permiso solo de invitación no comparte ninguna propiedad aunque haya una elegida', () => {
+    const s = ready(['INVITATION_ACCEPTED'])
+    expect(s.consent?.propertyId).toBeNull()
+    expect(JSON.stringify(readAsExecutive(s, 'permiso-1', T(2)).view)).not.toContain(DEMO_PROPERTIES[0].ref)
+  })
+
+  it('una próxima gestión de un permiso anterior no aparece bajo el permiso nuevo', () => {
+    let s = ready()
+    const w = setNextStep(s, 'permiso-1', { status: 'Tasación a coordinar', owner: 'Equipo' }, T(2))
+    if (w.ok) s = w.state
+    s = revokeConsent(s, T(3))
+    const again = grantConsent(chooseProperty(s, 'p2'), ['PROPERTY_SELECTED'], T(4))
+    expect(again.ok).toBe(true)
+    if (again.ok) s = again.state
+    const { view } = readAsExecutive(s, 'permiso-2', T(5))
+    const text = JSON.stringify(view)
+    expect(text).toContain(DEMO_PROPERTIES[1].ref)
+    expect(text).not.toContain('Tasación a coordinar')
+  })
+
+  it('una escritura denegada deja la próxima gestión como estaba', () => {
+    let s = ready()
+    const w = setNextStep(s, 'permiso-1', { status: 'Primero', owner: 'Ana' }, T(2))
+    if (w.ok) s = w.state
+    s = revokeConsent(s, T(3))
+    const denied = setNextStep(s, 'permiso-1', { status: 'Segundo', owner: 'Beto' }, T(4))
+    expect(denied.ok).toBe(false)
+    expect(denied.state.nextStep?.status).toBe('Primero')
+  })
+
+  it('una lectura denegada no devuelve ningún hito aunque exista una próxima gestión', () => {
+    let s = ready()
+    const w = setNextStep(s, 'permiso-1', { status: 'Primero', owner: 'Ana' }, T(2))
+    if (w.ok) s = w.state
+    s = revokeConsent(s, T(3))
+    const { view } = readAsExecutive(s, 'permiso-1', T(4))
+    expect(view).toEqual({ allowed: false, reason: expect.any(String) })
+  })
+})
