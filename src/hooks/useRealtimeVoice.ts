@@ -126,37 +126,44 @@ export function useRealtimeVoice({ onFinal, getHistory, isError }: Options) {
     try {
       if (typeof RTCPeerConnection === 'undefined' || !navigator.mediaDevices?.getUserMedia) throw new LiveError('unsupported')
 
-      // 1. Micrófono (pide permiso).
-      let mic: MediaStream
-      try {
-        mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
-      } catch (e) {
-        const name = e instanceof DOMException ? e.name : ''
-        throw new LiveError(name === 'NotFoundError' || name === 'OverconstrainedError' ? 'mic-missing' : 'mic-denied')
+      // 1 y 2 en paralelo: el permiso del micrófono y el secreto efímero del servidor no dependen uno del otro,
+      // así que no se espera a uno para pedir el otro (ahorra una ida y vuelta al abrir la voz).
+      const getMic = async (): Promise<MediaStream> => {
+        try {
+          return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+        } catch (e) {
+          const name = e instanceof DOMException ? e.name : ''
+          throw new LiveError(name === 'NotFoundError' || name === 'OverconstrainedError' ? 'mic-missing' : 'mic-denied')
+        }
       }
-      if (stale()) { mic.getTracks().forEach(t => t.stop()); return }
-      r.mic = mic
-
-      // 2. Secreto efímero desde el servidor.
-      let secret = ''
-      let greet = false
-      try {
-        const resp = await fetch('/api/assistant/realtime', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ operationId }),
-        })
-        if (resp.status === 403 || resp.status === 401) throw new LiveError('not-allowed')
-        if (resp.status === 429) throw new LiveError('limit')
-        if (!resp.ok) throw new LiveError('unavailable')
-        const payload = (await resp.json()) as { value?: string; greet?: boolean }
-        secret = payload.value ?? ''
-        greet = payload.greet === true
-      } catch (e) {
-        throw e instanceof LiveError ? e : new LiveError('unavailable')
+      const getSecret = async (): Promise<{ secret: string; greet: boolean }> => {
+        try {
+          const resp = await fetch('/api/assistant/realtime', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ operationId }),
+          })
+          if (resp.status === 403 || resp.status === 401) throw new LiveError('not-allowed')
+          if (resp.status === 429) throw new LiveError('limit')
+          if (!resp.ok) throw new LiveError('unavailable')
+          const payload = (await resp.json()) as { value?: string; greet?: boolean }
+          return { secret: payload.value ?? '', greet: payload.greet === true }
+        } catch (e) {
+          throw e instanceof LiveError ? e : new LiveError('unavailable')
+        }
       }
-      if (!secret) throw new LiveError('unavailable')
+      const [micResult, secretResult] = await Promise.allSettled([getMic(), getSecret()])
+      if (micResult.status === 'fulfilled' && (stale() || secretResult.status === 'rejected')) {
+        micResult.value.getTracks().forEach(t => t.stop())
+      }
       if (stale()) return
+      // Si fallaron las dos, manda el error del micrófono (es lo que la persona puede resolver).
+      if (micResult.status === 'rejected') throw micResult.reason
+      if (secretResult.status === 'rejected') throw secretResult.reason
+      const mic = micResult.value
+      r.mic = mic
+      const { secret, greet } = secretResult.value
+      if (!secret) throw new LiveError('unavailable')
 
       // 3. Conexión WebRTC: micrófono hacia VARA, audio de VARA hacia acá, canal de datos para los eventos.
       const pc = new RTCPeerConnection()

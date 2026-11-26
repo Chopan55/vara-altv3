@@ -41,6 +41,26 @@ describe('contexto de la voz', () => {
     expect(text).toMatch(/próximo paso/)
   })
 
+  it('la sesión pide razonamiento bajo (responde antes) y mantiene la voz marin y el corte por interrupción', () => {
+    const { session } = buildRealtimeSession()
+    expect(session.reasoning).toEqual({ effort: 'low' })
+    expect(session.audio.output.voice).toBe('marin')
+    expect(session.audio.input.turn_detection).toMatchObject({ type: 'semantic_vad', interrupt_response: true })
+  })
+
+  it('las instrucciones de voz piden ritmo ágil, rioplatense, no prometer «en regla» y pedir que repitan si no se entendió', () => {
+    expect(VOICE_INSTRUCTIONS).toMatch(/ritmo ágil y natural/)
+    expect(VOICE_INSTRUCTIONS).toMatch(/rioplatense/)
+    expect(VOICE_INSTRUCTIONS).toMatch(/«está en regla»/)
+    expect(VOICE_INSTRUCTIONS).toMatch(/pedí que lo repita/)
+  })
+
+  it('el micrófono y el secreto se piden en paralelo, y el micrófono se libera si el secreto falla', () => {
+    const hook = readFileSync(new URL('../src/hooks/useRealtimeVoice.ts', import.meta.url), 'utf8')
+    expect(hook).toContain('Promise.allSettled([getMic(), getSecret()])')
+    expect(hook).toMatch(/micResult\.value\.getTracks\(\)\.forEach\(t => t\.stop\(\)\)/)
+  })
+
   it('el navegador manda solo el id de la operación y pide el saludo sin mandar texto', () => {
     const hook = readFileSync(new URL('../src/hooks/useRealtimeVoice.ts', import.meta.url), 'utf8')
     expect(hook).toContain('JSON.stringify({ operationId })')

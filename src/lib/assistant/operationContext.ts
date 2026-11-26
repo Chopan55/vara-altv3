@@ -47,34 +47,11 @@ export async function loadOperationContext(operationId: string, userId: string):
 
     if (error || !op) return null
 
-    const documents = await supabase
-      .from('operation_documents')
-      .select('name, status', { count: 'exact' })
-      .eq('operation_id', operationId)
-      .eq('user_id', userId)
-      .in('status', ['PENDING', 'IN_REVIEW', 'REJECTED', 'EXPIRED'])
-      .limit(8)
-    const documentCount = documents.error ? null : documents.count
-    const documentList = documents.error ? null : (documents.data ?? []).map(d => ({
-      nombre: clip(d.name), estado: d.status,
-    }))
-
-    // La operación ya se verificó como propia arriba: sus tareas se leen solo por ese id.
-    const tasks = await supabase
-      .from('operation_tasks')
-      .select('title, status, due_date')
-      .eq('operation_id', operationId)
-      .eq('user_id', userId)
-      .in('status', ['TODO', 'IN_PROGRESS', 'BLOCKED'])
-      .order('due_date', { ascending: true, nullsFirst: false })
-      .limit(6)
-    const taskList = tasks.error ? null : (tasks.data ?? []).map(t => ({
-      titulo: clip(t.title), estado: t.status, vence: t.due_date ?? null,
-    }))
+    type Property = { titulo: string; tipo: string | null; precio: number | null; moneda: string | null; barrio: string | null; ciudad: string | null; ambientes: number | null; superficieTotal: number | null }
 
     // Propiedad vinculada a la operación (opcional): si falla o no existe, el contexto sigue sin ella.
-    let property: { titulo: string; tipo: string | null; precio: number | null; moneda: string | null; barrio: string | null; ciudad: string | null; ambientes: number | null; superficieTotal: number | null } | null = null
-    if (typeof op.property_id === 'string' && op.property_id) {
+    const loadProperty = async (): Promise<Property | null> => {
+      if (typeof op.property_id !== 'string' || !op.property_id) return null
       try {
         const found = await supabase
           .from('properties')
@@ -83,16 +60,43 @@ export async function loadOperationContext(operationId: string, userId: string):
           .eq('user_id', userId)
           .maybeSingle()
         const row = found?.data
-        if (row) {
-          const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
-          property = {
-            titulo: clip(row.title), tipo: row.type ? clip(row.type) : null, precio: num(row.price), moneda: row.currency ? clip(row.currency) : null,
-            barrio: row.neighborhood ? clip(row.neighborhood) : null, ciudad: row.city ? clip(row.city) : null,
-            ambientes: num(row.rooms), superficieTotal: num(row.surface_total),
-          }
+        if (!row) return null
+        const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+        return {
+          titulo: clip(row.title), tipo: row.type ? clip(row.type) : null, precio: num(row.price), moneda: row.currency ? clip(row.currency) : null,
+          barrio: row.neighborhood ? clip(row.neighborhood) : null, ciudad: row.city ? clip(row.city) : null,
+          ambientes: num(row.rooms), superficieTotal: num(row.surface_total),
         }
-      } catch { property = null }
+      } catch { return null }
     }
+
+    // Documentos, tareas y propiedad se leen EN PARALELO: son independientes y la operación ya se verificó como propia arriba.
+    const [documents, tasks, property] = await Promise.all([
+      supabase
+        .from('operation_documents')
+        .select('name, status', { count: 'exact' })
+        .eq('operation_id', operationId)
+        .eq('user_id', userId)
+        .in('status', ['PENDING', 'IN_REVIEW', 'REJECTED', 'EXPIRED'])
+        .limit(8),
+      supabase
+        .from('operation_tasks')
+        .select('title, status, due_date')
+        .eq('operation_id', operationId)
+        .eq('user_id', userId)
+        .in('status', ['TODO', 'IN_PROGRESS', 'BLOCKED'])
+        .order('due_date', { ascending: true, nullsFirst: false })
+        .limit(6),
+      loadProperty(),
+    ])
+
+    const documentCount = documents.error ? null : documents.count
+    const documentList = documents.error ? null : (documents.data ?? []).map(d => ({
+      nombre: clip(d.name), estado: d.status,
+    }))
+    const taskList = tasks.error ? null : (tasks.data ?? []).map(t => ({
+      titulo: clip(t.title), estado: t.status, vence: t.due_date ?? null,
+    }))
 
     const snapshot = {
       tipo: op.type,
