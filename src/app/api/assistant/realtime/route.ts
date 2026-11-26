@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   const country = operation?.country === 'MX' ? 'MX' : 'AR'
   const extra = voiceContext(
     operation,
-    operation ? costFacts({ province: operation.province, country, audience: operation.audience }) : null,
+    operation ? costFacts({ province: operation.province, country, audience: operation.audience, knownPriceUSD: operation.propertyPriceUSD }) : null,
   )
 
   try {

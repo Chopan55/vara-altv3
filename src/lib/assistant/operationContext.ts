@@ -18,6 +18,8 @@ export interface OperationContext {
   stage: string | null
   audience?: Audience
   documentCount: number | null
+  /** Precio registrado de la propiedad de la operación, solo si está en dólares (los costos se calculan en USD). */
+  propertyPriceUSD: number | null
 }
 
 /** Carga el contexto verificado de una operación desde Supabase (H18). */
@@ -38,7 +40,7 @@ export async function loadOperationContext(operationId: string, userId: string):
 
     const { data: op, error } = await supabase
       .from('operations')
-      .select('type, status, current_stage_key, province, city, country')
+      .select('type, status, current_stage_key, province, city, country, property_id')
       .eq('id', operationId)
       .eq('user_id', userId)
       .maybeSingle()
@@ -70,6 +72,28 @@ export async function loadOperationContext(operationId: string, userId: string):
       titulo: clip(t.title), estado: t.status, vence: t.due_date ?? null,
     }))
 
+    // Propiedad vinculada a la operación (opcional): si falla o no existe, el contexto sigue sin ella.
+    let property: { titulo: string; tipo: string | null; precio: number | null; moneda: string | null; barrio: string | null; ciudad: string | null; ambientes: number | null; superficieTotal: number | null } | null = null
+    if (typeof op.property_id === 'string' && op.property_id) {
+      try {
+        const found = await supabase
+          .from('properties')
+          .select('title, type, price, currency, neighborhood, city, rooms, surface_total')
+          .eq('id', op.property_id)
+          .eq('user_id', userId)
+          .maybeSingle()
+        const row = found?.data
+        if (row) {
+          const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+          property = {
+            titulo: clip(row.title), tipo: row.type ? clip(row.type) : null, precio: num(row.price), moneda: row.currency ? clip(row.currency) : null,
+            barrio: row.neighborhood ? clip(row.neighborhood) : null, ciudad: row.city ? clip(row.city) : null,
+            ambientes: num(row.rooms), superficieTotal: num(row.surface_total),
+          }
+        }
+      } catch { property = null }
+    }
+
     const snapshot = {
       tipo: op.type,
       estado: op.status,
@@ -80,6 +104,7 @@ export async function loadOperationContext(operationId: string, userId: string):
       documentosPendientesOEnRevision: documentCount,
       documentosPendientes: documentList,
       tareasPendientes: taskList,
+      ...(property ? { propiedad: property } : {}),
     }
     return {
       text: 'Estado registrado de la operación (JSON de datos): ' + JSON.stringify(snapshot),
@@ -88,6 +113,7 @@ export async function loadOperationContext(operationId: string, userId: string):
       stage: typeof op.current_stage_key === 'string' ? op.current_stage_key : null,
       audience: op.type === 'SELL_PROPERTY' ? 'SELL' : op.type === 'BUY_PROPERTY' ? 'BUY' : undefined,
       documentCount,
+      propertyPriceUSD: property && property.moneda === 'USD' && property.precio && property.precio > 0 ? property.precio : null,
     }
   } catch {
     return null

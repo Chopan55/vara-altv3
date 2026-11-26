@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { COST_TOOL, COST_TOOL_NAME, runCostTool } from '@/lib/ai/costTools'
+import { COST_TOOL, COST_TOOL_NAME, pricesFromUserMessages, runCostTool } from '@/lib/ai/costTools'
 import { generateChecklist, resolveProvinceCode } from '@/lib/regulations'
 
-const ar = { province: 'Buenos Aires', country: 'AR' as const, audience: 'BUY' as const }
+const ar = { province: 'Buenos Aires', country: 'AR' as const, audience: 'BUY' as const, allowedPrices: [150_000, 100_000] }
 
 describe('herramienta calcular_costos', () => {
   it('declara un solo parámetro obligatorio, el precio en USD', () => {
@@ -40,7 +40,7 @@ describe('herramienta calcular_costos', () => {
   })
 
   it('México usa ISAI y notario y no convierte a pesos argentinos', () => {
-    const out = runCostTool({ precio_usd: 100_000, cotizacion_ars: 1200 }, { province: 'Ciudad de México', country: 'MX', audience: 'BUY' })
+    const out = runCostTool({ precio_usd: 100_000, cotizacion_ars: 1200 }, { province: 'Ciudad de México', country: 'MX', audience: 'BUY', allowedPrices: [100_000] })
     expect(out.ok).toBe(true)
     if (!out.ok) return
     const text = JSON.stringify(out.result)
@@ -62,7 +62,7 @@ describe('herramienta calcular_costos', () => {
   })
 
   it('en México el vendedor no tiene ISAI ni sellos: solo notario, y se avisa del ISR', () => {
-    const out = runCostTool({ precio_usd: 100_000 }, { province: 'Ciudad de México', country: 'MX', audience: 'SELL' })
+    const out = runCostTool({ precio_usd: 100_000 }, { province: 'Ciudad de México', country: 'MX', audience: 'SELL', allowedPrices: [100_000] })
     expect(out.ok).toBe(true)
     if (!out.ok) return
     const vendedor = out.result.vendedor as Record<string, unknown>
@@ -72,11 +72,36 @@ describe('herramienta calcular_costos', () => {
   })
 
   it('con provincia mexicana y país argentino usa México', () => {
-    const out = runCostTool({ precio_usd: 100_000, cotizacion_ars: 1200 }, { province: 'Ciudad de México', country: 'AR', audience: 'BUY' })
+    const out = runCostTool({ precio_usd: 100_000, cotizacion_ars: 1200 }, { province: 'Ciudad de México', country: 'AR', audience: 'BUY', allowedPrices: [100_000] })
     expect(out.ok).toBe(true)
     if (!out.ok) return
     const text = JSON.stringify(out.result)
     expect(text).toContain('isai')
     expect(text).not.toMatch(/sellos|escribano|en_pesos/)
+  })
+
+  it('rechaza un precio que el modelo inventó: no coincide con lo que dijo la persona ni con la propiedad', () => {
+    const out = runCostTool({ precio_usd: 200_000 }, ar)
+    expect(out.ok).toBe(false)
+    expect(!out.ok && out.error).toMatch(/pedile el precio/)
+    expect(runCostTool({ precio_usd: 152_000 }, ar).ok).toBe(false) // 1,3 % de diferencia: no es redondeo
+  })
+
+  it('acepta el precio con una diferencia de redondeo menor al 0,5 %', () => {
+    expect(runCostTool({ precio_usd: 150_400 }, ar).ok).toBe(true)
+  })
+
+  it('sin ningún precio permitido no calcula nada', () => {
+    expect(runCostTool({ precio_usd: 150_000 }, { ...ar, allowedPrices: [] }).ok).toBe(false)
+  })
+
+  it('los precios permitidos salen de los mensajes de la persona, en distintos formatos, y no de los del asistente', () => {
+    const prices = pricesFromUserMessages([
+      { role: 'user', content: 'Estoy mirando una casa de USD 150.000, tal vez de 180 mil.' },
+      { role: 'assistant', content: 'Con USD 999.000 sería distinto.' },
+      { role: 'user', content: 'o una de U$S 1,2 millones' },
+    ])
+    expect(prices).toEqual(expect.arrayContaining([150_000, 180_000, 1_200_000]))
+    expect(prices).not.toContain(999_000)
   })
 })

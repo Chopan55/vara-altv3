@@ -8,7 +8,7 @@ import { extractDraft } from '@/lib/ai/draft'
 import { privateLimitText } from '@/lib/ai/privateLimit'
 import { costFactsWithSource, costIntent, provinceFromContext, type CostSource } from '@/lib/ai/costFacts'
 import { buildSources } from '@/lib/ai/sources'
-import { COST_TOOL, COST_TOOL_NAME, runCostTool, type CostToolContext } from '@/lib/ai/costTools'
+import { COST_TOOL, COST_TOOL_NAME, pricesFromUserMessages, runCostTool, type CostToolContext } from '@/lib/ai/costTools'
 import { scrubWalkAway } from '@/lib/negotiation/walkAway'
 import { loadOperationContext, MX_ADDENDUM, VERIFIED_USAGE_RULES } from '@/lib/assistant/operationContext'
 
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     // Costos: los valores salen de la calculadora de VARA (misma función que la pantalla de Costos), no de la memoria del modelo.
     const asksCosts = typeof lastUser?.content === 'string' && costIntent(lastUser.content)
     const costResult = asksCosts
-      ? costFactsWithSource({ province: verified?.province ?? provinceFromContext(context), country, audience: verified?.audience ?? audienceHint })
+      ? costFactsWithSource({ province: verified?.province ?? provinceFromContext(context), country, audience: verified?.audience ?? audienceHint, knownPriceUSD: verified?.propertyPriceUSD ?? null })
       : null
     const costBlock = costResult?.text ?? ''
     const costSource: CostSource | null = costResult?.source ?? null
@@ -147,15 +147,24 @@ export async function POST(req: NextRequest) {
       ...messages.slice(-12).map(({ role, content }: { role: 'user' | 'assistant'; content: string }) => ({ role, content })),
     ]
     // Solo en preguntas de costos el modelo puede pedir el cálculo exacto; sus argumentos se validan antes de usarse.
-    const costContext: CostToolContext = { province: verified?.province ?? provinceFromContext(context), country, audience: verified?.audience ?? audienceHint }
-    const request = () => openai.chat.completions.create({
+    const costContext: CostToolContext = {
+      province: verified?.province ?? provinceFromContext(context),
+      country,
+      audience: verified?.audience ?? audienceHint,
+      allowedPrices: [...pricesFromUserMessages(messages), ...(verified?.propertyPriceUSD != null ? [verified.propertyPriceUSD] : [])],
+    }
+    // Con un precio registrado en la operación, el primer paso es siempre el cálculo exacto (no se deja a criterio del modelo).
+    const forceCalculation = asksCosts && verified?.propertyPriceUSD != null
+    const request = (force: boolean) => openai.chat.completions.create({
       model: 'gpt-4o',
       messages: conversation,
       max_tokens: 1100,
       temperature: 0.4,
-      ...(asksCosts ? { tools: [COST_TOOL], tool_choice: 'auto' as const } : {}),
+      ...(asksCosts
+        ? { tools: [COST_TOOL], tool_choice: force ? { type: 'function' as const, function: { name: COST_TOOL_NAME } } : ('auto' as const) }
+        : {}),
     })
-    let completion = await request()
+    let completion = await request(forceCalculation)
     for (let round = 0; round < 2; round++) {
       const assistantMessage = completion.choices[0]?.message
       const calls = assistantMessage?.tool_calls ?? []
@@ -173,7 +182,7 @@ export async function POST(req: NextRequest) {
         }
         conversation.push({ role: 'tool', tool_call_id: call.id, content })
       }
-      completion = await request()
+      completion = await request(false)
     }
 
     const reply = completion.choices[0]?.message?.content ?? 'No pude generar una respuesta. Intentá de nuevo.'

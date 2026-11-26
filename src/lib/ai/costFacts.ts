@@ -37,11 +37,11 @@ const range = (min: number, max: number, unit: string) =>
 
 export interface CostSource { jurisdiction: string; confidence: string; updatedAt: string }
 
-export function costFacts(opts: { province: string | null; country: CountryCode; audience?: 'BUY' | 'SELL' | 'BOTH' }): string {
+export function costFacts(opts: { province: string | null; country: CountryCode; audience?: 'BUY' | 'SELL' | 'BOTH'; knownPriceUSD?: number | null }): string {
   return costFactsWithSource(opts).text
 }
 
-export function costFactsWithSource(opts: { province: string | null; country: CountryCode; audience?: 'BUY' | 'SELL' | 'BOTH' }): { text: string; source: CostSource } {
+export function costFactsWithSource(opts: { province: string | null; country: CountryCode; audience?: 'BUY' | 'SELL' | 'BOTH'; knownPriceUSD?: number | null }): { text: string; source: CostSource } {
   const { province, audience } = opts
   const country = effectiveCountry(province, opts.country)
   const code = province ? resolveProvinceCode(province, country) : resolveProvinceCode('', country)
@@ -65,8 +65,9 @@ export function costFactsWithSource(opts: { province: string | null; country: Co
     `Jurisdicción usada: ${checklist.provinceName}${province ? '' : ' (no se informó la provincia: se usó la jurisdicción por defecto, avisalo)'}.`,
     `Confianza de los datos: ${checklist.dataConfidence}. Última actualización: ${checklist.lastUpdated}.`,
     ...(audience === 'SELL' ? seller : audience === 'BUY' ? buyer : [...buyer, ...seller]),
+    ...(opts.knownPriceUSD ? [`Precio registrado de la propiedad de la operación: USD ${Math.round(opts.knownPriceUSD)}. Si la persona no indica otro precio, usalo con la herramienta calcular_costos y decí de dónde sale («el precio que cargaste de la propiedad»).`] : []),
     ...c.notes.filter(Boolean).map(n => `Nota: ${n}`),
-    'REGLAS PARA COSTOS: usá solo estos valores. No cites otros porcentajes, montos ni provincias de memoria. Si la persona dio un precio, llamá a la herramienta calcular_costos y citá sus números: no hagas la cuenta de memoria. Si no lo dio, respondé con el rango en porcentaje y pedí el precio en una línea. Decí qué jurisdicción usaste y, si la confianza no es VERIFIED, que conviene confirmarlo con el profesional. No incluyas comisión inmobiliaria, ganancias ni gastos del crédito: no están en estos valores. Cerrá indicando la sección Costos de VARA.',
+    'REGLAS PARA COSTOS: usá solo estos valores. No cites otros porcentajes, montos ni provincias de memoria. Si hay un precio (el que dio la persona o el registrado de su propiedad), llamá a la herramienta calcular_costos antes de responder y citá sus números en dólares con el total: no hagas la cuenta de memoria ni preguntes si el precio registrado es correcto. Si la persona dio una cotización (por ejemplo «1.250»), pasala sin puntos de miles en cotizacion_ars. Escribí los montos con punto de miles (USD 185.000) y los porcentajes con coma. Si no hay ningún precio, respondé con el rango en porcentaje y pedí el precio en una línea. Decí qué jurisdicción usaste y, si la confianza no es VERIFIED, que conviene confirmarlo con el profesional. No incluyas comisión inmobiliaria, ganancias ni gastos del crédito: no están en estos valores. Cerrá indicando la sección Costos de VARA.',
   ].join('\n')
   return { text, source: { jurisdiction: checklist.provinceName, confidence: String(checklist.dataConfidence), updatedAt: String(checklist.lastUpdated) } }
 }
