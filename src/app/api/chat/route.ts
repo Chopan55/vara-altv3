@@ -10,7 +10,7 @@ import { costFactsWithSource, costIntent, provinceFromContext, type CostSource }
 import { buildSources } from '@/lib/ai/sources'
 import { COST_TOOL, COST_TOOL_NAME, pricesFromUserMessages, runCostTool, type CostToolContext } from '@/lib/ai/costTools'
 import { scrubWalkAway } from '@/lib/negotiation/walkAway'
-import { loadOperationContext, MX_ADDENDUM, MX_REMINDER, VERIFIED_USAGE_RULES } from '@/lib/assistant/operationContext'
+import { loadOperationContext, nameRule, MX_ADDENDUM, MX_REMINDER, VERIFIED_USAGE_RULES } from '@/lib/assistant/operationContext'
 
 
 const SYSTEM_PROMPT = `Sos VARA, el acompañante inmobiliario de quien te consulta. Ayudás a buscar, comprar, vender y negociar con calma, claridad y criterio.
@@ -177,6 +177,8 @@ export async function POST(req: NextRequest) {
     if (country === 'MX') contextParts.push('', MX_ADDENDUM)
     if (verified) {
       contextParts.push('', verified.text, VERIFIED_USAGE_RULES)
+      const who = nameRule(verified.firstName)
+      if (who) contextParts.push(who)
     }
     // Los datos del navegador orientan la consulta, con el mismo nivel de confianza que el mensaje del usuario.
     const screenHint = typeof context === 'string' && context.trim()
