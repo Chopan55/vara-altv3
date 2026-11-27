@@ -13,7 +13,6 @@ import { apiErrorMessage, safeJson } from '@/lib/api/client'
 import { readChatStream, type FinalPayload } from '@/lib/assistant/chatStream'
 import { isErrorMessage, isSpeakable, moodLabel, orbMoodFor } from '@/lib/assistant/voice'
 import { liveErrorMessage, liveLabel, liveOrbMood } from '@/lib/assistant/realtime'
-import { isNearBottom } from '@/lib/assistant/scroll'
 
 const BUYER_FAQS = [
   '¿Qué documentos le pido al vendedor?',
@@ -95,14 +94,18 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
   useEffect(() => () => abortRef.current?.abort(), [])
   // Si la persona subió a releer, el texto nuevo no la arrastra hacia abajo.
   const stickToBottom = useRef(true)
-  useEffect(() => {
-    const onScroll = () => { stickToBottom.current = isNearBottom(window.scrollY, window.innerHeight, document.documentElement.scrollHeight) }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+  const inputRef = useRef<HTMLInputElement>(null)
   const [showFaqs, setShowFaqs] = useState(false)
   const [copyStatus, setCopyStatus] = useState<{ index: number; message: string }>()
   const bottomRef = useRef<HTMLDivElement>(null)
+  // Se observa lo que realmente se ve: funciona igual si desplaza la página o un contenedor interno.
+  useEffect(() => {
+    const end = bottomRef.current
+    if (!end || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([entry]) => { stickToBottom.current = entry.isIntersecting }, { rootMargin: '0px 0px 160px 0px' })
+    io.observe(end)
+    return () => io.disconnect()
+  }, [ready])
   const voice = useAssistantVoice()
   // Conversación de voz en tiempo real: lo que se dice queda en el mismo chat, en orden.
   const messagesRef = useRef<Message[]>([])
@@ -150,6 +153,12 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
     stickToBottom.current = true
     const controller = new AbortController()
     abortRef.current = controller
+    // Si algo falla o se detiene, solo se retira ESTE mensaje (no se pisan transcripciones de la voz que hayan llegado)
+    // y el texto vuelve al campo únicamente si la persona no escribió otra cosa mientras tanto.
+    const restore = () => {
+      setMessages(prev => prev.filter(m => m !== newUserMsg))
+      setInput(cur => (cur.trim() ? cur : msg))
+    }
 
     const context = vara.loaded
       ? `Recorrido: ${journey === 'SELL' ? 'venta' : 'compra'} · Provincia: ${activeOperation?.province || vara.province}`
@@ -188,8 +197,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
 
       if (failed || !data.reply) {
         // Un error no es una respuesta del asistente: se avisa aparte y el mensaje vuelve al campo para reintentar.
-        setMessages(messages)
-        setInput(msg)
+        restore()
         // Detenerla fue decisión de la persona: no es un error.
         if (!controller.signal.aborted) setChatError(status === 0
           ? { auth: false, text: 'Se cortó la conexión mientras respondía. Probá de nuevo: tu mensaje sigue en el campo.' }
@@ -210,14 +218,15 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
         if (voice.autoRead && !liveActive) void voice.play(String(updatedMessages.length), reply, { silent: true })
       }
     } catch {
-      setMessages(messages)
-      setInput(msg)
+      restore()
       // Detenerla fue decisión de la persona: no es un error. El mensaje vuelve al campo por si quiere editarlo.
       if (!controller.signal.aborted) setChatError({ auth: false, text: 'No pudimos conectarnos. Revisá tu conexión y probá de nuevo: tu mensaje sigue en el campo.' })
     } finally {
       if (abortRef.current === controller) abortRef.current = null
       setStreamText(null)
       setLoading(false)
+      // El botón de detener desaparece: el foco vuelve al campo para que el teclado no quede sin destino.
+      if (controller.signal.aborted) inputRef.current?.focus()
     }
   }
 
@@ -505,6 +514,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
       <div className="bg-white border-t border-slate-100 px-4 py-3 flex-shrink-0 mb-16">
         <div className="max-w-4xl mx-auto flex gap-2">
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
