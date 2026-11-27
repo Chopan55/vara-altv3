@@ -25,7 +25,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22: el lector de PDF (pdf.js) necesita `Iterator`, que Node 20 no trae; producción corre Node 24. Node 22 trae npm 10, compatible con el lockfile.
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
