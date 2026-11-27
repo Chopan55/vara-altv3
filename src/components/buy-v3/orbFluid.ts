@@ -123,11 +123,18 @@ export function startFluidOrb(canvas: HTMLCanvasElement, opts: Omit<OrbOptions, 
   const vs = compile(gl, gl.VERTEX_SHADER, VERT)
   const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG)
   const prog = gl.createProgram()
-  if (!vs || !fs || !prog) return null
+  // Todo lo que se crea se libera si algo falla o cuando se detiene: cada cambio de tamaño reinicia el avatar sobre el mismo lienzo.
+  const release = (buffer?: WebGLBuffer | null) => {
+    if (buffer) gl.deleteBuffer(buffer)
+    if (prog) gl.deleteProgram(prog)
+    if (vs) gl.deleteShader(vs)
+    if (fs) gl.deleteShader(fs)
+  }
+  if (!vs || !fs || !prog) { release(); return null }
   gl.attachShader(prog, vs)
   gl.attachShader(prog, fs)
   gl.linkProgram(prog)
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { release(); return null }
   gl.useProgram(prog)
 
   const buf = gl.createBuffer()
@@ -193,14 +200,15 @@ export function startFluidOrb(canvas: HTMLCanvasElement, opts: Omit<OrbOptions, 
   const frame = () => {
     if (stopped) return
     draw(performance.now())
-    if (useTimer) timer = setTimeout(frame, 16)
+    // Con «reducir movimiento» se redibuja pocas veces por segundo en lugar de 60.
+    if (useTimer || calm) timer = setTimeout(frame, calm ? 120 : 16)
     else raf = requestAnimationFrame(frame)
   }
   raf = requestAnimationFrame(frame)
 
   // Si el navegador no entrega cuadros (p. ej. pestaña embebida), se sigue con un temporizador.
   const watchdog = setInterval(() => {
-    if (stopped || useTimer || document.hidden) return
+    if (stopped || useTimer || calm || document.hidden) return
     if (performance.now() - lastFrame > 250) {
       useTimer = true
       cancelAnimationFrame(raf)
@@ -213,5 +221,6 @@ export function startFluidOrb(canvas: HTMLCanvasElement, opts: Omit<OrbOptions, 
     cancelAnimationFrame(raf)
     if (timer) clearTimeout(timer)
     clearInterval(watchdog)
+    release(buf)
   }
 }

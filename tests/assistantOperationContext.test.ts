@@ -101,6 +101,14 @@ describe('contexto de la operación en el asistente', () => {
     expect(complete.mock.calls[0][0].messages[0].content).not.toContain('La persona se llama')
   })
 
+  it('el nombre no demora la respuesta: si el perfil tarda, el chat sigue sin nombre', async () => {
+    profilesQuery.maybeSingle.mockReturnValue(new Promise(() => {}))
+    const started = Date.now()
+    await ask({ operationId: 'operation-1' })
+    expect(Date.now() - started).toBeLessThan(1500)
+    expect(complete.mock.calls[0][0].messages[0].content).not.toContain('La persona se llama')
+  })
+
   it('no carga documentos ni ofrece enlaces para una operación fuera del alcance del usuario', async () => {
     operationQuery.maybeSingle.mockResolvedValue({ data: null })
     const response = await ask({ operationId: 'operation-2', includeNextStep: true })
