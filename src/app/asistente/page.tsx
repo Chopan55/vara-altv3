@@ -89,9 +89,23 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
   // Texto provisorio de la respuesta mientras se está generando (se reemplaza por la respuesta final del servidor).
   const [streamText, setStreamText] = useState<string | null>(null)
   const streamFrame = useRef<number | null>(null)
+  // Permite detener una respuesta en curso: corta el pedido y no se sigue gastando.
+  const abortRef = useRef<AbortController | null>(null)
+  useEffect(() => () => abortRef.current?.abort(), [])
+  // Si la persona subió a releer, el texto nuevo no la arrastra hacia abajo.
+  const stickToBottom = useRef(true)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [showFaqs, setShowFaqs] = useState(false)
   const [copyStatus, setCopyStatus] = useState<{ index: number; message: string }>()
   const bottomRef = useRef<HTMLDivElement>(null)
+  // Se observa lo que realmente se ve: funciona igual si desplaza la página o un contenedor interno.
+  useEffect(() => {
+    const end = bottomRef.current
+    if (!end || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([entry]) => { stickToBottom.current = entry.isIntersecting }, { rootMargin: '0px 0px 160px 0px' })
+    io.observe(end)
+    return () => io.disconnect()
+  }, [ready])
   const voice = useAssistantVoice()
   // Conversación de voz en tiempo real: lo que se dice queda en el mismo chat, en orden.
   const messagesRef = useRef<Message[]>([])
@@ -120,7 +134,9 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
   }, [messages, ready, historyKey])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!stickToBottom.current) return
+    // Mientras llega el texto, el desplazamiento es inmediato: varias animaciones suaves juntas se pisan y marean.
+    bottomRef.current?.scrollIntoView({ behavior: streamText !== null ? 'auto' : 'smooth', block: 'end' })
   }, [messages, live.partial, streamText])
 
   async function sendMessage(text?: string) {
@@ -134,6 +150,15 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
     setMessages(updatedMessages)
     setInput('')
     setLoading(true)
+    stickToBottom.current = true
+    const controller = new AbortController()
+    abortRef.current = controller
+    // Si algo falla o se detiene, solo se retira ESTE mensaje (no se pisan transcripciones de la voz que hayan llegado)
+    // y el texto vuelve al campo únicamente si la persona no escribió otra cosa mientras tanto.
+    const restore = () => {
+      setMessages(prev => prev.filter(m => m !== newUserMsg))
+      setInput(cur => (cur.trim() ? cur : msg))
+    }
 
     const context = vara.loaded
       ? `Recorrido: ${journey === 'SELL' ? 'venta' : 'compra'} · Provincia: ${activeOperation?.province || vara.province}`
@@ -145,6 +170,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: history, context, operationId: activeOperation?.id, includeNextStep: true, stream: true }),
+        signal: controller.signal,
       })
 
       // Dos formas de respuesta: transmitida (el texto aparece mientras se genera) o JSON completa (costos y errores).
@@ -171,9 +197,9 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
 
       if (failed || !data.reply) {
         // Un error no es una respuesta del asistente: se avisa aparte y el mensaje vuelve al campo para reintentar.
-        setMessages(messages)
-        setInput(msg)
-        setChatError(status === 0
+        restore()
+        // Detenerla fue decisión de la persona: no es un error.
+        if (!controller.signal.aborted) setChatError(status === 0
           ? { auth: false, text: 'Se cortó la conexión mientras respondía. Probá de nuevo: tu mensaje sigue en el campo.' }
           : { auth: status === 401, text: status === 401 ? 'Tu sesión venció. Ingresá de nuevo para seguir conversando.' : apiErrorMessage(status, data.error) })
       } else {
@@ -192,12 +218,15 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
         if (voice.autoRead && !liveActive) void voice.play(String(updatedMessages.length), reply, { silent: true })
       }
     } catch {
-      setMessages(messages)
-      setInput(msg)
-      setChatError({ auth: false, text: 'No pudimos conectarnos. Revisá tu conexión y probá de nuevo: tu mensaje sigue en el campo.' })
+      restore()
+      // Detenerla fue decisión de la persona: no es un error. El mensaje vuelve al campo por si quiere editarlo.
+      if (!controller.signal.aborted) setChatError({ auth: false, text: 'No pudimos conectarnos. Revisá tu conexión y probá de nuevo: tu mensaje sigue en el campo.' })
     } finally {
+      if (abortRef.current === controller) abortRef.current = null
       setStreamText(null)
       setLoading(false)
+      // El botón de detener desaparece: el foco vuelve al campo para que el teclado no quede sin destino.
+      if (controller.signal.aborted) inputRef.current?.focus()
     }
   }
 
@@ -220,7 +249,12 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
             </Link>
           {/* VARA es el protagonista: el avatar vive acá, compacto, y refleja lo que pasa de verdad. */}
           <div className="flex items-center gap-4">
-            <VaraOrb state={mood} size={liveActive ? 120 : 72} levelRef={liveActive ? live.levelRef : voice.levelRef} audio={liveActive ? live.status === 'speaking' : voice.status === 'speaking'} />
+            {/* El espacio del avatar es fijo: al crecer con la voz desborda sin empujar el resto de la pantalla. */}
+            <div className="relative h-[72px] w-[72px] flex-none">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <VaraOrb state={mood} size={liveActive ? 104 : 72} levelRef={liveActive ? live.levelRef : voice.levelRef} audio={liveActive ? live.status === 'speaking' : voice.status === 'speaking'} />
+              </div>
+            </div>
             <div className="min-w-0 flex-1">
               <h1 className="font-bold text-slate-900 text-lg leading-tight">Asistente VARA</h1>
               {/* El estado también está escrito: no depende de la animación. */}
@@ -285,6 +319,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
         <div className="max-w-4xl mx-auto">
           <button
             onClick={() => setShowFaqs(o => !o)}
+            aria-expanded={showFaqs}
             className="text-xs text-brand-700 font-semibold flex items-center gap-1"
           >
             <Sparkles size={12} />
@@ -461,6 +496,16 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
               </div>
             </div>
           )}
+          {messages.length <= 1 && !loading && !activeOperation && (
+            <div className="flex flex-wrap gap-2" data-testid="starter-chips" role="group" aria-label="Preguntas para empezar">
+              {(journey === 'SELL' ? SELLER_FAQS : BUYER_FAQS).slice(0, 3).map(q => (
+                <button key={q} type="button" onClick={() => sendMessage(q)}
+                  className="min-h-11 rounded-xl border border-brand-200 bg-brand-50 px-3 text-left text-sm font-semibold text-brand-800 hover:bg-brand-100 focus-visible:outline-2 focus-visible:outline-brand-700">
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
           <div ref={bottomRef} />
         </div>
       </div>
@@ -469,6 +514,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
       <div className="bg-white border-t border-slate-100 px-4 py-3 flex-shrink-0 mb-16">
         <div className="max-w-4xl mx-auto flex gap-2">
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -477,14 +523,25 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
             aria-label="Mensaje al asistente"
             className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-400 focus:bg-white focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-1 transition-colors"
           />
-          <button
-            onClick={() => sendMessage()}
-            disabled={!input.trim() || loading}
-            aria-label="Enviar mensaje"
-            className="w-10 h-10 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 rounded-xl flex items-center justify-center transition-colors flex-shrink-0"
-          >
-            <Send size={16} className="text-slate-900" aria-hidden="true" />
-          </button>
+          {loading ? (
+            <button
+              type="button"
+              onClick={() => abortRef.current?.abort()}
+              aria-label="Detener respuesta"
+              className="w-10 h-10 bg-slate-900 hover:bg-slate-700 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+            >
+              <Square size={14} className="text-white" aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              onClick={() => sendMessage()}
+              disabled={!input.trim()}
+              aria-label="Enviar mensaje"
+              className="w-10 h-10 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 rounded-xl flex items-center justify-center transition-colors flex-shrink-0"
+            >
+              <Send size={16} className="text-slate-900" aria-hidden="true" />
+            </button>
+          )}
         </div>
       </div>
 
