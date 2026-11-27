@@ -20,7 +20,8 @@
     "next": "^16.0.0",
     "openai": "^7.15.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "unpdf": "^2.2.3"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
