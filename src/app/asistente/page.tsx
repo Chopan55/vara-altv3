@@ -220,7 +220,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
             </Link>
           {/* VARA es el protagonista: el avatar vive acá, compacto, y refleja lo que pasa de verdad. */}
           <div className="flex items-center gap-4">
-            <VaraOrb state={mood} size={72} levelRef={liveActive ? live.levelRef : voice.levelRef} audio={liveActive ? live.status === 'speaking' : voice.status === 'speaking'} />
+            <VaraOrb state={mood} size={liveActive ? 120 : 72} levelRef={liveActive ? live.levelRef : voice.levelRef} audio={liveActive ? live.status === 'speaking' : voice.status === 'speaking'} />
             <div className="min-w-0 flex-1">
               <h1 className="font-bold text-slate-900 text-lg leading-tight">Asistente VARA</h1>
               {/* El estado también está escrito: no depende de la animación. */}

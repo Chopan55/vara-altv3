@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
-const { complete, from, operationQuery, documentsQuery, tasksQuery, propertiesQuery } = vi.hoisted(() => {
+const { complete, from, operationQuery, documentsQuery, tasksQuery, propertiesQuery, profilesQuery } = vi.hoisted(() => {
   const operationQuery = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
@@ -25,7 +25,12 @@ const { complete, from, operationQuery, documentsQuery, tasksQuery, propertiesQu
     eq: vi.fn().mockReturnThis(),
     maybeSingle: vi.fn(),
   }
-  return { complete: vi.fn(), from: vi.fn(), operationQuery, documentsQuery, tasksQuery, propertiesQuery }
+  const profilesQuery = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn(),
+  }
+  return { complete: vi.fn(), from: vi.fn(), operationQuery, documentsQuery, tasksQuery, propertiesQuery, profilesQuery }
 })
 
 vi.mock('openai', () => ({
@@ -54,7 +59,7 @@ describe('contexto de la operación en el asistente', () => {
     vi.clearAllMocks()
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.invalid')
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'test-key')
-    from.mockImplementation(table => table === 'operations' ? operationQuery : table === 'operation_tasks' ? tasksQuery : table === 'properties' ? propertiesQuery : documentsQuery)
+    from.mockImplementation(table => table === 'operations' ? operationQuery : table === 'operation_tasks' ? tasksQuery : table === 'properties' ? propertiesQuery : table === 'profiles' ? profilesQuery : documentsQuery)
     operationQuery.maybeSingle.mockResolvedValue({
       data: { type: 'BUY_PROPERTY', status: 'ACTIVE', current_stage_key: 'RESERVA', country: 'MX' },
     })
@@ -64,6 +69,7 @@ describe('contexto de la operación en el asistente', () => {
     ] })
     tasksQuery.limit.mockResolvedValue({ data: [{ title: 'Pedir el informe de deudas', status: 'TODO', due_date: '2026-12-01' }] })
     propertiesQuery.maybeSingle.mockResolvedValue({ data: null })
+    profilesQuery.maybeSingle.mockResolvedValue({ data: { full_name: 'Lucía Fernández' } })
     complete.mockResolvedValue({ choices: [{ message: { content: 'Revisá lo que figura pendiente.' } }] })
   })
 
@@ -79,6 +85,28 @@ describe('contexto de la operación en el asistente', () => {
     expect(system).toContain('"titulo":"Pedir el informe de deudas"')
     expect(tasksQuery.eq.mock.calls).toEqual([['operation_id', 'operation-1'], ['user_id', 'owner-1']])
     expect(await response.json()).toMatchObject({ nextStep: { operationId: 'operation-1', target: 'documents' } })
+  })
+
+  it('le pasa al modelo el nombre de pila del dueño como dato, leído solo con su id', async () => {
+    await ask({ operationId: 'operation-1' })
+    expect(profilesQuery.eq.mock.calls).toEqual([['id', 'owner-1']])
+    const system = complete.mock.calls[0][0].messages[0].content
+    expect(system).toContain('«Lucía»')
+    expect(system).not.toContain('Fernández')
+  })
+
+  it('si el nombre falla o no parece un nombre, el asistente sigue sin nombrar a nadie', async () => {
+    profilesQuery.maybeSingle.mockRejectedValue(new Error('boom'))
+    await ask({ operationId: 'operation-1' })
+    expect(complete.mock.calls[0][0].messages[0].content).not.toContain('La persona se llama')
+  })
+
+  it('el nombre no demora la respuesta: si el perfil tarda, el chat sigue sin nombre', async () => {
+    profilesQuery.maybeSingle.mockReturnValue(new Promise(() => {}))
+    const started = Date.now()
+    await ask({ operationId: 'operation-1' })
+    expect(Date.now() - started).toBeLessThan(1500)
+    expect(complete.mock.calls[0][0].messages[0].content).not.toContain('La persona se llama')
   })
 
   it('no carga documentos ni ofrece enlaces para una operación fuera del alcance del usuario', async () => {

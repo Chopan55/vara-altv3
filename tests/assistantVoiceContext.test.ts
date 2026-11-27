@@ -6,7 +6,7 @@ import type { OperationContext } from '@/lib/assistant/operationContext'
 
 const op = (extra: Partial<OperationContext> = {}): OperationContext => ({
   text: 'Estado registrado de la operación (JSON de datos): {"etapa":"RESERVA"}',
-  country: 'AR', province: 'Buenos Aires', stage: 'RESERVA', audience: 'BUY', documentCount: 2, propertyPriceUSD: null, ...extra,
+  firstName: null, country: 'AR', province: 'Buenos Aires', stage: 'RESERVA', audience: 'BUY', documentCount: 2, propertyPriceUSD: null, ...extra,
 })
 
 describe('contexto de la voz', () => {
