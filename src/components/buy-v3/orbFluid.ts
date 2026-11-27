@@ -124,8 +124,15 @@ export function startFluidOrb(canvas: HTMLCanvasElement, opts: Omit<OrbOptions, 
   const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG)
   const prog = gl.createProgram()
   // Todo lo que se crea se libera si algo falla o cuando se detiene: cada cambio de tamaño reinicia el avatar sobre el mismo lienzo.
+  let attached = false
   const release = (buffer?: WebGLBuffer | null) => {
     if (buffer) gl.deleteBuffer(buffer)
+    // Un programa en uso o con shaders adjuntos no se libera de verdad: primero se suelta todo.
+    gl.useProgram(null)
+    if (prog && attached) {
+      if (vs) gl.detachShader(prog, vs)
+      if (fs) gl.detachShader(prog, fs)
+    }
     if (prog) gl.deleteProgram(prog)
     if (vs) gl.deleteShader(vs)
     if (fs) gl.deleteShader(fs)
@@ -133,6 +140,7 @@ export function startFluidOrb(canvas: HTMLCanvasElement, opts: Omit<OrbOptions, 
   if (!vs || !fs || !prog) { release(); return null }
   gl.attachShader(prog, vs)
   gl.attachShader(prog, fs)
+  attached = true
   gl.linkProgram(prog)
   if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { release(); return null }
   gl.useProgram(prog)

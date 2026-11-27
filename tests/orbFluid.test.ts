@@ -15,7 +15,7 @@ describe('avatar de fluido: cae al respaldo sin romper la pantalla', () => {
       VERTEX_SHADER: 1, FRAGMENT_SHADER: 2, COMPILE_STATUS: 3,
       createShader: () => ({}), shaderSource: () => {}, compileShader: () => {},
       getShaderParameter: () => false, getShaderInfoLog: () => 'error simulado', deleteShader: () => {},
-      createProgram: () => ({}), deleteProgram: () => {},
+      createProgram: () => ({}), deleteProgram: () => {}, useProgram: () => {},
     }
     const canvas = { getContext: () => gl } as unknown as HTMLCanvasElement
     expect(startFluidOrb(canvas, opts)).toBeNull()
@@ -30,7 +30,7 @@ describe('avatar de fluido: libera la GPU al detenerse', () => {
     const gl = {
       VERTEX_SHADER: 1, FRAGMENT_SHADER: 2, COMPILE_STATUS: 3, LINK_STATUS: 4, ARRAY_BUFFER: 5, STATIC_DRAW: 6, FLOAT: 7, TRIANGLE_STRIP: 8, COLOR_BUFFER_BIT: 9,
       createShader: () => ({}), shaderSource: () => {}, compileShader: () => {}, getShaderParameter: () => true, deleteShader: () => { calls.push('shader') },
-      createProgram: () => ({}), attachShader: () => {}, linkProgram: () => {}, getProgramParameter: () => true, useProgram: () => {}, deleteProgram: () => { calls.push('program') },
+      createProgram: () => ({}), attachShader: () => {}, detachShader: () => { calls.push('detach') }, linkProgram: () => {}, getProgramParameter: () => true, useProgram: (p: unknown) => { if (p === null) calls.push('unuse') }, deleteProgram: () => { calls.push('program') },
       createBuffer: () => ({}), bindBuffer: () => {}, bufferData: () => {}, deleteBuffer: () => { calls.push('buffer') },
       getAttribLocation: () => 0, enableVertexAttribArray: () => {}, vertexAttribPointer: () => {},
       getUniformLocation: () => ({}), viewport: () => {}, clearColor: () => {}, clear: () => {}, uniform1f: () => {}, drawArrays: () => {},
@@ -46,7 +46,8 @@ describe('avatar de fluido: libera la GPU al detenerse', () => {
     const stop = startFluidOrb(canvas, opts)
     expect(stop).toBeTypeOf('function')
     stop?.()
-    expect(calls.sort()).toEqual(['buffer', 'program', 'shader', 'shader'])
+    expect(calls.filter(c => c !== 'buffer')).toEqual(['unuse', 'detach', 'detach', 'program', 'shader', 'shader'])
+    expect(calls).toContain('buffer')
     vi.unstubAllGlobals()
   })
 
@@ -55,6 +56,6 @@ describe('avatar de fluido: libera la GPU al detenerse', () => {
     gl.getProgramParameter = () => false
     const canvas = { getContext: () => gl } as unknown as HTMLCanvasElement
     expect(startFluidOrb(canvas, opts)).toBeNull()
-    expect(calls.sort()).toEqual(['program', 'shader', 'shader'])
+    expect(calls).toEqual(['unuse', 'detach', 'detach', 'program', 'shader', 'shader'])
   })
 })
