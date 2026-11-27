@@ -64,8 +64,8 @@ describe('POST /api/documents/read', () => {
 
   it('camino feliz: manda solo texto al modelo (nunca el archivo), devuelve citas comprobadas y no registra contenido', async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ findings: [
-      { kind: 'mortgage', text: 'Hipoteca', page: 2, quote: 'Se constituye hipoteca en primer grado a favor del Banco Ejemplo por USD 80.000' },
-      { kind: 'embargo', text: 'Inventado', page: 1, quote: 'embargo trabado por el juzgado civil numero cuatro' },
+      { kind: 'mortgage', page: 2, quote: 'Se constituye hipoteca en primer grado a favor del Banco Ejemplo por USD 80.000' },
+      { kind: 'embargo', page: 1, quote: 'embargo trabado por el juzgado civil numero cuatro' },
     ] }) } }] }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     const res = await call({ documentId: 'd1' })
@@ -96,6 +96,39 @@ describe('POST /api/documents/read', () => {
     const res = await call({ documentId: 'd1' })
     expect(res.status).toBe(503)
     expect(JSON.stringify(await res.json())).not.toContain('openai')
+    vi.unstubAllGlobals()
+  })
+
+  it('un PDF con más de 200 páginas se rechaza con 413 y no llama al modelo', async () => {
+    vi.resetModules()
+    vi.doMock('@/lib/documents/extractPdf', async () => {
+      const real = await vi.importActual<typeof import('@/lib/documents/extractPdf')>('@/lib/documents/extractPdf')
+      return { ...real, extractPages: async () => { throw new real.TooManyPagesError(201) } }
+    })
+    const { POST: post } = await import('@/app/api/documents/read/route')
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const res = await post(new Request('http://localhost/api/documents/read', { method: 'POST', body: JSON.stringify({ documentId: 'd1' }) }))
+    expect(res.status).toBe(413)
+    expect((await res.json()).error).toBe('too_many_pages')
+    expect(fetchMock).not.toHaveBeenCalled()
+    vi.doUnmock('@/lib/documents/extractPdf')
+    vi.unstubAllGlobals()
+  })
+
+  it('el tiempo total está acotado: si el principal agota el presupuesto, no se prueba el de respaldo', async () => {
+    let offset = 0
+    const realNow = Date.now.bind(Date)
+    vi.spyOn(Date, 'now').mockImplementation(() => realNow() + offset)
+    const fetchMock = vi.fn(async () => {
+      offset += 50_000 // el principal «tardó» 50 s: quedan ~2 s, menos del mínimo para intentar el respaldo
+      throw new Error('aborted')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const res = await call({ documentId: 'd1' })
+    expect(res.status).toBe(503)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
 })

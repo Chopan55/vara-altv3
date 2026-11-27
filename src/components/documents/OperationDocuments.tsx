@@ -27,6 +27,7 @@ import {
 import type { CountryCode } from '@/types'
 import type { CitedSummary } from '@/lib/documents/citations'
 import { CitedFindings } from './CitedFindings'
+import { isEnabled } from '@/lib/flags'
 
 const ACCEPT_ATTR = ACCEPTED_EXTENSIONS.map(e => `.${e}`).join(',')
 const CATEGORIES = Object.keys(DOCUMENT_CATEGORY_LABELS) as DocumentCategory[]
@@ -105,6 +106,7 @@ function DocumentRow({ doc, onUpload, onDelete, uploading, categoryLabels }: {
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
 
   const isPdf = doc.storagePath?.toLowerCase().endsWith('.pdf') ?? false
+  const docReaderOn = isEnabled('docIntelligence')
 
   const analyze = async () => {
     setAnalyzing(true)
@@ -119,6 +121,7 @@ function DocumentRow({ doc, onUpload, onDelete, uploading, categoryLabels }: {
         const err = await res.json().catch(() => ({})) as { error?: string }
         if (err.error === 'not_a_pdf') setAnalyzeError('Solo se analizan PDFs.')
         else if (err.error === 'disabled') setAnalyzeError('Análisis de documentos no disponible aún.')
+        else if (err.error === 'too_many_pages') setAnalyzeError('El PDF tiene más de 200 páginas: es demasiado largo para leerlo acá.')
         else if (err.error === 'too_large') setAnalyzeError('El PDF es demasiado pesado para leerlo (máximo 15 MB).')
         else if (err.error === 'ai_unavailable') setAnalyzeError('IA no disponible ahora.')
         else setAnalyzeError('No se pudo analizar el documento.')
@@ -188,16 +191,16 @@ function DocumentRow({ doc, onUpload, onDelete, uploading, categoryLabels }: {
               </button>
             )}
 
-            {uploaded && isPdf && !summary && (
+            {uploaded && isPdf && !summary && docReaderOn && (
               <button onClick={analyze} disabled={analyzing}
                 className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:text-amber-700 disabled:opacity-40">
                 {analyzing ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
                 {analyzing ? 'Leyendo…' : 'Leer con IA y citar páginas'}
               </button>
             )}
-            {uploaded && isPdf && !summary && (
+            {uploaded && isPdf && !summary && docReaderOn && (
               <p className="basis-full text-[11px] text-slate-500">
-                Al leerlo, VARA extrae el texto del PDF y envía solo ese texto a OpenAI; el archivo no se envía y VARA no guarda el resultado. Según sus políticas, OpenAI puede conservar los pedidos un tiempo limitado. Si preferís no enviarlo, seguí con la lista de papeles y consultalo con tu escribano.
+                Al leerlo, VARA extrae el texto del PDF y envía solo ese texto a OpenAI (el archivo no se envía). Antes oculta números de DNI, CUIT, mails y teléfonos, pero los nombres y domicilios sí viajan porque hacen falta para entender el papel. VARA no guarda el resultado y, según sus políticas, OpenAI puede conservar los pedidos un tiempo limitado. Si preferís no enviarlo, seguí con la lista de papeles y consultalo con tu escribano.
               </p>
             )}
 

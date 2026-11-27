@@ -8,7 +8,7 @@ import { isEnabled } from '@/lib/flags'
 import { log } from '@/lib/observability/logger'
 import { requireAiAccess } from '@/lib/api/aiAccess'
 import { isPdfPath } from '@/lib/documents/summary'
-import { MAX_PDF_BYTES, extractPages } from '@/lib/documents/extractPdf'
+import { MAX_PDF_BYTES, TooManyPagesError, extractPages } from '@/lib/documents/extractPdf'
 import { docModelParams, readWithCitations } from '@/lib/documents/readCited'
 
 /**
@@ -24,7 +24,11 @@ import { docModelParams, readWithCitations } from '@/lib/documents/readCited'
 const PRIMARY = process.env.OPENAI_DOC_MODEL?.trim() || 'gpt-5.4-mini'
 const FALLBACK = 'gpt-4o-mini'
 
-async function ask(apiKey: string, model: string, system: string, user: string): Promise<string> {
+/** Tiempo total para leer (el límite de la función es 60 s): entre el principal y el de respaldo no se pasa de ahí. */
+const BUDGET_MS = 52_000
+const MIN_FALLBACK_MS = 8_000
+
+async function ask(apiKey: string, model: string, system: string, user: string, timeoutMs: number): Promise<string> {
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
@@ -34,7 +38,7 @@ async function ask(apiKey: string, model: string, system: string, user: string):
       response_format: { type: 'json_object' },
       ...docModelParams(model),
     }),
-    signal: AbortSignal.timeout(50_000),
+    signal: AbortSignal.timeout(timeoutMs),
   })
   if (!res.ok) throw new Error(`openai ${res.status}`)
   const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
@@ -86,17 +90,21 @@ export async function POST(req: Request) {
 
   try {
     const pages = await extractPages(new Uint8Array(await file.arrayBuffer()))
+    const deadline = Date.now() + BUDGET_MS
     const { summary, usedModel } = await readWithCitations(pages, async (system, userMsg) => {
-      try { return await ask(apiKey, PRIMARY, system, userMsg) }
-      catch (e) {
-        // Sin acceso al modelo principal se usa el de respaldo; el mensaje de error no se registra (puede traer contenido).
-        log.warn('doc.read.fallback', e instanceof Error ? e.message.slice(0, 40) : 'error')
-        return ask(apiKey, FALLBACK, system, userMsg)
+      try { return await ask(apiKey, PRIMARY, system, userMsg, deadline - Date.now()) }
+      catch {
+        // Sin acceso al modelo principal se usa el de respaldo, solo si queda tiempo; nunca se registra el error (puede traer contenido).
+        log.warn('doc.read.fallback', 'primary_failed')
+        const left = deadline - Date.now()
+        if (left < MIN_FALLBACK_MS) throw new Error('timeout')
+        return ask(apiKey, FALLBACK, system, userMsg, left)
       }
     })
     log.info('doc.read.ok', { documentId: doc.id, pages: summary.pageCount, findings: summary.findings.length, usedModel })
     return NextResponse.json({ summary })
-  } catch {
+  } catch (e) {
+    if (e instanceof TooManyPagesError) return NextResponse.json({ error: 'too_many_pages' }, { status: 413 })
     // Nunca se registra el error completo: el parser de PDF puede incluir fragmentos del contenido.
     log.error('doc.read.failed', 'processing')
     return NextResponse.json({ error: 'ai_unavailable' }, { status: 503 })

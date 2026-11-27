@@ -3,12 +3,12 @@ import type { CitedSummary } from '@/lib/documents/citations'
 import { CITED_DISCLAIMER, groupFindings, summaryNotices } from '@/lib/documents/citedView'
 
 const base: CitedSummary = { coverage: 'full', pageCount: 3, pagesRead: 3, findings: [], discarded: 0 }
-const f = (kind: CitedSummary['findings'][number]['kind'], page = 1) => ({ kind, text: 't', page, quote: 'frase textual del documento aquí' })
+const f = (kind: CitedSummary['findings'][number]['kind'], page = 1) => ({ kind, page, quote: 'frase textual del documento aquí' })
 
 describe('vista del lector con citas', () => {
   it('agrupa por tipo y no muestra grupos vacíos', () => {
     const g = groupFindings({ ...base, findings: [f('mortgage'), f('embargo', 2), f('holder'), f('surface')] })
-    expect(g.map(x => x.title)).toEqual(['Cargas que figuran en el texto', 'Titulares y partes', 'Datos del inmueble'])
+    expect(g.map(x => x.title)).toEqual(['El documento menciona cargas', 'Titulares y partes', 'Datos del inmueble'])
     expect(g[0].findings).toHaveLength(2)
   })
 
@@ -36,5 +36,6 @@ describe('vista del lector con citas', () => {
 
   it('el cartel final no promete garantía ni reemplaza al escribano', () => {
     expect(CITED_DISCLAIMER).toContain('no reemplaza a tu escribano ni da garantía')
+    expect(CITED_DISCLAIMER).toContain('no prueba que sean ciertas ni que estén vigentes')
   })
 })

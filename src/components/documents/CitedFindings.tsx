@@ -2,7 +2,7 @@
 
 import { FileText, ShieldAlert } from 'lucide-react'
 import type { CitedSummary } from '@/lib/documents/citations'
-import { CITED_DISCLAIMER, groupFindings, summaryNotices } from '@/lib/documents/citedView'
+import { CITED_DISCLAIMER, KIND_LABELS, groupFindings, summaryNotices } from '@/lib/documents/citedView'
 
 const TONE = {
   rose: { title: 'text-rose-600', text: 'text-rose-800', chip: 'bg-rose-50 text-rose-700' },
@@ -31,13 +31,10 @@ export function CitedFindings({ summary, onClose }: { summary: CitedSummary; onC
                 <li key={`${f.page}-${i}`} className="text-xs">
                   <div className="flex items-start gap-1.5">
                     {g.tone === 'rose' && <ShieldAlert size={11} className="mt-0.5 flex-shrink-0 text-rose-500" />}
-                    <span className={t.text}>{f.text}</span>
+                    <span className={`font-semibold ${t.text}`}>{KIND_LABELS[f.kind]}</span>
                     <span className={`ml-auto flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${t.chip}`}>Pág. {f.page}</span>
                   </div>
-                  <details className="mt-0.5 ml-0.5">
-                    <summary className="cursor-pointer text-[11px] text-slate-500 hover:text-slate-700">Ver la frase del documento</summary>
-                    <blockquote className="mt-1 border-l-2 border-slate-200 pl-2 text-[11px] italic text-slate-600">«{f.quote}»</blockquote>
-                  </details>
+                  <blockquote className="mt-1 border-l-2 border-slate-200 pl-2 text-[11px] italic text-slate-600">«{f.quote}»</blockquote>
                 </li>
               ))}
             </ul>

@@ -1,12 +1,28 @@
 /** Cómo se presenta un resultado con citas. Pura: se prueba sin pantalla. */
 import type { CitedFinding, CitedSummary, FindingKind } from './citations'
 
+/** Etiquetas fijas por tipo: VARA no escribe afirmaciones propias sobre el documento, solo muestra sus frases. */
+export const KIND_LABELS: Record<FindingKind, string> = {
+  holder: 'Titular o parte',
+  domain_condition: 'Condición del dominio',
+  registry_id: 'Matrícula o partida',
+  mortgage: 'Hipoteca',
+  embargo: 'Embargo',
+  inhibition: 'Inhibición',
+  usufruct: 'Usufructo, uso o habitación',
+  easement: 'Servidumbre o restricción',
+  surface: 'Superficie o medidas',
+  civil_status: 'Estado civil o asentimiento',
+  debt: 'Deuda mencionada',
+  other: 'Otro dato del documento',
+}
+
 export type GroupTone = 'rose' | 'amber' | 'slate'
 export interface FindingGroup { title: string; tone: GroupTone; findings: CitedFinding[] }
 
 const GROUPS: Array<{ title: string; tone: GroupTone; kinds: FindingKind[] }> = [
-  { title: 'Cargas que figuran en el texto', tone: 'rose', kinds: ['mortgage', 'embargo', 'inhibition'] },
-  { title: 'Restricciones que figuran en el texto', tone: 'amber', kinds: ['usufruct', 'easement'] },
+  { title: 'El documento menciona cargas', tone: 'rose', kinds: ['mortgage', 'embargo', 'inhibition'] },
+  { title: 'El documento menciona restricciones', tone: 'amber', kinds: ['usufruct', 'easement'] },
   { title: 'Deudas mencionadas', tone: 'amber', kinds: ['debt'] },
   { title: 'Titulares y partes', tone: 'slate', kinds: ['holder', 'civil_status'] },
   { title: 'Datos del inmueble', tone: 'slate', kinds: ['domain_condition', 'registry_id', 'surface'] },
@@ -39,4 +55,4 @@ export function summaryNotices(summary: CitedSummary): string[] {
 }
 
 export const CITED_DISCLAIMER =
-  'VARA lee el texto y te muestra de qué página sale cada dato. Es una ayuda para entender el papel: no reemplaza a tu escribano ni da garantía.'
+  'Son frases del propio documento, con la página de donde salen: que figuren no prueba que sean ciertas ni que estén vigentes. Es una ayuda para entender el papel: no reemplaza a tu escribano ni da garantía.'
