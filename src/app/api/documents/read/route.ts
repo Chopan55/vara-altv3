@@ -24,7 +24,7 @@ import { docModelParams, readWithCitations } from '@/lib/documents/readCited'
 const PRIMARY = process.env.OPENAI_DOC_MODEL?.trim() || 'gpt-5.4-mini'
 const FALLBACK = 'gpt-4o-mini'
 
-/** Tiempo total para leer (el límite de la función es 60 s): entre el principal y el de respaldo no se pasa de ahí. */
+/** Tiempo total del pedido (el límite de la función es 60 s), contado desde que entra: descarga, extracción, modelo principal y respaldo. */
 const BUDGET_MS = 52_000
 const MIN_FALLBACK_MS = 8_000
 
@@ -46,6 +46,7 @@ async function ask(apiKey: string, model: string, system: string, user: string, 
 }
 
 export async function POST(req: Request) {
+  const startedAt = Date.now()
   if (!isEnabled('docIntelligence')) return NextResponse.json({ error: 'disabled' }, { status: 403 })
 
   const access = await requireAiAccess('text')
@@ -90,7 +91,9 @@ export async function POST(req: Request) {
 
   try {
     const pages = await extractPages(new Uint8Array(await file.arrayBuffer()))
-    const deadline = Date.now() + BUDGET_MS
+    const deadline = startedAt + BUDGET_MS
+    // Si la descarga y la extracción ya se comieron casi todo el tiempo, no se empieza algo que no va a terminar.
+    if (deadline - Date.now() < MIN_FALLBACK_MS) return NextResponse.json({ error: 'ai_unavailable' }, { status: 503 })
     const { summary, usedModel } = await readWithCitations(pages, async (system, userMsg) => {
       try { return await ask(apiKey, PRIMARY, system, userMsg, deadline - Date.now()) }
       catch {

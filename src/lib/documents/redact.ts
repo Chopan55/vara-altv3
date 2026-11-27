@@ -9,7 +9,7 @@ export function redactPii(text: string): string {
     // CUIT / CUIL: 20-12345678-9 (con o sin guiones)
     .replace(/\b(20|23|24|27|30|33|34)[-\s]?\d{8}[-\s]?\d\b/g, '[CUIT]')
     // DNI y similares: «DNI 20.123.456», «D.N.I. N° 20123456», «documento nacional de identidad 20.123.456»
-    .replace(/\b(D\.?\s?N\.?\s?I\.?|documento(?: nacional)?(?: de identidad)?|L\.?\s?E\.?|L\.?\s?C\.?)\s*(?:n[°º.]?\s*)?\d{1,2}\.?\d{3}\.?\d{3}\b/gi, '$1 [DNI]')
+    .replace(/\b(D\.?\s?N\.?\s?I\.?|documento(?: nacional)?(?: de identidad)?|L\.?\s?E\.?|L\.?\s?C\.?)\s*:?\s*(?:(?:n[°º.]|n[uú]mero|nro\.?|num\.?)\s*)?\d{1,2}\.?\d{3}\.?\d{3}\b/gi, '$1 [DNI]')
     .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '[email]')
     .replace(/\b(tel(?:[eé]fono)?\.?|cel(?:ular)?\.?|whatsapp)\s*:?\s*[+\d()\s-]{8,}/gi, '$1 [teléfono]')
 }

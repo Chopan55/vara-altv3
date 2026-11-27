@@ -119,7 +119,7 @@ describe('POST /api/documents/read', () => {
   it('el tiempo total está acotado: si el principal agota el presupuesto, no se prueba el de respaldo', async () => {
     let offset = 0
     const realNow = Date.now.bind(Date)
-    vi.spyOn(Date, 'now').mockImplementation(() => realNow() + offset)
+    const nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => realNow() + offset)
     const fetchMock = vi.fn(async () => {
       offset += 50_000 // el principal «tardó» 50 s: quedan ~2 s, menos del mínimo para intentar el respaldo
       throw new Error('aborted')
@@ -128,7 +128,27 @@ describe('POST /api/documents/read', () => {
     const res = await call({ documentId: 'd1' })
     expect(res.status).toBe(503)
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    vi.restoreAllMocks()
+    nowSpy.mockRestore()
+    vi.unstubAllGlobals()
+  })
+
+  it('el presupuesto cuenta desde que entra el pedido: si la extracción se come el tiempo, no se llama al modelo', async () => {
+    vi.resetModules()
+    let offset = 0
+    const realNow = Date.now.bind(Date)
+    const nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => realNow() + offset)
+    vi.doMock('@/lib/documents/extractPdf', async () => {
+      const real = await vi.importActual<typeof import('@/lib/documents/extractPdf')>('@/lib/documents/extractPdf')
+      return { ...real, extractPages: async () => { offset += 48_000; return ['texto '.repeat(100)] } }
+    })
+    const { POST: post } = await import('@/app/api/documents/read/route')
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const res = await post(new Request('http://localhost/api/documents/read', { method: 'POST', body: JSON.stringify({ documentId: 'd1' }) }))
+    expect(res.status).toBe(503)
+    expect(fetchMock).not.toHaveBeenCalled()
+    vi.doUnmock('@/lib/documents/extractPdf')
+    nowSpy.mockRestore()
     vi.unstubAllGlobals()
   })
 })

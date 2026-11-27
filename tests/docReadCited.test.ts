@@ -82,7 +82,13 @@ describe('ocultar datos personales', () => {
     expect(redactPii('Superficie 120,50 m2, precio USD 185.000, partida 1234567, fecha 12/03/2024')).toBe('Superficie 120,50 m2, precio USD 185.000, partida 1234567, fecha 12/03/2024')
   })
   it('oculta variantes de DNI', () => {
-    expect(redactPii('D.N.I. N° 20123456')).toContain('[DNI]')
-    expect(redactPii('documento nacional de identidad 20.123.456')).toContain('[DNI]')
+    for (const f of [
+      'D.N.I. N° 20123456', 'D.N.I. 20.123.456', 'DNI N° 20.123.456', 'DNI: 20123456', 'DNI nro. 20.123.456',
+      'documento nacional de identidad 20.123.456', 'Documento Nacional de Identidad número 20123456', 'Documento Nacional de Identidad N° 20.123.456',
+    ]) {
+      const out = redactPii(`El señor Álvarez, ${f}, vende.`)
+      expect(out, f).toContain('[DNI]')
+      expect(out, f).not.toMatch(/20\.?123\.?456/)
+    }
   })
 })

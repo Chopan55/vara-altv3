@@ -141,4 +141,28 @@ describe('citas: el tipo tiene que coincidir con la frase', () => {
     expect(JSON.stringify(s)).not.toContain('VIGENTE')
     expect(Object.keys(s.findings[0]).sort()).toEqual(['kind', 'page', 'quote'])
   })
+
+  it('«tasa» y «uso» en frases ajenas no se etiquetan como deuda ni usufructo', () => {
+    expect(classifyQuote('debt', 'La tasa de interés convenida será variable durante el plazo')).toBeNull()
+    expect(classifyQuote('usufruct', 'El uso de la vivienda queda reservado al comprador desde la posesión')).toBeNull()
+    expect(classifyQuote('debt', 'El vendedor adeuda expensas por $ 120.000 al mes de la fecha')).toBe('debt')
+    expect(classifyQuote('usufruct', 'Se reserva el usufructo vitalicio a favor de la madre del vendedor')).toBe('usufruct')
+  })
+
+  it('más formas de negar o terminar una carga bajan a «otro dato»', () => {
+    for (const q of [
+      'Tampoco registra hipotecas sobre el inmueble',
+      'Ausencia de hipotecas inscriptas sobre la matrícula',
+      'Consta la cancelación de hipoteca inscripta en el año 2019',
+      'Se ordenó el levantamiento de embargo trabado en autos',
+    ]) {
+      const kind = /embargo/.test(q) ? 'embargo' : 'mortgage'
+      expect(classifyQuote(kind, q)).toBe('other')
+    }
+  })
+
+  it('«No obstante» y «sin embargo» no son negaciones ni cargas', () => {
+    expect(classifyQuote('mortgage', 'No obstante, se constituye hipoteca en primer grado a favor del Banco Ejemplo')).toBe('mortgage')
+    expect(classifyQuote('embargo', 'Sin embargo, el comprador acepta el estado de ocupación del inmueble')).toBeNull()
+  })
 })

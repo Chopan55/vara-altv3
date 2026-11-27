@@ -126,26 +126,29 @@ export function buildPagedText(pages: string[], opts: { maxCharsPerPage?: number
  */
 const KIND_GATE: Record<FindingKind, RegExp | null> = {
   holder: /\b(senor|senora|sr|sra|titular|propietari|vendedor|comprador|adquirent|transmitent|cedente|cesionari|condomin|dni|nacid|argentin|casad|solter|divorciad|viud|domicili)/,
-  domain_condition: /(dominio|propiedad|condominio|nuda|fiduciar|bien de familia|ganancial|propio)/,
+  domain_condition: /(dominio|nuda propiedad|condominio|fiduciar|bien de familia|ganancial|bien propio|propiedad horizontal)/,
   registry_id: /(matricul|partida|nomenclatura|catastr|folio|tomo|inscript)/,
   mortgage: /hipotec/,
   embargo: /embarg/,
   inhibition: /inhibi/,
-  usufruct: /(usufruct|habitacion|\buso\b)/,
+  usufruct: /(usufruct|derecho de uso|uso y habitacion|habitacion)/,
   easement: /(servidumbre|restriccion|inalienab)/,
-  surface: /(superficie|m2|\bm\b|metros|hectarea|\blote\b|medidas|cubiert)/,
+  surface: /(superficie|m2|metros|hectarea|\blote\b|cubiert)/,
   civil_status: /(casad|solter|divorciad|viud|conyug|asentimiento|union convivencial|estado civil)/,
-  debt: /(expensas|\babl\b|impuesto|deuda|tasa|municipal|inmobiliario)/,
+  debt: /(deuda|adeud|impag|moros|\bmora\b|expensas|\babl\b)/,
   other: null,
 }
 
 /** Tipos que la pantalla marca como riesgo. Una frase que los NIEGA o los da por terminados no se muestra como riesgo. */
 const RISK_KINDS: FindingKind[] = ['mortgage', 'embargo', 'inhibition', 'usufruct', 'easement', 'debt']
-const NEGATION = /\b(no|sin|libre|libres|ningun|ninguna|inexistente|inexistentes|cancelad[ao]s?|levantad[ao]s?|extinguid[ao]s?|desafectad[ao]s?)\b/
+const NEGATION = /\b(no|tampoco|sin|libre|libres|ningun|ninguna|ningunos|ningunas|inexistente|inexistentes|ausencia|carece|carecen|cancelacion|levantamiento|liberacion|extincion|cancelad[ao]s?|levantad[ao]s?|extinguid[ao]s?|desafectad[ao]s?|liberad[ao]s?)\b/
+
+/** Locuciones que contienen una palabra de negación o de carga pero no significan eso («sin embargo» no es un embargo). */
+const FALSE_FRIENDS = /\b(no obstante|sin perjuicio|sin embargo)\b/g
 
 /** Si la frase pasa la regla de su tipo. Si el tipo es de riesgo y la frase lo niega, baja a «otro dato» (neutro). */
 export function classifyQuote(kind: FindingKind, quote: string): FindingKind | null {
-  const n = normalizeText(quote)
+  const n = normalizeText(quote).replace(FALSE_FRIENDS, ' ')
   const gate = KIND_GATE[kind]
   if (gate && !gate.test(n)) return null
   if (RISK_KINDS.includes(kind) && NEGATION.test(n)) return 'other'
