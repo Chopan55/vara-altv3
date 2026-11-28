@@ -21,6 +21,7 @@ import { useOperations } from '@/hooks/useOperations'
 import { journeyToStored } from '@/lib/journey'
 import { forcedJourney } from '@/lib/routeContext'
 import { searchApp } from '@/lib/search/appSearch'
+import { clearAllAssistantMemories } from '@/lib/assistant/memory'
 import { GuiameButton, GuiameTrigger } from '@/components/guidance/GuiameButton'
 import { VaraAIFloat } from '@/components/ai/VaraAIFloat'
 
@@ -377,6 +378,7 @@ function AuthFooter({ collapsed, userName }: { collapsed: boolean; userName: str
         'vara_ops_idmap', 'vara_props_idmap', 'vara_props_promo_links', 'vara_save_banner_dismissed',
       ]
       keysToRemove.forEach(k => localStorage.removeItem(k))
+      clearAllAssistantMemories()
     } catch {}
     setEmail(null)
     router.push('/')

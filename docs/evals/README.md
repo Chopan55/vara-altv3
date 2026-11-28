@@ -10,7 +10,7 @@ Corre en CI, sin red ni claves:
 npx vitest run tests/assistantEvals.test.ts
 ```
 
-Los 30 fixtures viven en `tests/evals/assistantCases.ts`. El test simula OpenAI y las consultas a Supabase, y observa:
+Los 34 fixtures viven en `tests/evals/assistantCases.ts`. El test simula OpenAI y las consultas a Supabase, y observa:
 
 - contexto de operación filtrado por dueño, propiedad vinculada, documentos y tareas;
 - estado verificado rotulado como datos, con nombres recortados;

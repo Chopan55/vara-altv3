@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 import { costIntent } from '@/lib/ai/costFacts'
 import { assistantCases, type AssistantEvalCase } from './evals/assistantCases'
+import { scoreReply } from './evals/scoring'
 
 const { complete, from, operationQuery, documentsQuery, tasksQuery, propertiesQuery } = vi.hoisted(() => {
   const operationQuery = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn() }
@@ -93,9 +94,9 @@ describe('banco determinístico de evaluación continua del asistente', () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'synthetic-anon-key')
   })
 
-  it('mantiene exactamente 30 casos sintéticos y todos tienen un identificador único', () => {
-    expect(assistantCases).toHaveLength(30)
-    expect(new Set(assistantCases.map(testCase => testCase.id)).size).toBe(30)
+  it('mantiene exactamente 34 casos sintéticos y todos tienen un identificador único', () => {
+    expect(assistantCases).toHaveLength(34)
+    expect(new Set(assistantCases.map(testCase => testCase.id)).size).toBe(34)
   })
 
   for (const testCase of assistantCases) {
@@ -116,6 +117,17 @@ describe('banco determinístico de evaluación continua del asistente', () => {
       expect(firstRequest, 'el modelo simulado debe recibir una solicitud').toBeTruthy()
       const system = systemOf()
       const userText = testCase.messages.filter(message => message.role === 'user').at(-1)?.content ?? ''
+
+      // Casos de confianza (31–34): el prompt tiene que llevar la instrucción que produce esa respuesta,
+      // y la respuesta no puede prometer garantía ni inventar montos (puntaje objetivo del banco real).
+      if (/^3[1-4]-/.test(testCase.id)) {
+        expect(system, 'el prompt debe reforzar ahorro').toMatch(/ahorrar costos/)
+        expect(system, 'el prompt debe reforzar tranquilidad').toMatch(/tranquilidad/)
+        expect(system, 'el prompt debe mencionar escribano de VARA o propio').toMatch(/escribano de VARA o/)
+        expect(system, 'el prompt debe evitar garantías').toMatch(/garant/i)
+        const scored = scoreReply(testCase, { reply: body.reply, draft: body.draft, sources: body.sources })
+        expect(scored.failed, `puntaje del banco: ${scored.failed.join('; ')}`).toEqual([])
+      }
 
       // La operación solo se considera verificada después del filtro por id y dueño.
       if (testCase.operationId && !testCase.expected.foreignOperation) {
