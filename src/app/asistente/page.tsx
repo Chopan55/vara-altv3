@@ -13,7 +13,8 @@ import { apiErrorMessage, safeJson } from '@/lib/api/client'
 import { readChatStream, type FinalPayload } from '@/lib/assistant/chatStream'
 import { isErrorMessage, isSpeakable, moodLabel, orbMoodFor } from '@/lib/assistant/voice'
 import { liveErrorMessage, liveLabel, liveOrbMood } from '@/lib/assistant/realtime'
-import { addAssistantMemory, deleteAssistantMemory, readAssistantMemories, readAssistantMemoryEnabled, writeAssistantMemoryEnabled, type AssistantMemory } from '@/lib/assistant/memory'
+import { addAssistantMemory, clearAssistantMemories, deleteAssistantMemory, readAssistantMemories, readAssistantMemoryEnabled, writeAssistantMemoryEnabled, type AssistantMemory } from '@/lib/assistant/memory'
+import { tryCreateClient } from '@/lib/supabase/client'
 
 const BUYER_FAQS = [
   '¿Qué documentos le pido al vendedor?',
@@ -97,9 +98,20 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
   const stickToBottom = useRef(true)
   const inputRef = useRef<HTMLInputElement>(null)
   const [showFaqs, setShowFaqs] = useState(false)
-  const [memoryEnabled, setMemoryEnabled] = useBrowserState<boolean>(() => readAssistantMemoryEnabled(), false, vara.loaded)
-  const [memories, setMemories] = useBrowserState<AssistantMemory[]>(() => readAssistantMemories(), [], vara.loaded)
+  // La memoria es de la cuenta: sin el id de la persona no se lee ni se guarda nada.
+  const [memoryScope, setMemoryScope] = useState<string | null>(null)
+  useEffect(() => {
+    const supabase = tryCreateClient()
+    if (!supabase) return
+    let alive = true
+    void supabase.auth.getUser().then(({ data }) => { if (alive) setMemoryScope(data.user?.id ?? null) })
+    return () => { alive = false }
+  }, [])
+  const memoryKey = `${vara.loaded}:${memoryScope ?? ''}`
+  const [memoryEnabled, setMemoryEnabled] = useBrowserState<boolean>(() => readAssistantMemoryEnabled(memoryScope), false, memoryKey)
+  const [memories, setMemories] = useBrowserState<AssistantMemory[]>(() => readAssistantMemories(memoryScope), [], memoryKey)
   const [memoryDraft, setMemoryDraft] = useState('')
+  const [memoryNotice, setMemoryNotice] = useState('')
   const [showMemory, setShowMemory] = useState(false)
   const [copyStatus, setCopyStatus] = useState<{ index: number; message: string }>()
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -134,14 +146,29 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
   }
 
   function toggleMemory(enabled: boolean) {
-    writeAssistantMemoryEnabled(enabled)
+    if (!memoryScope) return
+    writeAssistantMemoryEnabled(memoryScope, enabled)
     setMemoryEnabled(enabled)
+    setMemoryNotice('')
   }
 
   function saveMemory() {
-    if (!memoryEnabled || !memoryDraft.trim()) return
-    setMemories(addAssistantMemory(memoryDraft))
+    if (!memoryScope || !memoryEnabled) return
+    const result = addAssistantMemory(memoryScope, memoryDraft)
+    if (result.rejected === 'vacio') return
+    if (result.rejected === 'sensible') {
+      setMemoryNotice('No guardamos claves, números de documento, de tarjeta o de cuenta. Escribí una preferencia, por ejemplo: «prefiero ver los montos en USD».')
+      return
+    }
+    setMemoryNotice('')
+    setMemories(result.memories)
     setMemoryDraft('')
+  }
+
+  function clearMemory() {
+    clearAssistantMemories(memoryScope)
+    setMemories([])
+    setMemoryNotice('Borramos todos tus recuerdos.')
   }
 
   useEffect(() => {
@@ -185,7 +212,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history, context, operationId: activeOperation?.id, includeNextStep: true, stream: true, assistantMemory: memoryEnabled ? memories.map(memory => memory.text) : undefined }),
+        body: JSON.stringify({ messages: history, context, operationId: activeOperation?.id, includeNextStep: true, stream: true, assistantMemory: memoryEnabled && memoryScope ? memories.map(memory => memory.text) : undefined }),
         signal: controller.signal,
       })
 
@@ -296,26 +323,29 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
             <span className="font-normal text-slate-500">{voice.autoRead ? '· activado' : '· desactivado'}</span>
           </button>
 
-          <button type="button" onClick={() => setShowMemory(value => !value)} className="mt-3 ml-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-300">
+          <button type="button" onClick={() => setShowMemory(value => !value)} aria-expanded={showMemory} aria-controls="memoria-asistente" className="mt-3 ml-2 inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500">
             Memoria {memoryEnabled ? '· activada' : '· apagada'}
           </button>
           {showMemory && (
-            <section aria-label="Memoria del asistente" className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+            <section id="memoria-asistente" aria-label="Memoria del asistente" className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-sm">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="font-semibold text-slate-800">Memoria de VARA</p>
-                  <p className="text-xs text-slate-500">Solo se guarda en este navegador. Podés apagarla o borrar cada recuerdo. No guardes claves ni datos de documentos.</p>
+                  <p className="text-xs text-slate-500">Se guarda en este navegador, solo para tu cuenta. Si la activás, tus recuerdos viajan con cada pregunta al servicio de IA que usa VARA para responderte. No guardes claves ni números de documento.</p>
+                  {!memoryScope && <p role="status" className="mt-1 text-xs text-amber-800">Entrá con tu cuenta para usar la memoria.</p>}
                 </div>
-                <button type="button" role="switch" aria-checked={memoryEnabled} onClick={() => toggleMemory(!memoryEnabled)} className={cn('rounded-full px-3 py-1 text-xs font-semibold', memoryEnabled ? 'bg-brand-100 text-brand-800' : 'bg-slate-100 text-slate-600')}>
+                <button type="button" role="switch" aria-checked={memoryEnabled} disabled={!memoryScope} onClick={() => toggleMemory(!memoryEnabled)} className={cn('min-h-11 rounded-full px-4 py-1 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:opacity-50', memoryEnabled ? 'bg-brand-100 text-brand-800' : 'bg-slate-100 text-slate-600')}>
                   {memoryEnabled ? 'Activada' : 'Apagada'}
                 </button>
               </div>
               {memoryEnabled && <>
                 <div className="mt-3 flex gap-2">
-                  <input value={memoryDraft} onChange={event => setMemoryDraft(event.target.value)} placeholder="Ej.: prefiero ver los montos en USD" aria-label="Nuevo recuerdo" className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs" />
-                  <button type="button" onClick={saveMemory} className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white">Guardar</button>
+                  <input value={memoryDraft} onChange={event => setMemoryDraft(event.target.value)} placeholder="Ej.: prefiero ver los montos en USD" aria-label="Nuevo recuerdo" maxLength={240} className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-500 sm:text-xs" />
+                  <button type="button" onClick={saveMemory} className="min-h-11 rounded-lg bg-brand-600 px-4 py-2 text-xs font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500">Guardar</button>
                 </div>
-                {memories.length > 0 && <ul className="mt-3 space-y-2">{memories.map(memory => <li key={memory.id} className="flex items-start justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700"><span>{memory.text}</span><button type="button" onClick={() => setMemories(deleteAssistantMemory(memory.id))} className="shrink-0 font-semibold text-slate-500 underline" aria-label={`Borrar recuerdo: ${memory.text}`}>Borrar</button></li>)}</ul>}
+                {memories.length > 0 && <ul className="mt-3 space-y-2">{memories.map(memory => <li key={memory.id} className="flex items-start justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700"><span>{memory.text}</span><button type="button" onClick={() => setMemories(deleteAssistantMemory(memoryScope, memory.id))} className="min-h-11 shrink-0 px-2 font-semibold text-slate-500 underline focus-visible:outline-2 focus-visible:outline-brand-500" aria-label={`Borrar recuerdo: ${memory.text}`}>Borrar</button></li>)}</ul>}
+                {memoryNotice && <p role="status" className="mt-2 text-xs text-slate-600">{memoryNotice}</p>}
+                {memories.length > 0 && <button type="button" onClick={clearMemory} className="mt-3 min-h-11 text-xs font-semibold text-slate-600 underline focus-visible:outline-2 focus-visible:outline-brand-500">Borrar toda la memoria</button>}
               </>}
             </section>
           )}
