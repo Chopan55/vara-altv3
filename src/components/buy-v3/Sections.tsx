@@ -13,7 +13,7 @@ import { buildNextSteps } from '@/lib/analysis/nextSteps'
 import { parseCommissionPct, withCommission } from '@/lib/analysis/commission'
 import { closingCash, parseRate } from '@/lib/analysis/closingCash'
 import { CONDITION_TEXT, copyText, money } from './format'
-import { shareText } from '@/lib/shareText'
+import { SHARE_NOTE, shareText } from '@/lib/shareText'
 
 export function Section({
   id, title, children, hint,
@@ -180,6 +180,7 @@ export function MissingSection({
   const country = analysis.subjectProperty.country
   const [open, setOpen] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [shareNote, setShareNote] = useState('')
   if (items.length === 0) return null
 
   const count = items.length
@@ -217,11 +218,12 @@ export function MissingSection({
               className="inline-flex items-center gap-1.5 rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 min-h-11">
               <Copy size={14} /> {copied ? 'Copiado' : 'Copiar mensaje'}
             </button>
-            <button type="button" onClick={async () => { await shareText(draftMessage); onAction('whatsapp') }}
+            <button type="button" onClick={async () => { const r = await shareText(draftMessage); setShareNote(SHARE_NOTE[r]); onAction('whatsapp') }}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white min-h-11">
-              <MessageCircle size={14} /> Abrir en WhatsApp
+              <MessageCircle size={14} /> Compartir (WhatsApp u otra app)
             </button>
           </div>
+          {shareNote && <p role="status" className="mt-2 text-xs text-slate-700">{shareNote}</p>}
           <p className="mt-2 text-xs text-slate-500">{country === 'MX' ? 'VARA no envía nada: tú eliges a quién y cuándo.' : 'VARA no envía nada: vos elegís a quién y cuándo.'}</p>
         </div>
       )}
@@ -446,7 +448,7 @@ export function ProfessionalQuerySection({ analysis }: { analysis: PropertyAnaly
           </button>
           <a href={`https://wa.me/?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white min-h-11">
-            <MessageCircle size={14} /> Abrir en WhatsApp
+            <MessageCircle size={14} /> Compartir (WhatsApp u otra app)
           </a>
         </div>
         <p className="mt-2 text-xs text-slate-500">{isMX ? 'Si abres WhatsApp, el texto pasa a WhatsApp y tú eliges si se lo mandas a alguien.' : 'Si abrís WhatsApp, el texto pasa a WhatsApp y vos elegís si se lo mandás a alguien.'}</p>

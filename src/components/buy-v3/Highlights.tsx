@@ -10,7 +10,7 @@ import { Copy, MessageCircle, Link2, Share2, ArrowRight, Check } from 'lucide-re
 import type { PropertyAnalysis } from '@/lib/analysis/types'
 import { sellerQuestions, sellerQuestionsMessage } from '@/lib/analysis/sellerQuestions'
 import { copyText, money } from './format'
-import { shareText } from '@/lib/shareText'
+import { SHARE_NOTE, shareText } from '@/lib/shareText'
 
 export function rangeText(min: number, max: number, cur: Parameters<typeof money>[1]): string {
   return min === max ? money(min, cur) : `${money(min, cur)} – ${money(max, cur).replace(`${cur} `, '')}`
@@ -44,6 +44,7 @@ export function SellerQuestionsCard({
   analysis, onAction,
 }: { analysis: PropertyAnalysis; onAction: (kind: 'copy_questions' | 'whatsapp_questions') => void }) {
   const [copied, setCopied] = useState(false)
+  const [shareNote, setShareNote] = useState('')
   const f = analysis.subjectProperty.fields
   const kind = f.kind?.value
   const questions = sellerQuestions({
@@ -68,9 +69,9 @@ export function SellerQuestionsCard({
         ))}
       </ol>
       <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" onClick={async () => { await shareText(message); onAction('whatsapp_questions') }}
+        <button type="button" onClick={async () => { const r = await shareText(message); setShareNote(SHARE_NOTE[r]); onAction('whatsapp_questions') }}
           className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 min-h-11">
-          <MessageCircle size={14} aria-hidden="true" /> Preguntar por WhatsApp
+          <MessageCircle size={14} aria-hidden="true" /> Compartir las preguntas
         </button>
         <button type="button"
           onClick={async () => { if (await copyText(message)) { setCopied(true); onAction('copy_questions'); setTimeout(() => setCopied(false), 2000) } }}
@@ -78,6 +79,7 @@ export function SellerQuestionsCard({
           {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />} {copied ? 'Copiado' : 'Copiar las preguntas'}
         </button>
       </div>
+      {shareNote && <p role="status" className="mt-2 text-xs text-slate-700">{shareNote}</p>}
     </section>
   )
 }
@@ -110,7 +112,7 @@ export function ShareCard({
   const whatsapp = () => {
     const url = share('wa')
     if (!url) return setNotice('No pude armar el link para compartir.')
-    void shareText(shareMessage(analysis, url)).then(result => setNotice(result === 'copied' ? 'Texto copiado. Pegalo en WhatsApp cuando quieras.' : 'Se abrió el menú de compartir.'))
+    void shareText(shareMessage(analysis, url)).then(result => setNotice(SHARE_NOTE[result] || null))
   }
   const copy = async () => {
     const url = share('link')

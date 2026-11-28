@@ -356,6 +356,7 @@ function OnboardingInner() {
                 <button
                   key={id}
                   onClick={() => setType(id)}
+                  aria-pressed={type === id}
                   className={cn(
                     'w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all',
                     type === id ? 'border-brand-500 bg-brand-50' : 'border-slate-100 hover:border-slate-200 bg-white'
@@ -408,6 +409,7 @@ function OnboardingInner() {
                   <button
                     key={c.code}
                     onClick={() => { setCountry(c.code); setProvince('') }}
+                    aria-pressed={country === c.code}
                     className={cn(
                       'p-3 rounded-2xl border-2 font-semibold text-sm transition-all flex items-center gap-2',
                       country === c.code ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-100 text-slate-600 hover:border-slate-200'
@@ -428,6 +430,7 @@ function OnboardingInner() {
                   <button
                     key={p}
                     onClick={() => setProvince(p)}
+                    aria-pressed={province === p}
                     className={cn(
                       'p-4 rounded-2xl border-2 font-semibold text-sm transition-all text-left',
                       province === p ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-100 text-slate-600 hover:border-slate-200'
