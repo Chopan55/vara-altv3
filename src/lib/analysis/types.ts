@@ -22,7 +22,7 @@ export const ANALYSIS_VERSION = '3.0.0'
 export type FieldStatus = 'CONFIRMED' | 'EXTRACTED' | 'INFERRED' | 'UNKNOWN'
 
 export type ExtractionMethod =
-  | 'json-ld' | 'meta' | 'reader' | 'ai' | 'paste' | 'meli-api' | 'user' | 'derived'
+  | 'json-ld' | 'meta' | 'reader' | 'ai' | 'paste' | 'brightdata' | 'meli-api' | 'user' | 'derived'
 
 export interface Provenance {
   source: string                    // "Zonaprop", "MercadoLibre", "usuario"

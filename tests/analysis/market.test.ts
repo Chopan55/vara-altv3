@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import {
   BrightDataError, clampSweep, downloadSweep, startSweep, sweepProgress, SWEEP_LIMITS, ZONAPROP_DATASET_ID,
+  brightDataListingStatus, mapBrightDataRecord, resetBrightDataListingMemory, startBrightDataListing,
 } from '@/lib/analysis/market/brightdata'
 import { createFileStore, matchesZone, mergeListing } from '@/lib/analysis/market/store'
 import { listingFromZonaprop, listingsFromZonaprop, parseZonapropDate } from '@/lib/analysis/market/zonaprop'
@@ -196,6 +197,104 @@ describe('cliente de Bright Data: protege el crédito y la clave', () => {
     expect(String(err.message)).not.toContain(KEY)
     expect(err.status).toBe(401)
   })
+
+  afterEach(() => {
+    delete process.env.VARA_BRIGHTDATA_LIVE_ENABLED
+    delete process.env.VARA_BRIGHTDATA_GLOBAL_DAILY_LIMIT
+    resetBrightDataListingMemory()
+  })
+
+  it('valida superficies contra la descripción y omite teléfonos', () => {
+    const mapped = mapBrightDataRecord({
+      Title: 'Casa en Pilar', Description: 'Casa de 160 m2 sobre lote de 1.789 m2. Tel +54 11 5555-0000',
+      Dimension_terreno: '160', Dimension_propiedad: '1789', Precio: 500000, Currency: 'USD',
+      Imagenes: ['https://img.test/foto.jpg'], Phone1: '+54 11 5555-0000', Seller_name: 'Inmobiliaria',
+      expenses: 950000,
+    })
+    expect(mapped.data.coveredM2).toBe(160)
+    expect(mapped.data.lotM2).toBe(1789)
+    expect(mapped.warnings.join(' ')).toMatch(/invertida|expensas/i)
+    expect(JSON.stringify(mapped)).not.toMatch(/5555|Inmobiliaria/i)
+  })
+
+  it('redacta contactos en todos los campos de texto que conserva', () => {
+    const mapped = mapBrightDataRecord({
+      Title: 'Casa +54 11 5555-0000', Description: 'mail@test.com', Currency: 'USD mail2@test.com',
+      address: 'Calle +54 11 4444-1111', Zona: 'Norte mail3@test.com', Tipo: 'Casa +54 11 3333-2222',
+      Nueva_usada: 'A estrenar mail4@test.com',
+    })
+    const json = JSON.stringify(mapped.data)
+    expect(json).not.toMatch(/5555|4444|3333|test\.com/i)
+    expect(json).toMatch(/contacto omitido|teléfono omitido/)
+  })
+
+  it('no llama a Bright Data cuando el interruptor está apagado', async () => {
+    const fetchImpl = async () => { throw new Error('no debería llamar') }
+    const result = await startBrightDataListing({ apiKey: KEY, fetchImpl }, 'https://www.zonaprop.com.ar/propiedades/aviso-1.html')
+    expect(result.state).toBe('disabled')
+  })
+
+  it('acepta únicamente URLs HTTPS de avisos de zonaprop con id numérico', async () => {
+    process.env.VARA_BRIGHTDATA_LIVE_ENABLED = 'true'
+    const fetchImpl = async () => json({ snapshot_id: 'sd_url123' })
+    const cfg = { apiKey: KEY, fetchImpl }
+    for (const url of [
+      'https://evil.zonaprop.com.ar/propiedades/aviso-1.html',
+      'https://zonaprop.com.ar.evil.com/propiedades/aviso-1.html',
+      'http://zonaprop.com.ar/propiedades/aviso-1.html',
+      'https://zonaprop.com.ar/buscar/aviso-1.html',
+    ]) {
+      await expect(startBrightDataListing(cfg, url)).rejects.toThrow(/HTTPS|avisos/i)
+    }
+    await expect(startBrightDataListing(cfg, 'https://www.zonaprop.com.ar/propiedades/aviso-1.html')).resolves.toMatchObject({ state: 'starting' })
+  })
+
+  it('inicia por URL, sondea progreso y reutiliza el caché sin otro trigger', async () => {
+    process.env.VARA_BRIGHTDATA_LIVE_ENABLED = 'true'
+    const calls: string[] = []
+    const fetchImpl = async (url: string, init?: RequestInit) => {
+      calls.push(`${init?.method ?? 'GET'} ${url}`)
+      if (url.includes('/trigger?')) return json({ snapshot_id: 'sd_url123' })
+      if (url.includes('/progress/')) return json({ status: 'ready', records: 1, errors: 0 })
+      return json([{ Title: 'Casa', Description: 'Casa de 160 m2 sobre lote de 1.789 m2', Dimension_terreno: 160, Dimension_propiedad: 1789, Precio: 1, Currency: 'USD' }])
+    }
+    const started = await startBrightDataListing({ apiKey: KEY, fetchImpl }, 'https://www.zonaprop.com.ar/propiedades/aviso-1.html')
+    expect(started.state).toBe('starting')
+    const status = await brightDataListingStatus({ apiKey: KEY, fetchImpl }, started.jobId!)
+    expect(status.state).toBe('ready')
+    expect(status.data?.data.coveredM2).toBe(160)
+    expect(status.data?.data.price).toBeUndefined()
+    expect(status.data?.data.currency).toBeUndefined()
+    expect(status.data?.warnings.join(' ')).toMatch(/consultar/)
+    const cached = await startBrightDataListing({ apiKey: KEY, fetchImpl }, 'https://www.zonaprop.com.ar/propiedades/aviso-1.html')
+    expect(cached.state).toBe('cached')
+    expect(calls.filter(c => c.includes('/trigger?'))).toHaveLength(1)
+  })
+
+  it('expira el caché de avisos después de 24 horas', async () => {
+    process.env.VARA_BRIGHTDATA_LIVE_ENABLED = 'true'
+    vi.useFakeTimers()
+    const fetchImpl = async (url: string) => {
+      if (url.includes('/trigger?')) return json({ snapshot_id: `sd_${Date.now()}` })
+      if (url.includes('/progress/')) return json({ status: 'ready', records: 1, errors: 0 })
+      return json([{ Title: 'Casa', Precio: 1 }])
+    }
+    const cfg = { apiKey: KEY, fetchImpl }
+    const first = await startBrightDataListing(cfg, 'https://zonaprop.com.ar/propiedades/aviso-24.html')
+    await brightDataListingStatus(cfg, first.jobId!)
+    expect((await startBrightDataListing(cfg, 'https://zonaprop.com.ar/propiedades/aviso-24.html')).state).toBe('cached')
+    vi.advanceTimersByTime(24 * 60 * 60 * 1000)
+    expect((await startBrightDataListing(cfg, 'https://zonaprop.com.ar/propiedades/aviso-24.html')).state).toBe('starting')
+    vi.useRealTimers()
+  })
+
+  it('aplica topes por plan y tope diario global', async () => {
+    process.env.VARA_BRIGHTDATA_LIVE_ENABLED = 'true'
+    process.env.VARA_BRIGHTDATA_GLOBAL_DAILY_LIMIT = '1'
+    const fetchImpl = async (url: string) => url.includes('/trigger?') ? json({ snapshot_id: 'sd_quota1' }) : json({})
+    await startBrightDataListing({ apiKey: KEY, fetchImpl }, 'https://www.zonaprop.com.ar/propiedades/a-1.html', 'anonymous')
+    await expect(startBrightDataListing({ apiKey: KEY, fetchImpl }, 'https://www.zonaprop.com.ar/propiedades/b-2.html', 'anonymous')).rejects.toThrow(/tope/i)
+  })
 })
 
 describe('endpoint público de mercado: tope de uso y datos mínimos', () => {
@@ -206,7 +305,7 @@ describe('endpoint público de mercado: tope de uso y datos mínimos', () => {
     delete process.env.SUPABASE_SERVICE_ROLE_KEY
     try {
       await createFileStore(dir).upsert([listingFromZonaprop(rec(), NOW)!], NOW)
-      const { GET, MARKET_RATE } = await import('@/app/api/v3/market/route')
+      const { GET } = await import('@/app/api/v3/market/route')
       const call = (ip: string) => GET(new Request('http://localhost/api/v3/market?city=Pilar', { headers: { 'x-forwarded-for': ip } }))
 
       const first = await call('10.0.0.1')
@@ -217,7 +316,7 @@ describe('endpoint público de mercado: tope de uso y datos mínimos', () => {
       expect(body.listings[0]).not.toHaveProperty('lng')
       expect(JSON.stringify(body)).not.toMatch(/5555|Seller|Phone/i)
 
-      for (let i = 1; i < MARKET_RATE.perHour; i++) await call('10.0.0.1')
+      for (let i = 1; i < 40; i++) await call('10.0.0.1')
       const blocked = await call('10.0.0.1')
       expect(blocked.status).toBe(429)
       expect(blocked.headers.get('Retry-After')).toBeTruthy()

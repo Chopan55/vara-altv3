@@ -1,31 +1,38 @@
-/**
- * Única fuente de los planes para personas (2026-11-23, precios definidos por Pancho).
- * El análisis de un aviso sigue siendo gratis y sin cuenta. Los planes son mensuales.
- * MXN: equivalente al tipo de cambio de referencia del 22/11/2026 (1 ARS ≈ 0,0121 MXN), redondeado.
- * Durante la beta privada no se cobra: no hay medio de pago conectado.
- * VARA Visit se contrata aparte, por visita.
- */
+/** Planes simulados de la beta privada, según el borrador de Pancho (2026-11-28). */
 export type Plan = {
-  id: 'esencial' | 'operacion' | 'full'
+  id: 'essential' | 'plus' | 'premium'
   name: string
   tagline: string
   priceARS: number
   priceMXN: number
+  aiCredits: number
   includes: string[]
   /** Funciones con IA: hoy en beta por invitación. */
   beta?: string[]
   highlight?: boolean
 }
 
-export const RATE_NOTE = 'Equivalente en pesos mexicanos al tipo de cambio del 22/11/2026.'
+const configuredRate = Number(process.env.NEXT_PUBLIC_ARS_PER_MXN ?? 82.5)
+export const ARS_PER_MXN = Number.isFinite(configuredRate) && configuredRate > 0 ? configuredRate : 82.5
+const formattedRate = ARS_PER_MXN.toLocaleString('es-AR', { maximumFractionDigits: 2 })
+export const RATE_NOTE = `Tipo de cambio de referencia: 1 MXN ≈ ${formattedRate} ARS (a confirmar).`
+export const EXTRA_CREDITS = { credits: 100, priceARS: 5000, priceMXN: Math.round(5000 / ARS_PER_MXN) } as const
+
+/**
+ * El catálogo anterior mostraba Esencial/Operación/Full a ARS 30.000/80.000/100.000.
+ * Pancho lo reemplazó para esta beta por Essential/Plus/Premium a 30.000/50.000/80.000;
+ * estos alias documentan la transición sin seguir mostrando los precios anteriores.
+ */
+export const LEGACY_PLAN_ALIASES = { esencial: 'essential', operacion: 'plus', full: 'premium' } as const
 
 export const PLANS: Plan[] = [
   {
-    id: 'esencial',
-    name: 'Esencial',
+    id: 'essential',
+    name: 'Essential',
     tagline: 'Para entender bien cada propiedad antes de decidir.',
     priceARS: 30000,
-    priceMXN: 360,
+    priceMXN: Math.round(30000 / ARS_PER_MXN),
+    aiCredits: 100,
     includes: [
       'Análisis de avisos',
       'Costo total con gastos y la fuente de cada uno',
@@ -38,14 +45,15 @@ export const PLANS: Plan[] = [
     ],
   },
   {
-    id: 'operacion',
-    name: 'Operación',
+    id: 'plus',
+    name: 'Plus',
     tagline: 'Para llevar tu compra o venta hasta la escritura.',
-    priceARS: 80000,
-    priceMXN: 970,
+    priceARS: 50000,
+    priceMXN: Math.round(50000 / ARS_PER_MXN),
+    aiCredits: 250,
     highlight: true,
     includes: [
-      'Todo lo de Esencial',
+      'Todo lo de Essential',
       'Tu operación paso a paso hasta la escritura',
       'Documentos ordenados: qué falta y qué pedir',
       'Plata que necesitás para el cierre',
@@ -54,12 +62,13 @@ export const PLANS: Plan[] = [
     ],
   },
   {
-    id: 'full',
-    name: 'Full',
+    id: 'premium',
+    name: 'Premium',
     tagline: 'Todo VARA, más las herramientas con IA.',
-    priceARS: 100000,
-    priceMXN: 1210,
-    includes: ['Todo lo de Operación'],
+    priceARS: 80000,
+    priceMXN: Math.round(80000 / ARS_PER_MXN),
+    aiCredits: 500,
+    includes: ['Todo lo de Plus'],
     beta: [
       'Lectura de documentos con IA',
       'Ayuda para negociar con IA',

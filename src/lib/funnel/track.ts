@@ -12,7 +12,7 @@ import { tryCreateClient } from '@/lib/supabase/client'
 
 export type FunnelStep =
   | 'visit' | 'analyze_start' | 'analyze_done' | 'share' | 'shared_view'
-  | 'operation_created' | 'invite_sent'
+  | 'operation_created' | 'invite_sent' | 'plan_viewed' | 'plan_selected_simulation'
 
 export type FunnelProps = Record<string, string | number | boolean | null>
 

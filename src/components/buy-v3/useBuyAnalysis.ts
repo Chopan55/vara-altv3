@@ -31,13 +31,14 @@ import type {
 import type { ManualListing } from './Entry'
 import { resolveProvinceCode } from '@/lib/regulations'
 
-export type Phase = 'idle' | 'reading' | 'blocked' | 'analyzing' | 'done' | 'error'
+export type Phase = 'idle' | 'reading' | 'brightdata' | 'blocked' | 'analyzing' | 'done' | 'error'
 
 export interface BuyState {
   phase: Phase
   url: string
   /** Mensaje para mostrar; nunca un error interno. */
   message?: string
+  brightDataProgress?: { status: string; records?: number; errors?: number }
   subject?: SubjectProperty
   extraction?: ExtractionQuality
   insight?: string
@@ -81,6 +82,7 @@ export function useBuyAnalysis() {
 
   const run = useCallback(async (scrape: ScrapeResult, refresh: boolean, seq: number) => {
     scrapeRef.current = scrape
+    if (scrape.brightDataWarnings?.length) setState(s => ({ ...s, message: scrape.brightDataWarnings!.join(' ') }))
     // Latencia medida desde que la persona pegó el link (incluye leer el aviso).
     const t0 = refresh ? Date.now() : startedAt.current || Date.now()
 
@@ -176,6 +178,34 @@ export function useBuyAnalysis() {
       if (seq !== seqRef.current) return // llegó una lectura más nueva (texto pegado): esta ya no vale
       const readable = scrape.status === 'success' || scrape.status === 'partial' || scrape.status === 'expired'
       if (!readable) {
+        if (scrape.portal === 'Zonaprop' && !scrape.status.startsWith('error')) {
+          // La bandera se evalúa en el servidor: apagada significa que este POST
+          // devuelve disabled y no realiza ninguna llamada externa.
+          try {
+            const started = await fetch('/api/brightdata/zonaprop', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: clean }),
+            }).then(r => r.json() as Promise<{ state?: string; jobId?: string; data?: { data: ScrapeResult['data']; photos: string[]; warnings: string[] } }>)
+            if (seq !== seqRef.current) return
+            if (started.state === 'cached' && started.data) {
+              await run({ status: 'success', url: clean, portal: 'Zonaprop', method: 'brightdata', data: started.data.data, photos: started.data.photos, missingFields: [], brightDataWarnings: started.data.warnings }, false, seq)
+              return
+            }
+            if (started.state === 'starting' && started.jobId) {
+              setState(s => ({ ...s, phase: 'brightdata', message: 'Zonaprop está tardando; seguimos leyendo el aviso.', brightDataProgress: { status: 'starting' } }))
+              for (let attempt = 0; attempt < 24; attempt++) {
+                await new Promise(resolve => setTimeout(resolve, 5000))
+                const status = await fetch(`/api/brightdata/zonaprop?jobId=${encodeURIComponent(started.jobId!)}`).then(r => r.json() as Promise<{ state?: string; progress?: { status: string; records?: number; errors?: number }; data?: { data: ScrapeResult['data']; photos: string[]; warnings: string[] } }>)
+                if (seq !== seqRef.current) return
+                setState(s => ({ ...s, brightDataProgress: status.progress ?? { status: status.state ?? 'running' } }))
+                if (status.state === 'ready' && status.data) {
+                  await run({ status: 'success', url: clean, portal: 'Zonaprop', method: 'brightdata', data: status.data.data, photos: status.data.photos, missingFields: [], brightDataWarnings: status.data.warnings }, false, seq)
+                  return
+                }
+                if (status.state === 'failed' || status.state === 'expired') break
+              }
+            }
+          } catch { /* plan B: pegar encabezado o cargar datos */ }
+        }
         setState(s => ({
           ...s, phase: 'blocked',
           message: scrape.errorMessage ?? 'No pudimos leer ese aviso. Probá pegando el texto de la publicación.',
