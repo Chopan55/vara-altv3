@@ -72,12 +72,12 @@ export default function LandingPage() {
 
       {/* 1 · Hero: la promesa y el producto real. */}
       <Section space="md" width="wide" className="pt-6 md:pt-10">
-        <div className="mx-auto max-w-3xl text-center">
+        <div className="mx-auto max-w-5xl text-center">
           <Eyebrow>Argentina · México</Eyebrow>
-          <h1 className="font-display mt-6 text-5xl font-black leading-[1.02] tracking-tight text-brand-900 text-balance md:text-7xl">
+          <h1 className="font-display mt-6 text-4xl font-black leading-[1.05] tracking-tight text-brand-900 text-balance sm:text-5xl lg:text-6xl">
             Comprá o vendé tu propiedad <span className="text-brand-gradient">sin inmobiliaria</span> y sin pagar comisión
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft md:text-xl">
+          <p className="mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-ink-soft text-balance md:text-xl">
             VARA te guía en cada paso, con tu escribano o uno que te recomendemos.
           </p>
           {/* Dos caminos: llevan a lo que VARA hace en cada caso (no a crear cuenta: el único acceso es Entrar). */}
@@ -85,8 +85,10 @@ export default function LandingPage() {
             <Link href="#comprar" className="inline-flex min-h-11 items-center rounded-full border border-brand-200 bg-white px-5 text-sm font-semibold text-brand-800 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-400">Quiero comprar</Link>
             <Link href="#vender" className="inline-flex min-h-11 items-center rounded-full border border-brand-200 bg-white px-5 text-sm font-semibold text-brand-800 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-400">Quiero vender</Link>
           </div>
-          <HeroAnalyze />
-          <HeroFeatures />
+          <div className="mx-auto max-w-3xl">
+            <HeroAnalyze />
+            <HeroFeatures />
+          </div>
         </div>
         {/* El producto real arriba: el análisis de un aviso real, no datos de ejemplo. Tocarlo abre ese análisis. */}
         <div className="mx-auto mt-14 max-w-2xl md:mt-20">
