@@ -41,12 +41,14 @@ export interface ScrapeResult {
   status: 'success' | 'partial' | 'expired' | 'blocked' | 'error'
   url: string
   portal: string | null
-  method: 'json-ld' | 'meta' | 'reader' | 'ai' | 'paste' | 'none'
+  method: 'json-ld' | 'meta' | 'reader' | 'ai' | 'paste' | 'brightdata' | 'none'
   data: ScrapedData
   photos: string[]
   missingFields: string[]
   /** Superficies que el aviso declara pero parecen un error de carga: se apartan del análisis hasta que la persona las confirme. */
   warnings?: SurfaceWarning[]
+  /** Advertencias de calidad de una fuente externa; no se convierten en hechos. */
+  brightDataWarnings?: string[]
   errorMessage?: string
 }
 

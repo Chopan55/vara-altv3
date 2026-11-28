@@ -7,7 +7,7 @@ import { AlertCircle } from 'lucide-react'
 import { useBrowserValue } from '@/hooks/useHydrated'
 import { isBuyWowV3Enabled } from '@/lib/analysis/access'
 import { useBuyAnalysis } from '@/components/buy-v3/useBuyAnalysis'
-import { BlockedPaste, EntryForm, ProgressPanel } from '@/components/buy-v3/Entry'
+import { BlockedPaste, BrightDataPanel, EntryForm, ProgressPanel } from '@/components/buy-v3/Entry'
 import { isMexicanUrl } from '@/lib/analysis/country'
 import { ResultView } from '@/components/buy-v3/ResultView'
 
@@ -84,6 +84,8 @@ function Analizar() {
         onRetry={() => a.submit(state.url)}
       />
     )
+  } else if (state.phase === 'brightdata') {
+    body = <BrightDataPanel progress={state.brightDataProgress} message={state.message} mx={isMexicanUrl(state.url)} onSubmit={text => a.submit(state.url, text)} onManual={m => a.submitManual(state.url, m)} />
   } else if (state.phase === 'blocked') {
     body = (
       <BlockedPaste

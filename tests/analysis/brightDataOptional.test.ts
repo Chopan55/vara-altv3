@@ -37,12 +37,21 @@ describe('Bright Data es opcional para /analizar', () => {
       .map(f => path.relative(process.cwd(), f).split(path.sep).join('/'))
       .sort()
     expect(users).toEqual([
+      'src/app/analizar/page.tsx',
+      'src/app/api/brightdata/zonaprop/route.ts',
+      'src/app/api/scrape-property/route.ts',
       'src/app/api/v3/market/sweep/cron/route.ts',
       'src/app/api/v3/market/sweep/route.ts',
+      'src/components/buy-v3/Entry.tsx',
+      'src/components/buy-v3/useBuyAnalysis.ts',
       'src/lib/analysis/market/brightdata.ts',
+      'src/lib/analysis/normalize.ts',
+      'src/lib/analysis/types.ts',
     ])
-    // Ninguno es código de navegador.
-    for (const f of users) expect(readFileSync(f, 'utf8').slice(0, 200)).not.toContain("'use client'")
+    // La clave y la autorización siguen restringidas a la capa servidor.
+    for (const f of users.filter(f => !f.includes('/api/') && !f.endsWith('brightdata.ts'))) {
+      expect(readFileSync(f, 'utf8')).not.toMatch(/process\.env\.BRIGHTDATA_API_KEY|Authorization: `Bearer/)
+    }
   })
 
   it('sin la clave, el barrido falla con honestidad (503) y no inventa nada', async () => {

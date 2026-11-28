@@ -29,7 +29,7 @@ export function norm(s: string): string {
 
 const METHOD_CONFIDENCE: Record<ExtractionMethod, number> = {
   'meli-api': 0.95, user: 1, 'json-ld': 0.85, meta: 0.7,
-  reader: 0.65, ai: 0.6, paste: 0.6, derived: 0.5,
+  reader: 0.65, brightdata: 0.7, ai: 0.6, paste: 0.6, derived: 0.5,
 }
 
 function statusFor(method: ExtractionMethod, derived = false): FieldStatus {

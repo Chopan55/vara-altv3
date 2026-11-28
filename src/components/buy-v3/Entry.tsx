@@ -480,6 +480,39 @@ export function BlockedPaste({
   )
 }
 
+/** Espera asíncrona de Bright Data; siempre deja visible el plan B. */
+export function BrightDataPanel({
+  progress, message, mx, onSubmit, onManual,
+}: {
+  progress?: { status: string; records?: number; errors?: number }
+  message?: string
+  mx: boolean
+  onSubmit: (text: string) => void
+  onManual: (m: ManualListing) => void
+}) {
+  const [text, setText] = useState('')
+  const [manual, setManual] = useState(false)
+  const ready = canAnalyzePastedText(text, { mx })
+  return (
+    <div className="vara-rise pt-6 sm:pt-12">
+      <div className="rounded-3xl border border-brand-200 bg-brand-50 p-5" role="status" aria-live="polite">
+        <p className="text-xs font-semibold uppercase tracking-widest text-brand-700">Lectura en curso</p>
+        <h1 className="font-display mt-1 text-xl font-extrabold text-slate-900">Estamos leyendo el aviso de Zonaprop</h1>
+        <p className="mt-2 text-sm text-slate-700">Puede tardar alrededor de dos minutos. {progress?.status === 'ready' ? `Encontramos ${progress.records ?? 0} resultado${progress.records === 1 ? '' : 's'}.` : 'Podés seguir con el plan B en cualquier momento.'}</p>
+        {message && <p className="mt-2 text-xs text-slate-600">{message}</p>}
+      </div>
+      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+        <p className="text-sm font-semibold text-slate-800">¿Preferís no esperar?</p>
+        <p className="mt-1 text-sm text-slate-600">Pegá el encabezado donde aparecen el precio y los metros; lo analizamos igual.</p>
+        <textarea value={text} onChange={e => setText(e.target.value)} rows={5} aria-label="Encabezado del aviso" className="mt-3 w-full rounded-xl border border-slate-500 p-3 text-sm" placeholder={mx ? 'Pega aquí el encabezado del anuncio…' : 'Pegá acá el encabezado del aviso…'} />
+        <button type="button" disabled={!ready} onClick={() => onSubmit(text)} className="mt-2 min-h-11 rounded-xl bg-brand-700 px-5 text-sm font-semibold text-white disabled:opacity-50">Analizar el texto pegado</button>
+        <button type="button" onClick={() => setManual(!manual)} className="ml-3 min-h-11 text-sm font-semibold text-brand-700 underline">Cargar datos a mano</button>
+        {manual && <ManualForm mx={mx} onSubmit={onManual} />}
+      </div>
+    </div>
+  )
+}
+
 // ───────────────────────── Perfilado progresivo ─────────────────────────
 
 const MUST_HAVES: { key: MustHave; label: string }[] = [

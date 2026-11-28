@@ -10,6 +10,7 @@
  */
 
 import type { ZonapropRecord } from './zonaprop'
+import type { ScrapedData } from '@/app/api/scrape-property/route'
 
 const BASE = 'https://api.brightdata.com/datasets/v3'
 
@@ -34,6 +35,154 @@ type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 export interface BrightDataConfig {
   apiKey: string
   fetchImpl?: FetchLike
+}
+
+/** Lectura individual por URL. Está apagada si la variable no vale exactamente `true`. */
+export const isBrightDataLiveEnabled = () => process.env.VARA_BRIGHTDATA_LIVE_ENABLED === 'true'
+
+export type BrightDataPlan = 'anonymous' | 'free' | 'plan'
+export type ListingReadState = 'disabled' | 'cached' | 'starting' | 'running' | 'ready' | 'failed' | 'expired'
+
+export interface BrightDataMappedListing {
+  data: ScrapedData
+  photos: string[]
+  warnings: string[]
+}
+
+interface ListingJob { url: string; listingId: string; snapshotId: string; createdAt: number }
+interface Quota { day: string; dayCount: number; month: string; monthCount: number }
+
+// No hay almacenamiento persistente confirmado para este flujo. Es deliberadamente
+// limitado a la instancia y se pierde al reiniciar; no reemplaza una base real.
+const listingCache = new Map<string, BrightDataMappedListing>()
+const listingJobs = new Map<string, ListingJob>()
+const listingQuota = new Map<string, Quota>()
+
+export function resetBrightDataListingMemory(): void {
+  listingCache.clear(); listingJobs.clear(); listingQuota.clear()
+}
+
+export function brightDataListingId(rawUrl: string): string {
+  const url = new URL(rawUrl)
+  return url.pathname.replace(/\/+$/, '').split('/').filter(Boolean).pop() ?? url.pathname
+}
+
+export function brightDataQuotaLimit(plan: BrightDataPlan): number {
+  return plan === 'anonymous' ? 3 : plan === 'free' ? 20 : 100
+}
+
+function quotaKey(plan: BrightDataPlan): string { return plan }
+
+export function canStartBrightDataListing(plan: BrightDataPlan, now = new Date()): boolean {
+  const day = now.toISOString().slice(0, 10)
+  const month = now.toISOString().slice(0, 7)
+  const key = quotaKey(plan)
+  const old = listingQuota.get(key)
+  const dayCount = old?.day === day ? old.dayCount : 0
+  const monthCount = old?.month === month ? old.monthCount : 0
+  const globalDailyLimit = Math.max(1, Number(process.env.VARA_BRIGHTDATA_GLOBAL_DAILY_LIMIT ?? 100) || 100)
+  const globalDaily = [...listingQuota.values()].reduce((n, q) => n + (q.day === day ? q.dayCount : 0), 0)
+  const monthLimited = plan !== 'anonymous' && monthCount >= brightDataQuotaLimit(plan)
+  if (dayCount >= brightDataQuotaLimit(plan) || monthLimited || globalDaily >= globalDailyLimit) return false
+  listingQuota.set(key, { day, dayCount: dayCount + 1, month, monthCount: monthCount + (plan === 'anonymous' ? 0 : 1) })
+  return true
+}
+
+function numberValue(...values: unknown[]): number | undefined {
+  const value = values.find(v => typeof v === 'number' || (typeof v === 'string' && v.trim()))
+  if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value : undefined
+  if (typeof value !== 'string') return undefined
+  const cleaned = value.replace(/[^\d.,]/g, '')
+  if (!cleaned) return undefined
+  const normalized = cleaned.includes('.') && cleaned.includes(',')
+    ? cleaned.lastIndexOf('.') > cleaned.lastIndexOf(',') ? cleaned.replace(/,/g, '') : cleaned.replace(/\./g, '').replace(',', '.')
+    : cleaned.replace(/[.,](?=\d{3}(?:\D|$))/g, '').replace(',', '.')
+  const n = Number(normalized)
+  return Number.isFinite(n) && n > 0 ? n : undefined
+}
+
+function textValue(...values: unknown[]): string | undefined {
+  const value = values.find(v => typeof v === 'string' && v.trim())
+  return typeof value === 'string' ? value.trim() : undefined
+}
+
+/** Evita retener teléfonos, emails y campos de vendedor que Bright Data pueda devolver. */
+function redactContacts(value: string | undefined): string | undefined {
+  return value?.replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, '[contacto omitido]')
+    .replace(/(?:\+?\d[\d\s().-]{7,}\d)/g, '[teléfono omitido]')
+    .slice(0, 6000)
+}
+
+function textNumber(value: string): number | undefined { return numberValue(value) }
+
+/** Mapea los nombres reales del dataset y valida superficies contra la descripción. */
+export function mapBrightDataRecord(record: Record<string, unknown>): BrightDataMappedListing {
+  const title = textValue(record.Title, record.title)
+  const description = redactContacts(textValue(record.Description, record.description))
+  const terrain = numberValue(record.Dimension_terreno)
+  const property = numberValue(record.Dimension_propiedad)
+  const sourceText = `${title ?? ''} ${description ?? ''}`
+  const explicit = sourceText.match(/(?:casa|propiedad|vivienda)[^\d]{0,40}(\d[\d.,]*)\s*m[²2][^\d]{0,50}(?:sobre|en)\s+(?:un\s+)?lote[^\d]{0,20}(\d[\d.,]*)\s*m[²2]/i)
+  const coveredM2 = explicit ? textNumber(explicit[1]) : property
+  const lotM2 = explicit ? textNumber(explicit[2]) : terrain
+  const warnings: string[] = []
+  if (explicit || (terrain !== undefined && property !== undefined && terrain > property * 3)) {
+    warnings.push('La superficie de terreno y propiedad podría estar invertida; revisá la descripción y confirmá los m².')
+  }
+  if (record.expenses !== undefined || record.Expenses !== undefined) {
+    warnings.push('Las expensas provienen del aviso y quedan a confirmar; no son un dato verificado.')
+  }
+  const rawPhotos = [record.Imagenes, record.images, record.Images].flatMap(value => Array.isArray(value) ? value : typeof value === 'string' ? [value] : [])
+  const photos = rawPhotos.filter((value): value is string => typeof value === 'string' && /^https?:\/\//.test(value)).slice(0, 12)
+  const neighborhood = textValue(record.Zona, record.Zona2, record.Zona3)
+  return {
+    data: {
+      title, description, price: numberValue(record.Precio, record.price), currency: textValue(record.Currency, record.currency),
+      address: redactContacts(textValue(record.address, record.Address)), neighborhood,
+      propertyType: textValue(record.Tipo, record.type), totalM2: coveredM2, coveredM2, lotM2,
+      rooms: numberValue(record.Ambientes, record.rooms), bedrooms: numberValue(record.Dormitorios, record.bedrooms),
+      bathrooms: numberValue(record.Banos, record.Bathrooms), expenses: numberValue(record.expenses, record.Expenses),
+      features: [textValue(record.Nueva_usada)].filter((v): v is string => !!v),
+    }, photos, warnings,
+  }
+}
+
+function validListingUrl(rawUrl: string): URL {
+  const url = new URL(rawUrl)
+  if (url.protocol !== 'https:' || !/(^|\.)zonaprop\.com\.ar$/i.test(url.hostname)) throw new BrightDataError('Solo se pueden leer links HTTPS de zonaprop.com.ar.')
+  return url
+}
+
+export async function startBrightDataListing(cfg: BrightDataConfig, rawUrl: string, plan: BrightDataPlan = 'anonymous'):
+  Promise<{ state: ListingReadState; listingId: string; jobId?: string; data?: BrightDataMappedListing }> {
+  if (!isBrightDataLiveEnabled()) return { state: 'disabled', listingId: brightDataListingId(rawUrl) }
+  const url = validListingUrl(rawUrl)
+  const listingId = brightDataListingId(url.toString())
+  const cached = listingCache.get(listingId)
+  if (cached) return { state: 'cached', listingId, data: cached }
+  if (!canStartBrightDataListing(plan)) throw new BrightDataError('Se alcanzó el tope de lecturas de Bright Data. Pegá el encabezado del aviso para seguir.', 429)
+  const qs = new URLSearchParams({ dataset_id: ZONAPROP_DATASET_ID, include_errors: 'true' })
+  const response = await call(cfg, `/trigger?${qs}`, { method: 'POST', body: JSON.stringify([{ url: url.toString() }]) })
+  const body = await response.json() as { snapshot_id?: string }
+  if (!body.snapshot_id || !/^sd_[A-Za-z0-9]+$/.test(body.snapshot_id)) throw new BrightDataError('Bright Data no devolvió un id de lectura.')
+  const jobId = `bd_${Math.random().toString(36).slice(2, 12)}`
+  listingJobs.set(jobId, { url: url.toString(), listingId, snapshotId: body.snapshot_id, createdAt: Date.now() })
+  return { state: 'starting', listingId, jobId }
+}
+
+export async function brightDataListingStatus(cfg: BrightDataConfig, jobId: string): Promise<{ state: ListingReadState; progress?: SweepProgress; data?: BrightDataMappedListing }> {
+  const job = listingJobs.get(jobId)
+  if (!job || Date.now() - job.createdAt > 10 * 60_000) return { state: 'expired' }
+  const progress = await sweepProgress(cfg, job.snapshotId)
+  if (progress.status === 'failed') return { state: 'failed', progress }
+  if (progress.status !== 'ready') return { state: 'running', progress }
+  const records = await downloadSweep(cfg, job.snapshotId)
+  const raw = records.find(record => typeof record === 'object' && record !== null) as Record<string, unknown> | undefined
+  if (!raw) return { state: 'failed', progress }
+  const mapped = mapBrightDataRecord(raw)
+  listingCache.set(job.listingId, mapped)
+  listingJobs.delete(jobId)
+  return { state: 'ready', progress, data: mapped }
 }
 
 export interface StartSweepInput {
