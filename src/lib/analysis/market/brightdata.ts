@@ -10,6 +10,8 @@
  */
 
 import type { ZonapropRecord } from './zonaprop'
+import { isPlausiblePrice } from '../priceIntelligence'
+import type { ListingCurrency } from '../types'
 import type { ScrapedData } from '@/app/api/scrape-property/route'
 
 const BASE = 'https://api.brightdata.com/datasets/v3'
@@ -142,9 +144,14 @@ export function mapBrightDataRecord(record: Record<string, unknown>): BrightData
   const rawPhotos = [record.Imagenes, record.images, record.Images].flatMap(value => Array.isArray(value) ? value : typeof value === 'string' ? [value] : [])
   const photos = rawPhotos.filter((value): value is string => typeof value === 'string' && /^https?:\/\//.test(value)).slice(0, 12)
   const neighborhood = safeText(record.Zona, record.Zona2, record.Zona3)
+  // «Consultar precio» llega como USD 1: no es un precio de venta, no se afirma.
+  const rawPrice = numberValue(record.Precio, record.price)
+  const rawCurrency = safeText(record.Currency, record.currency)
+  const pricePlausible = rawPrice !== undefined && isPlausiblePrice(rawPrice, rawCurrency as ListingCurrency | undefined)
+  if (rawPrice !== undefined && !pricePlausible) warnings.push('El aviso no informa un precio de venta claro (figura «consultar»); queda a confirmar.')
   return {
     data: {
-      title, description, price: numberValue(record.Precio, record.price), currency: safeText(record.Currency, record.currency),
+      title, description, price: pricePlausible ? rawPrice : undefined, currency: pricePlausible ? rawCurrency : undefined,
       address: safeText(record.address, record.Address), neighborhood,
       propertyType: safeText(record.Tipo, record.type), totalM2: coveredM2, coveredM2, lotM2,
       rooms: numberValue(record.Ambientes, record.rooms), bedrooms: numberValue(record.Dormitorios, record.bedrooms),
