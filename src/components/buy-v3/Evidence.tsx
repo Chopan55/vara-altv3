@@ -53,16 +53,13 @@ export function EvidenceSummary({ analysis }: { analysis: PropertyAnalysis }) {
       <p className="text-slate-700">
         {ev.strongMatches > 0
           ? `Comparé con ${ev.strongMatches} aviso${ev.strongMatches === 1 ? '' : 's'} publicado${ev.strongMatches === 1 ? '' : 's'} realmente parecido${ev.strongMatches === 1 ? '' : 's'}, en ${SCOPE_TEXT[ev.geographicScope]}.`
-          : 'No encontré avisos realmente parecidos para comparar.'}{' '}
+          : 'Todavía no hay avisos utilizables para comparar.'}{' '}
         <span className="text-slate-500">Son precios pedidos, no precios de venta.</span>
       </p>
       <RangeBar analysis={analysis} />
       <ul className="mt-3 space-y-1 text-xs text-slate-500">
-        {r.afterDedup > 0 && (
-          <li>
-            Encontré {r.afterDedup} aviso{r.afterDedup === 1 ? '' : 's'} candidato{r.afterDedup === 1 ? '' : 's'} (sin repetidos); {ev.strongMatches} se parece{ev.strongMatches === 1 ? '' : 'n'} lo suficiente para comparar.{ev.strongMatches > 0 ? ' Abajo ves cada uno, en qué se parece y en qué difiere.' : ''}
-          </li>
-        )}
+        <li>Busqué {r.afterDedup} candidato{r.afterDedup === 1 ? '' : 's'}; {ev.strongMatches} sirve{ev.strongMatches === 1 ? '' : 'n'} para comparar.</li>
+        {ev.strongMatches === 0 && <li>El motivo: ninguno alcanzó el umbral de similitud y ubicación para sostener un rango.</li>}
         <li>Precios de cierre (lo que realmente se pagó): sin datos disponibles todavía; por eso comparo precios pedidos.</li>
         {r.searchExpansionReason && <li>{r.searchExpansionReason}</li>}
         {r.duplicatesMerged > 0 && (

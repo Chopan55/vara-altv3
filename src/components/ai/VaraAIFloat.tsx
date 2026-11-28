@@ -54,6 +54,7 @@ export function VaraAIFloat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [inputFocused, setInputFocused] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -110,7 +111,7 @@ export function VaraAIFloat() {
       {open && (
         <div
           className={cn(
-            'fixed bottom-36 lg:bottom-20 right-4 z-50',
+            'fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] lg:bottom-20 right-4 z-50',
             'w-[340px] max-w-[calc(100vw-2rem)]',
             'bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col',
           )}
@@ -179,6 +180,8 @@ export function VaraAIFloat() {
             <div className="flex items-center gap-2 bg-slate-50 rounded-xl border border-slate-200 focus-within:border-brand-400 transition-colors px-3 py-2">
               <input
                 ref={inputRef}
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
@@ -206,8 +209,9 @@ export function VaraAIFloat() {
       <button
         onClick={() => setOpen(o => !o)}
         className={cn(
-          'fixed bottom-20 lg:bottom-4 right-4 z-50 w-12 h-12 rounded-2xl shadow-lg',
+          'fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] lg:bottom-4 right-4 z-50 w-12 h-12 rounded-2xl shadow-lg',
           'flex items-center justify-center transition-all duration-200',
+          inputFocused && 'hidden',
           open
             ? 'bg-slate-700 hover:bg-slate-800 text-white'
             : 'bg-brand-600 hover:bg-brand-700 text-white'

@@ -4,12 +4,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { requireAiAccess } from '@/lib/api/aiAccess'
 import { isMexicanUrl } from '@/lib/analysis/country'
-import { parseListingText } from '@/lib/scrape/parseText'
+import { canAnalyzePastedText, parseListingText } from '@/lib/scrape/parseText'
 import { withLocationFromTitle } from '@/lib/scrape/locationFromTitle'
 import { reviewSurfaces, type SurfaceWarning } from '@/lib/scrape/surfaces'
 import { allowRequest, clientKey } from '@/lib/api/rateLimit'
 import { meliItemIdFromUrl } from '@/lib/comparables/model'
 import { fetchMeliExtras, fetchMeliItem, isMeliBlockPage, meliItemToScraped } from '@/lib/meli/api'
+import { ENTRY_COPY } from '@/lib/copy'
 
 export const maxDuration = 60
 
@@ -421,7 +422,7 @@ export async function POST(req: NextRequest) {
     let html = ''
 
     // ── Atajo: el usuario pegó el texto del aviso (evita el muro anti-bot) ──
-    if (pastedText.trim().length > 150) {
+    if (canAnalyzePastedText(pastedText, { mx })) {
       // Primero reglas (sin IA, para todos); la IA, si está habilitada, solo completa lo que falte.
       const byRules = parseListingText(pastedText, { mx })
       const aiData = missingOf(byRules).length > 0 ? await ai(pastedText, byRules) : null
@@ -434,7 +435,7 @@ export async function POST(req: NextRequest) {
         url, portal, method: 'paste', data: d, photos: [], missingFields,
         ...(warnings.length ? { warnings } : {}),
         ...(got === 0 ? {
-          errorMessage: 'No encontramos el precio ni la superficie en ese texto. Revisá que hayas copiado la publicación completa, o cargá los datos a mano.',
+          errorMessage: ENTRY_COPY.incompleteText,
         } : {}),
       } satisfies ScrapeResult)
     }
@@ -551,7 +552,7 @@ export async function POST(req: NextRequest) {
         status: blocked ? 'blocked' : 'error',
         url, portal, method, data, photos, missingFields,
         errorMessage: blocked
-          ? `${portal ?? 'Este portal'} bloquea la lectura automática. Copiá el texto del aviso y pegalo acá — lo leemos igual.`
+          ? `${portal ?? 'Este portal'} bloquea la lectura automática. ${ENTRY_COPY.pasteRecommendation}`
           : expired
             ? 'Este aviso ya no está publicado en el portal.'
             : 'No pudimos leer los datos de este aviso. Cargalos a mano — toma un minuto.',

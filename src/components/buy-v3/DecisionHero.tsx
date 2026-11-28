@@ -17,6 +17,7 @@ import { uniqueWarnings, type SurfaceWarning } from '@/lib/scrape/surfaces'
 import { RangeBar } from './Evidence'
 import { rangeText } from './Highlights'
 import { CONFIDENCE_DOTS, CONFIDENCE_TEXT, KIND_TEXT, VERDICT_STYLE, copyText, money } from './format'
+import { ENTRY_COPY } from '@/lib/copy'
 
 const VERDICT_DOT: Record<Verdict, string> = {
   PROMISING: 'bg-emerald-400', CAUTION: 'bg-amber-400', WEAK: 'bg-rose-400', UNDETERMINED: 'bg-slate-300',
@@ -60,6 +61,7 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
   const facts = [
     f.kind?.value ? KIND_TEXT[f.kind.value] : null,
     f.bedrooms?.value ? `${f.bedrooms.value} ${mx ? 'recámaras' : 'dorm.'}` : null,
+    f.totalArea?.value ? `${f.totalArea.value} m² ${mx ? 'totales' : 'totales'}` : null,
     f.coveredArea?.value ? `${f.coveredArea.value} m² ${mx ? 'const.' : 'cub.'}` : null,
     f.landArea?.value ? `${f.landArea.value} m² terreno` : null,
   ].filter(Boolean)
@@ -97,6 +99,9 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
           <div className="min-w-0 flex-1">
             <p className="line-clamp-2 text-sm font-semibold leading-snug">{f.title?.value ?? 'Propiedad'}</p>
             <p className="mt-0.5 truncate text-xs text-brand-100">{[where, ...facts].filter(Boolean).join(' · ')}</p>
+            {f.totalArea?.value && !f.coveredArea?.value && kind !== 'lot' && (
+              <p className="mt-1 text-[11px] leading-snug text-brand-200">{f.totalArea.value} m² totales; falta confirmar cuántos son cubiertos. Importa porque la comparación de viviendas usa la superficie cubierta.</p>
+            )}
             {locationInferred && <p className="mt-0.5 text-[11px] text-brand-200">Ubicación tomada del título del aviso</p>}
           </div>
           <button type="button" onClick={onShare} aria-label="Compartir este análisis"
@@ -214,6 +219,14 @@ export function DecisionHero({ analysis, photo, warnings, onAct, onShare, onScro
               {copied === 'ok' ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
               {copied === 'ok' ? 'Copiada' : copied === 'fail' ? 'No pude copiarla: seleccionala' : 'Copiar la pregunta'}
             </button>
+            {copied === 'ok' && (
+              <div role="status" className="mt-2 text-xs text-slate-600">
+                {ENTRY_COPY.copiedQuestion}{' '}
+                <button type="button" className="font-semibold text-brand-700 underline" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(firstQuestion.question)}`, '_blank', 'noopener,noreferrer')}>
+                  Abrir WhatsApp
+                </button>
+              </div>
+            )}
           </div>
         )}
 

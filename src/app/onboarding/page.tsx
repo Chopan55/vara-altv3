@@ -355,7 +355,7 @@ function OnboardingInner() {
               {operationTypes.map(({ id, icon: Icon, title, desc }) => (
                 <button
                   key={id}
-                  onClick={() => { setType(id); setStep(3) }}
+                  onClick={() => setType(id)}
                   className={cn(
                     'w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all',
                     type === id ? 'border-brand-500 bg-brand-50' : 'border-slate-100 hover:border-slate-200 bg-white'
@@ -374,7 +374,15 @@ function OnboardingInner() {
               ))}
             </div>
 
-            <button onClick={() => setStep(1)} className="mt-6 text-sm text-slate-400 hover:text-slate-600">← Volver</button>
+            <button
+              type="button"
+              onClick={() => setStep(3)}
+              disabled={!type}
+              className="mt-6 w-full rounded-2xl bg-brand-600 py-4 text-base font-bold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Continuar <ArrowRight size={18} className="ml-1 inline" />
+            </button>
+            <button type="button" onClick={() => setStep(1)} className="mt-4 text-sm text-slate-400 hover:text-slate-600">← Volver</button>
           </>
         )}
 
@@ -419,7 +427,7 @@ function OnboardingInner() {
                 {(PROVINCES_BY_COUNTRY[country] ?? PROVINCES_BY_COUNTRY.AR).map(p => (
                   <button
                     key={p}
-                    onClick={() => { setProvince(p); setStep(4) }}
+                    onClick={() => setProvince(p)}
                     className={cn(
                       'p-4 rounded-2xl border-2 font-semibold text-sm transition-all text-left',
                       province === p ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-100 text-slate-600 hover:border-slate-200'
@@ -429,9 +437,18 @@ function OnboardingInner() {
                   </button>
                 ))}
               </div>
+              {!province && <p className="mt-3 text-sm font-medium text-amber-700">Elegí una provincia para seguir</p>}
             </div>
 
-            <button onClick={() => setStep(2)} className="mt-6 text-sm text-slate-400 hover:text-slate-600">← Volver</button>
+            <button
+              type="button"
+              onClick={() => setStep(4)}
+              disabled={!province}
+              className="mt-6 w-full rounded-2xl bg-brand-600 py-4 text-base font-bold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Continuar <ArrowRight size={18} className="ml-1 inline" />
+            </button>
+            <button type="button" onClick={() => setStep(2)} className="mt-4 text-sm text-slate-400 hover:text-slate-600">← Volver</button>
           </>
         )}
 
