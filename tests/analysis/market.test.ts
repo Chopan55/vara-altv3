@@ -1,4 +1,4 @@
-import { afterEach, describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -217,10 +217,36 @@ describe('cliente de Bright Data: protege el crédito y la clave', () => {
     expect(JSON.stringify(mapped)).not.toMatch(/5555|Inmobiliaria/i)
   })
 
+  it('redacta contactos en todos los campos de texto que conserva', () => {
+    const mapped = mapBrightDataRecord({
+      Title: 'Casa +54 11 5555-0000', Description: 'mail@test.com', Currency: 'USD mail2@test.com',
+      address: 'Calle +54 11 4444-1111', Zona: 'Norte mail3@test.com', Tipo: 'Casa +54 11 3333-2222',
+      Nueva_usada: 'A estrenar mail4@test.com',
+    })
+    const json = JSON.stringify(mapped.data)
+    expect(json).not.toMatch(/5555|4444|3333|test\.com/i)
+    expect(json).toMatch(/contacto omitido|teléfono omitido/)
+  })
+
   it('no llama a Bright Data cuando el interruptor está apagado', async () => {
     const fetchImpl = async () => { throw new Error('no debería llamar') }
     const result = await startBrightDataListing({ apiKey: KEY, fetchImpl }, 'https://www.zonaprop.com.ar/propiedades/aviso-1.html')
     expect(result.state).toBe('disabled')
+  })
+
+  it('acepta únicamente URLs HTTPS de avisos de zonaprop con id numérico', async () => {
+    process.env.VARA_BRIGHTDATA_LIVE_ENABLED = 'true'
+    const fetchImpl = async () => json({ snapshot_id: 'sd_url123' })
+    const cfg = { apiKey: KEY, fetchImpl }
+    for (const url of [
+      'https://evil.zonaprop.com.ar/propiedades/aviso-1.html',
+      'https://zonaprop.com.ar.evil.com/propiedades/aviso-1.html',
+      'http://zonaprop.com.ar/propiedades/aviso-1.html',
+      'https://zonaprop.com.ar/buscar/aviso-1.html',
+    ]) {
+      await expect(startBrightDataListing(cfg, url)).rejects.toThrow(/HTTPS|avisos/i)
+    }
+    await expect(startBrightDataListing(cfg, 'https://www.zonaprop.com.ar/propiedades/aviso-1.html')).resolves.toMatchObject({ state: 'starting' })
   })
 
   it('inicia por URL, sondea progreso y reutiliza el caché sin otro trigger', async () => {
@@ -242,12 +268,29 @@ describe('cliente de Bright Data: protege el crédito y la clave', () => {
     expect(calls.filter(c => c.includes('/trigger?'))).toHaveLength(1)
   })
 
+  it('expira el caché de avisos después de 24 horas', async () => {
+    process.env.VARA_BRIGHTDATA_LIVE_ENABLED = 'true'
+    vi.useFakeTimers()
+    const fetchImpl = async (url: string) => {
+      if (url.includes('/trigger?')) return json({ snapshot_id: `sd_${Date.now()}` })
+      if (url.includes('/progress/')) return json({ status: 'ready', records: 1, errors: 0 })
+      return json([{ Title: 'Casa', Precio: 1 }])
+    }
+    const cfg = { apiKey: KEY, fetchImpl }
+    const first = await startBrightDataListing(cfg, 'https://zonaprop.com.ar/propiedades/aviso-24.html')
+    await brightDataListingStatus(cfg, first.jobId!)
+    expect((await startBrightDataListing(cfg, 'https://zonaprop.com.ar/propiedades/aviso-24.html')).state).toBe('cached')
+    vi.advanceTimersByTime(24 * 60 * 60 * 1000)
+    expect((await startBrightDataListing(cfg, 'https://zonaprop.com.ar/propiedades/aviso-24.html')).state).toBe('starting')
+    vi.useRealTimers()
+  })
+
   it('aplica topes por plan y tope diario global', async () => {
     process.env.VARA_BRIGHTDATA_LIVE_ENABLED = 'true'
     process.env.VARA_BRIGHTDATA_GLOBAL_DAILY_LIMIT = '1'
     const fetchImpl = async (url: string) => url.includes('/trigger?') ? json({ snapshot_id: 'sd_quota1' }) : json({})
-    await startBrightDataListing({ apiKey: KEY, fetchImpl }, 'https://www.zonaprop.com.ar/propiedades/a.html', 'anonymous')
-    await expect(startBrightDataListing({ apiKey: KEY, fetchImpl }, 'https://www.zonaprop.com.ar/propiedades/b.html', 'anonymous')).rejects.toThrow(/tope/i)
+    await startBrightDataListing({ apiKey: KEY, fetchImpl }, 'https://www.zonaprop.com.ar/propiedades/a-1.html', 'anonymous')
+    await expect(startBrightDataListing({ apiKey: KEY, fetchImpl }, 'https://www.zonaprop.com.ar/propiedades/b-2.html', 'anonymous')).rejects.toThrow(/tope/i)
   })
 })
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { EXTRA_CREDITS, PLANS, RATE_NOTE, formatARS, formatMXN } from '@/lib/pricing/plans'
 
 describe('planes', () => {
@@ -19,5 +19,24 @@ describe('planes', () => {
     expect(EXTRA_CREDITS).toMatchObject({ credits: 100, priceARS: 5000 })
     expect(formatMXN(EXTRA_CREDITS.priceMXN)).toMatch(/^MXN /)
     expect(RATE_NOTE).toMatch(/a confirmar/i)
+  })
+
+  it('usa el tipo de cambio configurable solo si es positivo y finito', async () => {
+    vi.resetModules()
+    vi.stubEnv('NEXT_PUBLIC_ARS_PER_MXN', '100')
+    const overridden = await import('@/lib/pricing/plans')
+    expect(overridden.ARS_PER_MXN).toBe(100)
+    expect(overridden.RATE_NOTE).toContain('100 ARS')
+
+    vi.resetModules()
+    vi.stubEnv('NEXT_PUBLIC_ARS_PER_MXN', 'not-a-number')
+    const invalid = await import('@/lib/pricing/plans')
+    expect(invalid.ARS_PER_MXN).toBe(82.5)
+    expect(invalid.RATE_NOTE).toContain('82,5 ARS')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.resetModules()
   })
 })

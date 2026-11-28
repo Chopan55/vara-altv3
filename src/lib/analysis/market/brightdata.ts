@@ -51,10 +51,13 @@ export interface BrightDataMappedListing {
 
 interface ListingJob { url: string; listingId: string; snapshotId: string; createdAt: number }
 interface Quota { day: string; dayCount: number; month: string; monthCount: number }
+interface ListingCacheEntry { listing: BrightDataMappedListing; expiresAt: number }
+
+export const LISTING_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 
 // No hay almacenamiento persistente confirmado para este flujo. Es deliberadamente
 // limitado a la instancia y se pierde al reiniciar; no reemplaza una base real.
-const listingCache = new Map<string, BrightDataMappedListing>()
+const listingCache = new Map<string, ListingCacheEntry>()
 const listingJobs = new Map<string, ListingJob>()
 const listingQuota = new Map<string, Quota>()
 
@@ -113,12 +116,16 @@ function redactContacts(value: string | undefined): string | undefined {
     .slice(0, 6000)
 }
 
+function safeText(...values: unknown[]): string | undefined {
+  return redactContacts(textValue(...values))
+}
+
 function textNumber(value: string): number | undefined { return numberValue(value) }
 
 /** Mapea los nombres reales del dataset y valida superficies contra la descripción. */
 export function mapBrightDataRecord(record: Record<string, unknown>): BrightDataMappedListing {
-  const title = textValue(record.Title, record.title)
-  const description = redactContacts(textValue(record.Description, record.description))
+  const title = safeText(record.Title, record.title)
+  const description = safeText(record.Description, record.description)
   const terrain = numberValue(record.Dimension_terreno)
   const property = numberValue(record.Dimension_propiedad)
   const sourceText = `${title ?? ''} ${description ?? ''}`
@@ -134,22 +141,27 @@ export function mapBrightDataRecord(record: Record<string, unknown>): BrightData
   }
   const rawPhotos = [record.Imagenes, record.images, record.Images].flatMap(value => Array.isArray(value) ? value : typeof value === 'string' ? [value] : [])
   const photos = rawPhotos.filter((value): value is string => typeof value === 'string' && /^https?:\/\//.test(value)).slice(0, 12)
-  const neighborhood = textValue(record.Zona, record.Zona2, record.Zona3)
+  const neighborhood = safeText(record.Zona, record.Zona2, record.Zona3)
   return {
     data: {
-      title, description, price: numberValue(record.Precio, record.price), currency: textValue(record.Currency, record.currency),
-      address: redactContacts(textValue(record.address, record.Address)), neighborhood,
-      propertyType: textValue(record.Tipo, record.type), totalM2: coveredM2, coveredM2, lotM2,
+      title, description, price: numberValue(record.Precio, record.price), currency: safeText(record.Currency, record.currency),
+      address: safeText(record.address, record.Address), neighborhood,
+      propertyType: safeText(record.Tipo, record.type), totalM2: coveredM2, coveredM2, lotM2,
       rooms: numberValue(record.Ambientes, record.rooms), bedrooms: numberValue(record.Dormitorios, record.bedrooms),
       bathrooms: numberValue(record.Banos, record.Bathrooms), expenses: numberValue(record.expenses, record.Expenses),
-      features: [textValue(record.Nueva_usada)].filter((v): v is string => !!v),
+      features: [safeText(record.Nueva_usada)].filter((v): v is string => !!v),
     }, photos, warnings,
   }
 }
 
 function validListingUrl(rawUrl: string): URL {
   const url = new URL(rawUrl)
-  if (url.protocol !== 'https:' || !/(^|\.)zonaprop\.com\.ar$/i.test(url.hostname)) throw new BrightDataError('Solo se pueden leer links HTTPS de zonaprop.com.ar.')
+  if (
+    url.protocol !== 'https:' ||
+    !['zonaprop.com.ar', 'www.zonaprop.com.ar'].includes(url.hostname.toLowerCase()) ||
+    url.username || url.password || url.port ||
+    !/^\/propiedades\/.+-\d+\.html$/i.test(url.pathname)
+  ) throw new BrightDataError('Solo se pueden leer links HTTPS de avisos de zonaprop.com.ar.')
   return url
 }
 
@@ -159,7 +171,8 @@ export async function startBrightDataListing(cfg: BrightDataConfig, rawUrl: stri
   const url = validListingUrl(rawUrl)
   const listingId = brightDataListingId(url.toString())
   const cached = listingCache.get(listingId)
-  if (cached) return { state: 'cached', listingId, data: cached }
+  if (cached && cached.expiresAt > Date.now()) return { state: 'cached', listingId, data: cached.listing }
+  if (cached) listingCache.delete(listingId)
   if (!canStartBrightDataListing(plan)) throw new BrightDataError('Se alcanzó el tope de lecturas de Bright Data. Pegá el encabezado del aviso para seguir.', 429)
   const qs = new URLSearchParams({ dataset_id: ZONAPROP_DATASET_ID, include_errors: 'true' })
   const response = await call(cfg, `/trigger?${qs}`, { method: 'POST', body: JSON.stringify([{ url: url.toString() }]) })
@@ -180,7 +193,7 @@ export async function brightDataListingStatus(cfg: BrightDataConfig, jobId: stri
   const raw = records.find(record => typeof record === 'object' && record !== null) as Record<string, unknown> | undefined
   if (!raw) return { state: 'failed', progress }
   const mapped = mapBrightDataRecord(raw)
-  listingCache.set(job.listingId, mapped)
+  listingCache.set(job.listingId, { listing: mapped, expiresAt: Date.now() + LISTING_CACHE_TTL_MS })
   listingJobs.delete(jobId)
   return { state: 'ready', progress, data: mapped }
 }

@@ -15,6 +15,7 @@ function plan(value: unknown): Plan {
 }
 
 export async function POST(req: Request) {
+  if (!isBrightDataLiveEnabled()) return NextResponse.json({ state: 'disabled' })
   try {
     const body = await req.json() as { url?: unknown; plan?: unknown }
     const url = typeof body.url === 'string' ? body.url.trim() : ''
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
+  if (!isBrightDataLiveEnabled()) return NextResponse.json({ state: 'disabled' })
   const jobId = new URL(req.url).searchParams.get('jobId') ?? ''
   if (!jobId) return NextResponse.json({ error: 'Falta el id de lectura.' }, { status: 400 })
   const apiKey = process.env.BRIGHTDATA_API_KEY

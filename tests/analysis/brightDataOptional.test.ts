@@ -9,6 +9,7 @@ vi.mock('@/lib/analysis/market', () => ({ getMarketStore: () => ({ upsert }) }))
 
 import { GET as cronGet } from '@/app/api/v3/market/sweep/cron/route'
 import { POST as sweepPost } from '@/app/api/v3/market/sweep/route'
+import { GET as listingGet, POST as listingPost } from '@/app/api/brightdata/zonaprop/route'
 
 const walk = (dir: string, out: string[] = []) => {
   for (const name of readdirSync(dir)) {
@@ -84,6 +85,24 @@ describe('Bright Data es opcional para /analizar', () => {
     expect(await res.json()).toEqual({ status: 'disabled' })
     expect(touchedNetwork).not.toHaveBeenCalled()
     expect(upsert).not.toHaveBeenCalled()
+  })
+
+  it('el endpoint de avisos queda disabled con la bandera ausente o en false, aun con clave', async () => {
+    process.env.BRIGHTDATA_API_KEY = 'presente-pero-no-debe-usarse'
+    for (const value of [undefined, 'false']) {
+      if (value === undefined) delete process.env.VARA_BRIGHTDATA_LIVE_ENABLED
+      else process.env.VARA_BRIGHTDATA_LIVE_ENABLED = value
+      const post = await listingPost(new Request('http://x/api/brightdata/zonaprop', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url: 'https://www.zonaprop.com.ar/propiedades/aviso-123.html' }),
+      }))
+      const get = await listingGet(new Request('http://x/api/brightdata/zonaprop?jobId=bd_test'))
+      expect(post.status).toBe(200)
+      expect(await post.json()).toEqual({ state: 'disabled' })
+      expect(get.status).toBe(200)
+      expect(await get.json()).toEqual({ state: 'disabled' })
+    }
+    expect(touchedNetwork).not.toHaveBeenCalled()
   })
 
   it('cron encendido pero sin credenciales correctas: rechaza (401) sin tocar el proveedor', async () => {

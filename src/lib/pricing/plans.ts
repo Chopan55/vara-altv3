@@ -12,8 +12,10 @@ export type Plan = {
   highlight?: boolean
 }
 
-export const ARS_PER_MXN = Number(process.env.NEXT_PUBLIC_ARS_PER_MXN ?? 82.5)
-export const RATE_NOTE = 'Tipo de cambio de referencia: 1 MXN ≈ 82,5 ARS (a confirmar).'
+const configuredRate = Number(process.env.NEXT_PUBLIC_ARS_PER_MXN ?? 82.5)
+export const ARS_PER_MXN = Number.isFinite(configuredRate) && configuredRate > 0 ? configuredRate : 82.5
+const formattedRate = ARS_PER_MXN.toLocaleString('es-AR', { maximumFractionDigits: 2 })
+export const RATE_NOTE = `Tipo de cambio de referencia: 1 MXN ≈ ${formattedRate} ARS (a confirmar).`
 export const EXTRA_CREDITS = { credits: 100, priceARS: 5000, priceMXN: Math.round(5000 / ARS_PER_MXN) } as const
 
 /**
