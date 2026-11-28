@@ -13,6 +13,7 @@ import { apiErrorMessage, safeJson } from '@/lib/api/client'
 import { readChatStream, type FinalPayload } from '@/lib/assistant/chatStream'
 import { isErrorMessage, isSpeakable, moodLabel, orbMoodFor } from '@/lib/assistant/voice'
 import { liveErrorMessage, liveLabel, liveOrbMood } from '@/lib/assistant/realtime'
+import { addAssistantMemory, deleteAssistantMemory, readAssistantMemories, readAssistantMemoryEnabled, writeAssistantMemoryEnabled, type AssistantMemory } from '@/lib/assistant/memory'
 
 const BUYER_FAQS = [
   '¿Qué documentos le pido al vendedor?',
@@ -96,6 +97,10 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
   const stickToBottom = useRef(true)
   const inputRef = useRef<HTMLInputElement>(null)
   const [showFaqs, setShowFaqs] = useState(false)
+  const [memoryEnabled, setMemoryEnabled] = useBrowserState<boolean>(() => readAssistantMemoryEnabled(), false, vara.loaded)
+  const [memories, setMemories] = useBrowserState<AssistantMemory[]>(() => readAssistantMemories(), [], vara.loaded)
+  const [memoryDraft, setMemoryDraft] = useState('')
+  const [showMemory, setShowMemory] = useState(false)
   const [copyStatus, setCopyStatus] = useState<{ index: number; message: string }>()
   const bottomRef = useRef<HTMLDivElement>(null)
   // Se observa lo que realmente se ve: funciona igual si desplaza la página o un contenedor interno.
@@ -126,6 +131,17 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
     voice.stop() // la lectura de una respuesta no se pisa con la conversación
     setChatError(null)
     void live.start(activeOperation?.id)
+  }
+
+  function toggleMemory(enabled: boolean) {
+    writeAssistantMemoryEnabled(enabled)
+    setMemoryEnabled(enabled)
+  }
+
+  function saveMemory() {
+    if (!memoryEnabled || !memoryDraft.trim()) return
+    setMemories(addAssistantMemory(memoryDraft))
+    setMemoryDraft('')
   }
 
   useEffect(() => {
@@ -169,7 +185,7 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history, context, operationId: activeOperation?.id, includeNextStep: true, stream: true }),
+        body: JSON.stringify({ messages: history, context, operationId: activeOperation?.id, includeNextStep: true, stream: true, assistantMemory: memoryEnabled ? memories.map(memory => memory.text) : undefined }),
         signal: controller.signal,
       })
 
@@ -279,6 +295,30 @@ function AssistantConversation({ vara, journey, activeOperation, scope }: {
             Leer respuestas
             <span className="font-normal text-slate-500">{voice.autoRead ? '· activado' : '· desactivado'}</span>
           </button>
+
+          <button type="button" onClick={() => setShowMemory(value => !value)} className="mt-3 ml-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-300">
+            Memoria {memoryEnabled ? '· activada' : '· apagada'}
+          </button>
+          {showMemory && (
+            <section aria-label="Memoria del asistente" className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-slate-800">Memoria de VARA</p>
+                  <p className="text-xs text-slate-500">Solo se guarda en este navegador. Podés apagarla o borrar cada recuerdo. No guardes claves ni datos de documentos.</p>
+                </div>
+                <button type="button" role="switch" aria-checked={memoryEnabled} onClick={() => toggleMemory(!memoryEnabled)} className={cn('rounded-full px-3 py-1 text-xs font-semibold', memoryEnabled ? 'bg-brand-100 text-brand-800' : 'bg-slate-100 text-slate-600')}>
+                  {memoryEnabled ? 'Activada' : 'Apagada'}
+                </button>
+              </div>
+              {memoryEnabled && <>
+                <div className="mt-3 flex gap-2">
+                  <input value={memoryDraft} onChange={event => setMemoryDraft(event.target.value)} placeholder="Ej.: prefiero ver los montos en USD" aria-label="Nuevo recuerdo" className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs" />
+                  <button type="button" onClick={saveMemory} className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white">Guardar</button>
+                </div>
+                {memories.length > 0 && <ul className="mt-3 space-y-2">{memories.map(memory => <li key={memory.id} className="flex items-start justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700"><span>{memory.text}</span><button type="button" onClick={() => setMemories(deleteAssistantMemory(memory.id))} className="shrink-0 font-semibold text-slate-500 underline" aria-label={`Borrar recuerdo: ${memory.text}`}>Borrar</button></li>)}</ul>}
+              </>}
+            </section>
+          )}
 
           {/* Conversación de voz: micrófono solo mientras la sesión está activa. */}
           <button

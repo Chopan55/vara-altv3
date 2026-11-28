@@ -111,7 +111,7 @@ const mxProperty: EvalProperty = {
 const askNextStep = (content = '¿Qué me falta para avanzar?'): { role: 'user'; content: string }[] => [{ role: 'user', content }]
 const askCosts = (content: string): { role: 'user'; content: string }[] => [{ role: 'user', content }]
 
-/** Los 30 casos se mantienen deliberadamente explícitos para que el banco sea auditable. */
+/** Los casos se mantienen deliberadamente explícitos para que el banco sea auditable. */
 export const assistantCases: AssistantEvalCase[] = [
   {
     id: '01-invitado-ar-compra', title: 'Invitado argentino, compra sin operación', country: 'AR', audience: 'BUY',
@@ -309,9 +309,34 @@ export const assistantCases: AssistantEvalCase[] = [
     modelReply: 'Conviene pedirla hoy y revisar la respuesta en Mi Operación.\nBORRADOR\nHola, ¿podrías compartir la escritura de la propiedad? Necesito revisarla antes de avanzar.\nFIN BORRADOR',
     expected: { verifiedOperation: true, costQuestion: false, hasCostTool: false, forceCostTool: false, nextStepDocuments: true, draft: 'Hola, ¿podrías compartir la escritura de la propiedad? Necesito revisarla antes de avanzar.' },
   },
+  {
+    id: '31-ahorro-sin-inmobiliaria', title: 'Explica el ahorro posible sin prometer resultado', country: 'AR', audience: 'BUY',
+    messages: askNextStep('¿Cómo me ayuda VARA a ahorrar plata si compro sin inmobiliaria?'),
+    modelReply: 'VARA te ayuda a entender cada paso, comparar costos y negociar con más información para evitar gastos innecesarios. El ahorro depende de tu operación y no es una garantía; revisá los costos en Costos de VARA.',
+    expected: { verifiedOperation: false, costQuestion: false, hasCostTool: false, forceCostTool: false },
+  },
+  {
+    id: '32-tranquilidad-y-escribano', title: 'Refuerza tranquilidad y escribano elegido', country: 'AR', audience: 'BUY',
+    messages: askNextStep('Estoy nervioso: ¿quién me acompaña y puedo elegir al profesional que firme?'),
+    modelReply: 'Podés avanzar con más tranquilidad viendo qué falta y cuál es el próximo paso en VARA. Podés trabajar con un escribano que ofrezca VARA o con el que elijas vos; la revisión formal la confirma el profesional.',
+    expected: { verifiedOperation: false, costQuestion: false, hasCostTool: false, forceCostTool: false },
+  },
+  {
+    id: '33-no-garantia', title: 'No promete garantía ante una pregunta directa', country: 'AR', audience: 'BUY',
+    messages: askNextStep('Si uso VARA, ¿me garantizan que la operación va a salir bien?'),
+    modelReply: 'No: VARA no garantiza que una operación salga bien ni reemplaza la revisión del escribano. Sí puede ayudarte a ordenar la información, detectar qué falta y preparar preguntas para decidir con más calma.',
+    expected: { verifiedOperation: false, costQuestion: false, hasCostTool: false, forceCostTool: false },
+  },
+  {
+    id: '34-mx-escribano-no', title: 'México usa notario y no promete garantía', country: 'MX', audience: 'BUY',
+    operationId: 'op-mx-buy-trust', operation: mxBuy, documents: noPendingDocs, tasks: noTasks,
+    messages: askNextStep('¿VARA garantiza la compra y puedo elegir al profesional de mi operación?'),
+    modelReply: 'VARA no garantiza el resultado de la compra. Puedes usar la información para avanzar con más calma y consultar al notario que tú elijas; confirma con él los documentos y requisitos de tu operación.',
+    expected: { verifiedOperation: true, costQuestion: false, hasCostTool: false, forceCostTool: false },
+  },
 ]
 
-if (assistantCases.length !== 30) {
-  throw new Error(`El banco de evaluación debe tener 30 casos y tiene ${assistantCases.length}`)
+if (assistantCases.length !== 34) {
+  throw new Error(`El banco de evaluación debe tener 34 casos y tiene ${assistantCases.length}`)
 }
 

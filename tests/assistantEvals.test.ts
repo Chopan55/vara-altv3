@@ -93,9 +93,9 @@ describe('banco determinístico de evaluación continua del asistente', () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'synthetic-anon-key')
   })
 
-  it('mantiene exactamente 30 casos sintéticos y todos tienen un identificador único', () => {
-    expect(assistantCases).toHaveLength(30)
-    expect(new Set(assistantCases.map(testCase => testCase.id)).size).toBe(30)
+  it('mantiene exactamente 34 casos sintéticos y todos tienen un identificador único', () => {
+    expect(assistantCases).toHaveLength(34)
+    expect(new Set(assistantCases.map(testCase => testCase.id)).size).toBe(34)
   })
 
   for (const testCase of assistantCases) {
