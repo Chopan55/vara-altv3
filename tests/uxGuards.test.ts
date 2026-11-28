@@ -35,4 +35,31 @@ describe('guardas de uso', () => {
     const bad = files.filter(f => /<Link href="[^"]+" className="[^"]*text-slate-400 hover:text-slate-700[^"]*">\s*<ArrowLeft/.test(readFileSync(f, 'utf8')))
     expect(bad).toEqual([])
   })
+
+  it('onboarding requiere una selección antes de continuar en pasos 2 y 3', () => {
+    const src = readFileSync(path.join(process.cwd(), 'src/app/onboarding/page.tsx'), 'utf8')
+    expect(src).toMatch(/disabled=\{!type\}/)
+    expect(src).toMatch(/disabled=\{!province\}/)
+    expect(src).toContain('Elegí una provincia para seguir')
+    expect(src).toMatch(/setType\(id\)\}/)
+    expect(src).toMatch(/setProvince\(p\)\}/)
+  })
+
+  it('la entrada no promete lectura de Zonaprop y el resultado identifica el link VARA', () => {
+    const entry = readFileSync(path.join(process.cwd(), 'src/components/buy-v3/Entry.tsx'), 'utf8')
+    const highlights = readFileSync(path.join(process.cwd(), 'src/components/buy-v3/Highlights.tsx'), 'utf8')
+    expect(entry).not.toContain('Funciona con Zonaprop')
+    expect(entry).not.toContain('No pude leer el aviso solo')
+    expect(entry).not.toContain('⌘A')
+    expect(highlights).toContain('Copiar link del análisis VARA')
+  })
+
+  it('resultado abre acciones locales y conserva el motivo de la evidencia', () => {
+    const result = readFileSync(path.join(process.cwd(), 'src/components/buy-v3/ResultView.tsx'), 'utf8')
+    const evidence = readFileSync(path.join(process.cwd(), 'src/components/buy-v3/Evidence.tsx'), 'utf8')
+    expect(result).toContain('role="region" aria-labelledby="inline-action-title"')
+    expect(result).toContain("setActivePanel('missing')")
+    expect(evidence).toContain('Busqué {r.afterDedup}')
+    expect(evidence).toContain('ninguno alcanzó el umbral')
+  })
 })

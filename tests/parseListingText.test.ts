@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseAmount, parseListingText } from '@/lib/scrape/parseText'
+import { canAnalyzePastedText, parseAmount, parseListingText } from '@/lib/scrape/parseText'
 
 describe('montos', () => {
   it('lee separadores de Argentina y de México', () => {
@@ -25,6 +25,14 @@ Expensas $ 180.000
       rooms: 4, bedrooms: 3, bathrooms: 2, totalM2: 250, coveredM2: 180,
       title: 'Casa en venta en Pilar, barrio cerrado Los Robles',
     })
+  })
+
+  it('acepta un encabezado corto con tipo, precio y superficie', () => {
+    expect(canAnalyzePastedText('Casa · 260m² · 5 ambientes · 2 cocheras / Venta USD 520.000')).toBe(true)
+  })
+
+  it('distingue texto incompleto aunque tenga texto del portal', () => {
+    expect(canAnalyzePastedText('Conocé más sobre esta propiedad · Cantidad de plantas · Cobertura de cochera')).toBe(false)
   })
 
   it('nunca toma las expensas como precio', () => {

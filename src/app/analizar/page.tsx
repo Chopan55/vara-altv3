@@ -114,7 +114,7 @@ function Analizar() {
   }
 
   const content = (
-    <main className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
+    <main className="mx-auto min-w-0 w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
       {example && enabled && (
         <p role="note" className="mb-4 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-slate-700">
           <strong>Ejemplo con avisos reales</strong> de {example.portal} (la propiedad y {example.comparables.length} parecidas de la zona), copiados el {formatCopiedAt(example.copiedAt)}. Puede que ya no estén publicados. {example.id === 'cdmx' ? 'Para analizar el tuyo, pega su link en la portada.' : 'Para analizar el tuyo, pegá su link en la portada.'}
@@ -131,6 +131,6 @@ function Analizar() {
 
   // Modo de prueba: tapa el menú de la app para que no haya nada que explicar.
   return testMode
-    ? <div className="fixed inset-0 z-50 overflow-auto bg-[var(--background,#fff)] print:static print:overflow-visible">{content}</div>
+    ? <div className="fixed inset-0 z-50 min-w-0 overflow-x-hidden overflow-y-auto bg-[var(--background,#fff)] print:static print:overflow-visible">{content}</div>
     : content
 }

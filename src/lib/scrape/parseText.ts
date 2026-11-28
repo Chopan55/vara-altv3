@@ -142,3 +142,11 @@ export function parseListingText(raw: string, opts: { mx?: boolean } = {}): Scra
   for (const k of Object.keys(data) as (keyof ScrapedData)[]) if (data[k] === undefined) delete data[k]
   return data
 }
+
+/** A short portal heading is enough when it carries the three facts we can trust. */
+export function canAnalyzePastedText(raw: string, opts: { mx?: boolean } = {}): boolean {
+  const data = parseListingText(raw, opts)
+  const hasSurface = data.totalM2 !== undefined || data.coveredM2 !== undefined
+  const hasType = /\b(casa|departamento|depto\.?|ph|dúplex|duplex|terreno|lote|local|oficina|quinta|cochera)\b/i.test(raw)
+  return raw.trim().length > 150 || (!!data.price && hasSurface && hasType)
+}

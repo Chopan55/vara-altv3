@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertCircle, Printer } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -18,6 +18,7 @@ import { SellerQuestionsCard, ShareCard, type ShareChannel } from './Highlights'
 import { DecisionHero } from './DecisionHero'
 import { parseCommissionPct } from '@/lib/analysis/commission'
 import type { CostRoute } from './Sections'
+import { buildNextSteps } from '@/lib/analysis/nextSteps'
 
 export interface ResultActions {
   confirmField: (p: UserOverrides) => Promise<void>
@@ -42,7 +43,12 @@ export function ResultView({
   const [profileDismissed, setProfileDismissed] = useState(false)
   const [costRoute, setCostRoute] = useState<CostRoute>('')
   const [pctRaw, setPctRaw] = useState('')
+  const [activePanel, setActivePanel] = useState<'missing' | 'plan' | null>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const analysis = state.analysis
+  useEffect(() => {
+    if (activePanel) panelRef.current?.focus()
+  }, [activePanel])
   if (!analysis) return null
 
   const { userFit, pricePositioning: price } = analysis
@@ -60,6 +66,11 @@ export function ResultView({
     el.focus({ preventScroll: true })
   }
 
+  const openPanelOrScroll = (id: string) => {
+    if (id === 'plan') return setActivePanel('plan')
+    scrollTo(id)
+  }
+
   /** Guarda y avisa si no se pudo: nada avanza dando por hecho un guardado que falló. */
   const saveOrWarn = async (): Promise<boolean> => {
     const saved = await actions.save()
@@ -70,7 +81,7 @@ export function ResultView({
   const act = async (type: NbaType) => {
     actions.track('nba_clicked', { type })
     switch (type) {
-      case 'GET_MISSING_INFORMATION': return scrollTo('faltantes')
+      case 'GET_MISSING_INFORMATION': return setActivePanel('missing')
       case 'ADD_COMPARABLES': return scrollTo('sumar')
       case 'COMPARE': if (await saveOrWarn()) router.push('/comparar'); return
       case 'VISIT': actions.track('visit_started'); if (await saveOrWarn()) router.push('/vara-visit/solicitar'); return
@@ -90,6 +101,8 @@ export function ResultView({
     }
   }
 
+  const panelSteps = buildNextSteps(analysis).slice(0, 2)
+
   // Seguir la compra es tener una operación: se entra con la cuenta y después se arma (si ya hay sesión, va directo).
   const follow = async () => {
     if (!(await saveOrWarn())) return
@@ -105,9 +118,31 @@ export function ResultView({
         warnings={state.warnings}
         onAct={act}
         onShare={() => scrollTo('compartir')}
-        onScroll={scrollTo}
+        onScroll={openPanelOrScroll}
         onQuestionCopied={() => actions.track('missing_data_action', { kind: 'copy_questions' })}
       />
+
+      {activePanel && (
+        <div ref={panelRef} tabIndex={-1} role="region" aria-labelledby="inline-action-title" className="mt-4 rounded-2xl border border-brand-200 bg-brand-50 p-5 outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 id="inline-action-title" className="font-semibold text-slate-900">{activePanel === 'missing' ? 'Datos que faltan para decidir' : 'Primeros pasos para esta propiedad'}</h2>
+              <p className="mt-1 text-sm text-slate-600">{activePanel === 'missing' ? 'Podés confirmarlos acá o pedirlos al vendedor. Lo que no aparece queda pendiente.' : 'Este es el orden sugerido con la información disponible hoy.'}</p>
+            </div>
+            <button type="button" onClick={() => setActivePanel(null)} aria-label="Cerrar panel" className="min-h-11 rounded-lg px-2 text-sm text-slate-600 hover:bg-white">Cerrar</button>
+          </div>
+          {activePanel === 'missing' ? (
+            <ul className="mt-3 space-y-2">
+              {analysis.missingInformation.items.slice(0, 2).map(item => <li key={item.field} className="rounded-xl bg-white p-3 text-sm"><span className="font-medium text-slate-900">{item.label}.</span> <span className="text-slate-600">{item.why}</span></li>)}
+            </ul>
+          ) : (
+            <ol className="mt-3 space-y-2">{panelSteps.map((s, i) => <li key={s.id} className="flex gap-2 text-sm"><span className="font-semibold text-brand-700">{i + 1}.</span><span><span className="font-medium text-slate-900">{s.title}.</span> <span className="text-slate-600">{s.detail}</span></span></li>)}</ol>
+          )}
+          <button type="button" onClick={() => scrollTo(activePanel === 'missing' ? 'faltantes' : 'plan')} className="mt-3 min-h-11 text-sm font-semibold text-brand-700 underline">
+            Ver el detalle completo
+          </button>
+        </div>
+      )}
 
       {/* El dato raro, completo y corregible; el bloque de arriba lleva hasta acá. */}
       <div id="dato-raro" className="scroll-mt-6">
@@ -123,7 +158,7 @@ export function ResultView({
         </p>
       )}
 
-      <NextStepsSection analysis={analysis} onJump={scrollTo} />
+      <NextStepsSection analysis={analysis} onJump={openPanelOrScroll} />
 
       {/* Lo que más importa para decidir, a la vista: preguntas al vendedor y compartir (el total va arriba). */}
       <SellerQuestionsCard analysis={analysis} onAction={kind => actions.track('missing_data_action', { kind })} />

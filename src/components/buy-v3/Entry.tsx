@@ -5,10 +5,11 @@ import { AlertTriangle, ArrowRight, BarChart3, Check, ClipboardPaste, ExternalLi
 import { cn } from '@/lib/utils'
 import type { MustHave, ProfileAnswers } from '@/lib/analysis/prefs'
 import type { UserOverrides } from '@/lib/analysis/normalize'
-import { parseListingText } from '@/lib/scrape/parseText'
+import { canAnalyzePastedText, parseListingText } from '@/lib/scrape/parseText'
 import { reviewSurfaces, uniqueWarnings, type SurfaceWarning } from '@/lib/scrape/surfaces'
 import type { BuyState } from './useBuyAnalysis'
 import { KIND_TEXT, money } from './format'
+import { ENTRY_COPY } from '@/lib/copy'
 
 /** El servidor solo procesa un texto pegado si tiene MÁS de 150 caracteres (scrape-property): la pantalla pide lo mismo. */
 export const MIN_PASTED_CHARS = 151
@@ -79,7 +80,7 @@ export function EntryForm({
             Analizar <ArrowRight size={18} aria-hidden="true" />
           </button>
         </form>
-        <p className="relative mt-3 text-xs text-brand-200">Sin cuenta ni formularios. Funciona con Zonaprop, Argenprop, MercadoLibre y más.</p>
+        <p className="relative mt-3 text-xs text-brand-200">Sin cuenta ni formularios. Si el portal bloquea la lectura, podés pegar el encabezado o cargar los datos principales.</p>
       </div>
 
       {(onPasteText || onManual) && (
@@ -99,17 +100,18 @@ export function EntryForm({
           </div>
           {mode === 'texto' && onPasteText && (
             <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-sm text-slate-700">Abrí el aviso, seleccioná todo, copialo y pegalo acá. Lo leo igual.</p>
+              <p className="text-sm text-slate-700">{ENTRY_COPY.pasteRecommendation}</p>
+              <p className="mt-1 text-xs text-slate-500">{ENTRY_COPY.pasteSteps}</p>
               <textarea value={text} onChange={e => setText(e.target.value)} rows={6} aria-label="Texto de la publicación"
                 placeholder="Pegá acá todo el texto de la publicación…"
                 className="mt-3 w-full rounded-xl border border-slate-500 bg-white p-3 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200" />
               <PastePreview text={text} mx={mx} />
-              <button type="button" disabled={text.trim().length < MIN_PASTED_CHARS} onClick={() => onPasteText(text)}
+              <button type="button" disabled={!canAnalyzePastedText(text, { mx })} onClick={() => onPasteText(text)}
                 className="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
                 Analizar con este texto
               </button>
-              {text.trim().length > 0 && text.trim().length < MIN_PASTED_CHARS && (
-                <p className="mt-2 text-xs text-slate-500">Pegá la publicación completa para que pueda leerla.</p>
+              {text.trim().length > 0 && !canAnalyzePastedText(text, { mx }) && (
+                <p className="mt-2 text-xs text-amber-800">{ENTRY_COPY.incompleteText}</p>
               )}
             </div>
           )}
@@ -152,13 +154,13 @@ export function SurfaceWarningCard({
   const w = list[0]
   const n = Number(m2.replace(/[^\d]/g, ''))
   return (
-    <div role="alert" className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4">
+    <div role="alert" className="mt-6 min-w-0 max-w-full rounded-2xl border border-amber-300 bg-amber-50 p-4">
       <p className="flex items-center gap-2 text-sm font-semibold text-amber-900">
         <AlertTriangle size={16} aria-hidden /> Detecté un dato raro en el aviso
       </p>
       <p className="mt-1 text-sm text-amber-900">{w.message}</p>
       {onConfirm && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           {w.suggestedLotM2 && (
             <button type="button" onClick={() => onConfirm({ landArea: w.suggestedLotM2 })}
               className="rounded-lg bg-amber-900 px-3 py-2 text-sm font-medium text-white min-h-11">
@@ -166,7 +168,7 @@ export function SurfaceWarningCard({
             </button>
           )}
           <input value={m2} onChange={e => setM2(e.target.value)} inputMode="numeric" aria-label="Superficie cubierta en metros cuadrados"
-            placeholder="m² cubiertos" className="w-32 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm min-h-11" />
+            placeholder="m² cubiertos" className="w-full min-w-0 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm min-h-11 sm:w-32" />
           <button type="button" disabled={!Number.isFinite(n) || n < 10 || n > 20_000}
             onClick={() => onConfirm({ coveredArea: n })}
             className="rounded-lg border border-amber-900 px-3 py-2 text-sm font-medium text-amber-900 disabled:opacity-40 min-h-11">
@@ -310,14 +312,15 @@ export function ProgressPanel({
           )}
           {mode === 'texto' && onPaste && (
             <div className="mt-3">
-              <p className="text-sm text-slate-700">Abrí el aviso, seleccioná todo, copialo y pegalo acá. Lo leo igual.</p>
+              <p className="text-sm text-slate-700">{ENTRY_COPY.pasteRecommendation}</p>
+              <p className="mt-1 text-xs text-slate-500">{ENTRY_COPY.pasteSteps}</p>
               <textarea value={pasted} onChange={e => setPasted(e.target.value)} rows={5} aria-label="Texto del aviso"
                 className="mt-2 w-full rounded-xl border border-slate-500 bg-white p-3 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200" />
-              <button type="button" disabled={pasted.trim().length < MIN_PASTED_CHARS} onClick={() => onPaste(pasted)}
+              <button type="button" disabled={!canAnalyzePastedText(pasted, { mx })} onClick={() => onPaste(pasted)}
                 className="mt-2 inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
                 Analizar este texto
               </button>
-              {pasted.trim().length < MIN_PASTED_CHARS && <p className="mt-1 text-xs text-slate-600">Pegá el aviso completo (al menos unas pocas líneas).</p>}
+              {pasted.trim().length > 0 && !canAnalyzePastedText(pasted, { mx }) && <p className="mt-1 text-xs text-amber-800">{ENTRY_COPY.incompleteText}</p>}
             </div>
           )}
           {manualSeen && onManual && (
@@ -395,12 +398,14 @@ function PastePreview({ text, mx }: { text: string; mx: boolean }) {
     data.coveredM2 ? `${data.coveredM2.toLocaleString('es-AR')} m² ${mx ? 'construidos' : 'cubiertos'}` : null,
     data.totalM2 ? `${data.totalM2.toLocaleString('es-AR')} m² totales` : null,
   ].filter(Boolean)
-  if (facts.length === 0 && warnings.length === 0) return null
+  if (!text.trim()) return null
   return (
     <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3" role="status" aria-live="polite">
-      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-800"><Check size={14} aria-hidden /> Esto es lo que leí</p>
+      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-800"><Check size={14} aria-hidden /> {ENTRY_COPY.previewTitle}</p>
       {data.title && <p className="mt-1 text-sm font-medium text-slate-900">{data.title}</p>}
-      <p className="mt-0.5 text-sm text-slate-700">{facts.join(' · ')}</p>
+      {facts.length > 0 ? <p className="mt-0.5 text-sm text-slate-700">{facts.join(' · ')}</p> : <p className="mt-1 text-sm text-amber-800">{ENTRY_COPY.incompleteText}</p>}
+      {facts.length > 0 && !canAnalyzePastedText(text, { mx }) && <p className="mt-2 text-xs text-amber-800">{ENTRY_COPY.incompleteText}</p>}
+      <p className="mt-2 text-xs text-slate-600">{ENTRY_COPY.recognizedMissing}</p>
       {uniqueWarnings(warnings).map(w => (
         <p key={w.field} className="mt-2 flex items-start gap-1.5 text-sm text-amber-900">
           <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden /> <span>{w.message}</span>
@@ -419,9 +424,9 @@ export function BlockedPaste({
   return (
     <div className="vara-rise pt-6 sm:pt-12">
       <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
-        <p className="text-xs font-semibold uppercase tracking-widest text-amber-800">No pude leer el aviso solo</p>
-        <h1 className="font-display mt-1 text-xl font-extrabold text-slate-900">{message ?? 'No pudimos leer ese aviso.'}</h1>
-        <p className="mt-1 text-sm text-slate-700">Igual lo leo si me pasás el texto. Son tres pasos:</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-amber-800">{ENTRY_COPY.portalBlockedTitle}</p>
+        <h1 className="font-display mt-1 text-xl font-extrabold text-slate-900">{message ?? ENTRY_COPY.portalBlockedBody}</h1>
+        <p className="mt-1 text-sm text-slate-700">{ENTRY_COPY.pasteRecommendation}</p>
       </div>
       <ol className="mt-5 space-y-3 text-sm text-slate-700">
         <li className="flex items-center gap-2">
@@ -434,7 +439,7 @@ export function BlockedPaste({
         </li>
         <li className="flex items-center gap-2">
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-700 text-xs font-semibold text-white">2</span>
-          Seleccioná todo y copialo (⌘A y ⌘C en Mac, Ctrl+A y Ctrl+C en Windows). En el celular: mantené apretado el texto y elegí “Seleccionar todo”.
+          En el celular: mantené apretado el encabezado del aviso y elegí “Copiar”.
         </li>
         <li className="flex items-center gap-2">
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-700 text-xs font-semibold text-white">3</span>
@@ -450,12 +455,12 @@ export function BlockedPaste({
         className="mt-4 w-full rounded-xl border border-slate-500 bg-white p-3 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200"
       />
       <PastePreview text={text} mx={mx} />
-      <button type="button" disabled={text.trim().length < MIN_PASTED_CHARS} onClick={() => onSubmit(text)}
+      <button type="button" disabled={!canAnalyzePastedText(text, { mx })} onClick={() => onSubmit(text)}
         className="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
         Analizar con este texto
       </button>
-      {text.trim().length > 0 && text.trim().length < MIN_PASTED_CHARS && (
-        <p className="mt-2 text-xs text-slate-500">Pegá la publicación completa para que pueda leerla.</p>
+      {text.trim().length > 0 && !canAnalyzePastedText(text, { mx }) && (
+        <p className="mt-2 text-xs text-amber-800">{ENTRY_COPY.incompleteText}</p>
       )}
       {onManual && (
         <div className="mt-8 border-t border-slate-200 pt-5">
@@ -587,7 +592,7 @@ export function AddComparables({
           className="mt-3 w-full rounded-lg border border-slate-500 bg-white px-3 py-2 text-sm min-h-11" />
       )}
       <div className="mt-3 flex items-center gap-4">
-        <button type="button" disabled={busy || (asText ? text.trim().length < MIN_PASTED_CHARS : !url.trim())} onClick={submit}
+        <button type="button" disabled={busy || (asText ? !canAnalyzePastedText(text) : !url.trim())} onClick={submit}
           className="rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-40 min-h-11">
           {busy ? 'Leyendo…' : 'Sumar'}
         </button>
